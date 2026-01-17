@@ -5,7 +5,12 @@ public struct CalendarMonthView: View {
     let anchorMonth: Date
     let entries: [Entry]
 
-    @State private var selectedDay: Date?
+    @State private var selectedDay: IdentifiableDate?
+
+    private struct IdentifiableDate: Identifiable {
+        let id: Date
+        var date: Date { id }
+    }
 
     private let calendar = Calendar.current
 
@@ -35,20 +40,20 @@ public struct CalendarMonthView: View {
     private func dueCount(for day: Date) -> Int {
         let dayStart = day.startOfDay(in: calendar)
         let dayEnd = day.endOfDay(in: calendar)
-        return entries.filter {
-            $0.status != .done &&
-            ($0.dueDate ?? Date.distantPast) >= dayStart &&
-            ($0.dueDate ?? Date.distantPast) <= dayEnd
+        return entries.filter { entry in
+            entry.status != .done &&
+            entry.serviceDate >= dayStart &&
+            entry.serviceDate <= dayEnd
         }.count
     }
 
     private func dueEntries(for day: Date) -> [Entry] {
         let dayStart = day.startOfDay(in: calendar)
         let dayEnd = day.endOfDay(in: calendar)
-        return entries.filter {
-            $0.status != .done &&
-            ($0.dueDate ?? Date.distantPast) >= dayStart &&
-            ($0.dueDate ?? Date.distantPast) <= dayEnd
+        return entries.filter { entry in
+            entry.status != .done &&
+            entry.serviceDate >= dayStart &&
+            entry.serviceDate <= dayEnd
         }
     }
 
@@ -83,7 +88,7 @@ public struct CalendarMonthView: View {
                     let count = dueCount(for: day)
                     let isToday = calendar.isDateInToday(day)
                     Button {
-                        selectedDay = day
+                        selectedDay = IdentifiableDate(id: day)
                     } label: {
                         ZStack(alignment: .topTrailing) {
                             Text("\(calendar.component(.day, from: day))")
@@ -113,13 +118,24 @@ public struct CalendarMonthView: View {
             }
         }
         .padding(.horizontal)
-        .sheet(item: $selectedDay) { day in
+        .sheet(item: $selectedDay) { item in
             NavigationStack {
-                let dayEntries = dueEntries(for: day)
-                List(dayEntries, id: \.self) { entry in
-                    Text(entry.title ?? "Untitled")
+                let dayEntries = dueEntries(for: item.date)
+                List(dayEntries, id: \.persistentModelID) { entry in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(entry.service)
+                            .font(.headline)
+                        if !entry.detail.isEmpty {
+                            Text(entry.detail)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Text(entry.client.name)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                .navigationTitle("Due on \(formattedDate(day))")
+                .navigationTitle("Due on \(formattedDate(item.date))")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
