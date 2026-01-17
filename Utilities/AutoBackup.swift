@@ -7,9 +7,30 @@ extension Notification.Name {
 }
 
 enum AutoBackup {
+    /// Performs backup asynchronously to avoid blocking the main thread.
+    /// Call this from UI code - it dispatches to a background queue.
     static func perform(ctx: ModelContext) {
+        // Capture the data on the current thread (ModelContext is not Sendable)
+        let data: Data
         do {
-            let data = try Backup.makeJSONData(ctx: ctx)
+            data = try Backup.makeJSONData(ctx: ctx)
+        } catch {
+            NotificationCenter.default.post(name: .autoBackupDidFinish, object: nil, userInfo: [
+                "success": false,
+                "message": error.localizedDescription.isEmpty ? "Backup failed." : error.localizedDescription
+            ])
+            return
+        }
+
+        // Dispatch file I/O (including potentially blocking iCloud operations) to a background queue
+        DispatchQueue.global(qos: .utility).async {
+            performBackupIO(data: data)
+        }
+    }
+
+    /// Internal method that performs potentially blocking file I/O on a background thread.
+    private static func performBackupIO(data: Data) {
+        do {
             let name = Backup.defaultBackupName() + ".json"
             let url = Backup.documentsDirectory().appendingPathComponent(name)
             try data.write(to: url, options: .atomic)
@@ -52,16 +73,22 @@ enum AutoBackup {
                     _ = writeError
                 }
             }
-            NotificationCenter.default.post(name: .autoBackupDidFinish, object: nil, userInfo: [
-                "success": true,
-                "message": "Backup completed. Saved to Documents and your chosen folder (if set)."
-            ])
-            UserDefaults.standard.set(Date(), forKey: "backup.lastRun")
+
+            // Post notification on main thread
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .autoBackupDidFinish, object: nil, userInfo: [
+                    "success": true,
+                    "message": "Backup completed. Saved to Documents and your chosen folder (if set)."
+                ])
+                UserDefaults.standard.set(Date(), forKey: "backup.lastRun")
+            }
         } catch {
-            NotificationCenter.default.post(name: .autoBackupDidFinish, object: nil, userInfo: [
-                "success": false,
-                "message": error.localizedDescription.isEmpty ? "Backup failed." : error.localizedDescription
-            ])
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .autoBackupDidFinish, object: nil, userInfo: [
+                    "success": false,
+                    "message": error.localizedDescription.isEmpty ? "Backup failed." : error.localizedDescription
+                ])
+            }
         }
     }
 

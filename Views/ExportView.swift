@@ -320,8 +320,12 @@ struct ExportView: View {
                 if selectedClient == nil { selectedClient = clients.first }
                 if monthEnd < monthStart { monthEnd = monthStart }
                 showServices = !selectedServices.isEmpty
-                resolveBackupFolderIfNeeded()
-                
+
+                // Resolve backup folder asynchronously to avoid blocking the main thread
+                Task.detached(priority: .utility) {
+                    await resolveBackupFolderIfNeededAsync()
+                }
+
                 NotificationCenter.default.addObserver(forName: .autoBackupDidFinish, object: nil, queue: .main) { note in
                     if let info = note.userInfo,
                        let msg = info["message"] as? String {
@@ -800,7 +804,35 @@ struct ExportView: View {
         }
     }
 
-    // ✅ Resolve stored bookmark (no .withSecurityScope on iOS)
+    // ✅ Resolve stored bookmark asynchronously (no .withSecurityScope on iOS)
+    @MainActor
+    private func resolveBackupFolderIfNeededAsync() async {
+        guard let data = backupFolderBookmark else {
+            resolvedBackupFolderURL = nil
+            return
+        }
+
+        // Perform potentially blocking iCloud operations off the main thread
+        let result: (url: URL?, refreshedBookmark: Data?) = await Task.detached(priority: .utility) {
+            var isStale = false
+            guard let url = try? URL(resolvingBookmarkData: data, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale) else {
+                return (nil, nil)
+            }
+            var refreshedBookmark: Data? = nil
+            if isStale {
+                refreshedBookmark = try? url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
+            }
+            return (url, refreshedBookmark)
+        }.value
+
+        // Update UI state on main thread
+        if let refreshed = result.refreshedBookmark {
+            backupFolderBookmark = refreshed
+        }
+        resolvedBackupFolderURL = result.url
+    }
+
+    // Synchronous version kept for internal use where already on background thread
     private func resolveBackupFolderIfNeeded() {
         guard let data = backupFolderBookmark else { resolvedBackupFolderURL = nil; return }
         var isStale = false
@@ -815,45 +847,54 @@ struct ExportView: View {
         }
     }
 
-    // ✅ Hydrate iCloud folders and coordinate writes
+    // ✅ Hydrate iCloud folders and coordinate writes (async to avoid blocking main thread)
     private func writeTestBackupToChosenFolder() {
-        guard let folderURL = resolvedBackupFolderURL ?? { resolveBackupFolderIfNeeded(); return resolvedBackupFolderURL }() else { return }
+        guard let folderURL = resolvedBackupFolderURL else { return }
         guard let data = try? Backup.makeJSONData(ctx: ctx) else { return }
 
-        // Begin security scope (the URL retains the file provider security scope from the picker)
-        let started = folderURL.startAccessingSecurityScopedResource()
-        defer { if started { folderURL.stopAccessingSecurityScopedResource() } }
+        // Dispatch potentially blocking iCloud/file coordinator operations to background
+        DispatchQueue.global(qos: .userInitiated).async {
+            // Begin security scope (the URL retains the file provider security scope from the picker)
+            let started = folderURL.startAccessingSecurityScopedResource()
+            defer { if started { folderURL.stopAccessingSecurityScopedResource() } }
 
-        do {
-            // If the picked folder is in iCloud Drive, nudge hydration
-            try ensureUbiquitousFolderReady(folderURL)
+            do {
+                // If the picked folder is in iCloud Drive, nudge hydration
+                try ensureUbiquitousFolderReady(folderURL)
 
-            let name = Backup.defaultBackupName() + ".json"
-            let dest = folderURL.appendingPathComponent(name)
+                let name = Backup.defaultBackupName() + ".json"
+                let dest = folderURL.appendingPathComponent(name)
 
-            // Coordinate write (safer with iCloud & file providers)
-            let coordinator = NSFileCoordinator()
-            var tempError: NSError?
-            var writeError: Error?
+                // Coordinate write (safer with iCloud & file providers)
+                let coordinator = NSFileCoordinator()
+                var tempError: NSError?
+                var writeError: Error?
 
-            coordinator.coordinate(writingItemAt: dest, options: [], error: &tempError) { url in
-                do {
-                    try data.write(to: url, options: .atomic)
-                } catch {
-                    // Capture write error locally to avoid overlapping access on tempError
-                    writeError = error
+                coordinator.coordinate(writingItemAt: dest, options: [], error: &tempError) { url in
+                    do {
+                        try data.write(to: url, options: .atomic)
+                    } catch {
+                        // Capture write error locally to avoid overlapping access on tempError
+                        writeError = error
+                    }
+                }
+
+                // Check for coordination or write errors
+                if let err = tempError { throw err }
+                if let err = writeError { throw err }
+
+                let savedName = dest.lastPathComponent
+                DispatchQueue.main.async {
+                    self.importInfo = "Saved backup to: \(savedName)"
+                    self.showImportInfo = true
+                }
+            } catch {
+                let errorMessage = error.localizedDescription
+                DispatchQueue.main.async {
+                    self.importError = errorMessage
+                    self.showImportError = true
                 }
             }
-
-            // Check for coordination or write errors
-            if let err = tempError { throw err }
-            if let err = writeError { throw err }
-
-            importInfo = "Saved backup to: \(dest.lastPathComponent)"
-            showImportInfo = true
-        } catch {
-            importError = error.localizedDescription
-            showImportError = true
         }
     }
 
