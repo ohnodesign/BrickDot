@@ -175,7 +175,8 @@ struct StatsPageView: View {
 
     private var dueToday: [Entry] {
         allEntries.filter { e in
-            guard e.status != .done, let d = e.dueDate else { return false }
+            guard e.status != .done else { return false }
+            let d = e.serviceDate
             return d >= todayStart && d <= todayEnd
         }.sorted(by: importantFirst)
     }
@@ -184,7 +185,8 @@ struct StatsPageView: View {
         let start = effectiveNow.bdStartOfWeek
         let end = effectiveNow.bdEndOfWeek
         return allEntries.filter { e in
-            guard e.status != .done, let d = e.dueDate else { return false }
+            guard e.status != .done else { return false }
+            let d = e.serviceDate
             return d >= start && d <= end
         }.sorted(by: importantFirst)
     }
@@ -192,21 +194,22 @@ struct StatsPageView: View {
     private var overdue: [Entry] {
         let now = effectiveNow
         return allEntries.filter { e in
-            guard e.status != .done, let d = e.dueDate else { return false }
+            guard e.status != .done else { return false }
+            let d = e.serviceDate
             return d < Calendar.current.startOfDay(for: now)
         }.sorted(by: importantFirst)
     }
 
-    // Auto-roll: if due date is before today and not done, move to tomorrow
+    // Auto-roll: if service date is before today and not done, move to tomorrow
     private func autoRollOverdueToNextDay() {
         let cal = Calendar.current
         let today = cal.startOfDay(for: Date())
         var changed = false
         for e in allEntries {
-            guard e.status != .done, let d = e.dueDate else { continue }
-            if d < today {
+            guard e.status != .done else { continue }
+            if e.serviceDate < today {
                 if let next = cal.date(byAdding: .day, value: 1, to: today) {
-                    e.dueDate = next
+                    e.serviceDate = next
                     changed = true
                 }
             }
