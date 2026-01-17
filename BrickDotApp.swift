@@ -19,7 +19,8 @@ struct BrickDotApp: App {
             Client.self,
             Invoice.self,
             Subtask.self,
-            TimeLog.self
+            TimeLog.self,
+            EntryTemplate.self
         ])
     }
 

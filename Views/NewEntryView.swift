@@ -43,6 +43,7 @@ struct NewEntryView: View {
     var onSaved: (() -> Void)? = nil
 
     var prefillClient: Client? = nil
+    var prefillTemplate: EntryTemplate? = nil
 
     private struct PendingSubtask: Identifiable, Hashable {
         let id = UUID()
@@ -278,6 +279,15 @@ struct NewEntryView: View {
             } else {
                 if selectedClient == nil { selectedClient = clients.first }
                 if let c = selectedClient { rate = c.rate }
+            }
+            // Apply template if provided
+            if let template = prefillTemplate {
+                service = template.service
+                detail = template.detail
+                notes = template.notes
+                if template.defaultHours > 0 {
+                    hours = template.defaultHours
+                }
             }
         }
         .onChange(of: selectedClient) { _, c in

@@ -14,8 +14,12 @@ struct ClientDetailView: View {
     @AppStorage("client.showStats") private var showStats = false
     @AppStorage("client.showInvoices") private var showInvoices = false
     @AppStorage("client.showRecent") private var showRecent = false
+    @AppStorage("client.showTemplates") private var showTemplates = false
     @State private var showEdit       = false
     @State private var showNewEntry   = false
+    @State private var showNewTemplate = false
+    @State private var selectedTemplate: EntryTemplate? = nil
+    @State private var showEntryPicker = false
 
     // Broad queries; filter in Swift
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
@@ -263,6 +267,55 @@ struct ClientDetailView: View {
                 }
             }
 
+            // Templates
+            Section {
+                DisclosureGroup(isExpanded: $showTemplates) {
+                    if client.templates.isEmpty {
+                        Text("No templates yet").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(client.templates.sorted { $0.name < $1.name }, id: \.persistentModelID) { template in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(template.name).font(.subheadline).fontWeight(.semibold)
+                                    Text("\(template.service) — \(template.detail.isEmpty ? "No detail" : template.detail)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Button {
+                                    selectedTemplate = template
+                                    showNewEntry = true
+                                } label: {
+                                    Image(systemName: "plus.circle.fill")
+                                        .foregroundStyle(.accent)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    ctx.delete(template)
+                                    try? ctx.save()
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                    }
+                    Button {
+                        showNewTemplate = true
+                    } label: {
+                        Label("New Template", systemImage: "plus.circle")
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "doc.text")
+                            .foregroundStyle(.accent)
+                        Text("Templates (\(client.templates.count))")
+                    }
+                }
+            }
+
             // Invoices (collapsed by default)
             Section {
                 DisclosureGroup(isExpanded: $showInvoices) {
@@ -300,7 +353,25 @@ struct ClientDetailView: View {
         .navigationTitle(client.name)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button { showNewEntry = true } label: {
+                Menu {
+                    Button {
+                        selectedTemplate = nil
+                        showNewEntry = true
+                    } label: {
+                        Label("Blank Entry", systemImage: "doc")
+                    }
+                    if !client.templates.isEmpty {
+                        Divider()
+                        ForEach(client.templates.sorted { $0.name < $1.name }, id: \.persistentModelID) { template in
+                            Button {
+                                selectedTemplate = template
+                                showNewEntry = true
+                            } label: {
+                                Label(template.name, systemImage: "doc.text")
+                            }
+                        }
+                    }
+                } label: {
                     Image(systemName: "plus.circle")
                         .imageScale(.large)
                         .accessibilityLabel("New Entry")
@@ -321,9 +392,22 @@ struct ClientDetailView: View {
         }
         .sheet(isPresented: $showNewEntry) {
             NavigationStack {
-                NewEntryView(onSaved: { showNewEntry = false }, prefillClient: client)
+                NewEntryView(
+                    onSaved: { showNewEntry = false; selectedTemplate = nil },
+                    prefillClient: client,
+                    prefillTemplate: selectedTemplate
+                )
             }
             .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showNewTemplate) {
+            NavigationStack {
+                NewTemplateView(client: client) {
+                    showNewTemplate = false
+                }
+            }
+            .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
     }
@@ -639,6 +723,88 @@ private struct ClientStatsCard: View {
             SharedStatPill(title: "Year to Date", entries: yearToDate, icon: "calendar.badge.plus")
         }
         .padding(.vertical, 4)
+    }
+}
+
+// MARK: - New Template View
+
+private struct NewTemplateView: View {
+    @Environment(\.modelContext) private var ctx
+    @Environment(\.dismiss) private var dismiss
+    let client: Client
+    var onSaved: () -> Void
+
+    @State private var name: String = ""
+    @State private var service: String = (Constants.services.first ?? "")
+    @State private var detail: String = ""
+    @State private var notes: String = ""
+    @State private var defaultHours: Double = 0
+
+    var body: some View {
+        Form {
+            Section("Template Info") {
+                TextField("Template Name", text: $name)
+                Picker("Service", selection: $service) {
+                    ForEach(Constants.services, id: \.self) { svc in
+                        Text(svc).tag(svc)
+                    }
+                }
+            }
+
+            Section("Default Values") {
+                TextField("Detail / Description", text: $detail)
+                HStack {
+                    Text("Default Hours")
+                    Spacer()
+                    TextField("0.00", value: $defaultHours, format: .number.precision(.fractionLength(2)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 100)
+                }
+            }
+
+            Section("Notes") {
+                ZStack(alignment: .topLeading) {
+                    if notes.isEmpty {
+                        Text("Default notes for entries created from this template…")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
+                    }
+                    TextEditor(text: $notes)
+                        .frame(minHeight: 80)
+                }
+            }
+
+            Section {
+                Button {
+                    saveTemplate()
+                } label: {
+                    Label("Save Template", systemImage: "tray.and.arrow.down.fill")
+                }
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .navigationTitle("New Template")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Cancel") { dismiss() }
+            }
+        }
+    }
+
+    private func saveTemplate() {
+        let template = EntryTemplate(
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            service: service,
+            detail: detail.trimmingCharacters(in: .whitespacesAndNewlines),
+            notes: notes.trimmingCharacters(in: .whitespacesAndNewlines),
+            defaultHours: defaultHours,
+            client: client
+        )
+        ctx.insert(template)
+        try? ctx.save()
+        onSaved()
     }
 }
 

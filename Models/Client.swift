@@ -6,6 +6,8 @@ final class Client {
     var rate: Double
     @Relationship(deleteRule: .cascade, inverse: \Entry.client)
     var entries: [Entry] = []
+    @Relationship(deleteRule: .cascade, inverse: \EntryTemplate.client)
+    var templates: [EntryTemplate] = []
     init(name: String, rate: Double) { self.name = name; self.rate = rate }
 }
 import SwiftData
