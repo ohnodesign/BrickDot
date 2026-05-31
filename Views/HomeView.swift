@@ -632,21 +632,28 @@ private struct GreetingHeader: View {
                         .foregroundStyle(.secondary)
 
                     ForEach(Array(focusEntries.enumerated()), id: \.element.persistentModelID) { index, entry in
-                        HStack(alignment: .top, spacing: 10) {
-                            Text("\(index + 1).")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                                .frame(width: 20, alignment: .trailing)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(focusLabel(for: entry))
-                                    .font(.subheadline.weight(.medium))
-                                    .lineLimit(1)
-                                Text(entry.clientName)
-                                    .font(.caption)
+                        NavigationLink {
+                            EditEntryView(entry: entry)
+                        } label: {
+                            HStack(alignment: .top, spacing: 10) {
+                                Text("\(index + 1).")
+                                    .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(.secondary)
+                                    .frame(width: 20, alignment: .trailing)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(focusLabel(for: entry))
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(1)
+                                    Text(entry.clientName)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
                             }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
 
