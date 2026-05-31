@@ -88,7 +88,7 @@ struct HomeView: View {
                             }
                         } header: {
                             Label("In Progress", systemImage: "bolt.fill")
-                                .foregroundStyle(.brick)
+                                .foregroundStyle(Color.brick)
                                 .font(.subheadline.weight(.semibold))
                         }
                     }
@@ -440,7 +440,7 @@ private struct ActionRow: View {
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Capsule().fill(Color.brick.opacity(0.15)))
-                        .foregroundStyle(.brick)
+                        .foregroundStyle(Color.brick)
                 } else if entry.hours > 0 {
                     Text("\(entry.hours, specifier: "%.1f")h")
                         .font(.caption)
@@ -483,31 +483,25 @@ private struct ActionRow: View {
 
     @ViewBuilder
     private func dueBadgeView(due: Date) -> some View {
-        let text: String
-        let color: Color
         switch badge {
         case .overdue:
-            text = "Overdue"
-            color = .red
+            badgePill("Overdue", color: .red)
         case .dueToday:
-            text = "Today"
-            color = .orange
+            badgePill("Today", color: .orange)
         case .dueSoon:
-            text = due.formatted(.dateTime.month(.abbreviated).day())
-            color = .blue
+            badgePill(due.formatted(.dateTime.month(.abbreviated).day()), color: .blue)
         case .none:
-            text = ""
-            color = .clear
+            EmptyView()
         }
+    }
 
-        if badge != .none {
-            Text(text)
-                .font(.caption2.weight(.semibold))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Capsule().fill(color.opacity(0.15)))
-                .foregroundStyle(color)
-        }
+    private func badgePill(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(color.opacity(0.15)))
+            .foregroundStyle(color)
     }
 }
 
