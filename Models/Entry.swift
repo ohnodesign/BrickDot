@@ -11,7 +11,7 @@ final class Entry {
     var rate: Double = 0
     var client: Client?
     var invoice: Invoice?
-    var status: EntryStatus = EntryStatus.todo
+    var statusRaw: String = "To Do"
     var timerStartedAt: Date?
     var isImportant: Bool = false
     var dueDate: Date? = nil
@@ -25,7 +25,12 @@ final class Entry {
 
     var subtasks: [Subtask] = []
 
-    // Convenience for views that need a non-optional client name
+    @Transient
+    var status: EntryStatus {
+        get { EntryStatus(rawValue: statusRaw) ?? .todo }
+        set { statusRaw = newValue.rawValue }
+    }
+
     var clientName: String { client?.name ?? "Unknown" }
     var clientRate: Double { client?.rate ?? 0 }
 
@@ -52,7 +57,7 @@ final class Entry {
         self.hours = hours
         self.rate = rate
         self.client = client
-        self.status = status
+        self.statusRaw = status.rawValue
         self.createdAt = createdAt
         self.completedAt = completedAt
         self.timerStartedAt = timerStartedAt

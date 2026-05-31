@@ -36,7 +36,10 @@ struct EditEntryView: View {
                 detail: $entry.detail,
                 hours: $entry.hours,
                 rate: $entry.rate,
-                status: $entry.status,
+                status: Binding(
+                    get: { entry.status },
+                    set: { entry.status = $0 }
+                ),
                 timerStartedAt: $entry.timerStartedAt,
                 isImportant: $entry.isImportant,
                 onProgressStart: { try? ctx.save() },
@@ -354,8 +357,8 @@ struct EditEntryView: View {
         .onAppear {
             if selectedClient == nil { selectedClient = entry.client }
         }
-        .onChange(of: entry.status) { _, newStatus in
-            if newStatus == .done && entry.completedAt == nil {
+        .onChange(of: entry.statusRaw) { _, _ in
+            if entry.status == .done && entry.completedAt == nil {
                 entry.completedAt = Date()
                 try? ctx.save()
             }

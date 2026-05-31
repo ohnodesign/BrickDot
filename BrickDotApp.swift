@@ -8,13 +8,11 @@ struct BrickDotApp: App {
     @AppStorage(AppPrefsKey.colorScheme)  private var appearanceRaw: String = "system"   // system | light | dark
     @AppStorage(AppPrefsKey.accentPreset) private var accentRaw: String = "indigo"      // blue | indigo | brick | green | orange
 
-    var body: some Scene {
-        WindowGroup {
-            RootView() // your starting view
-                .preferredColorScheme(colorScheme(from: appearanceRaw))
-                .tint(accentColor(from: accentRaw))
-        }
-        .modelContainer(for: [
+    let container: ModelContainer = {
+        let config = ModelConfiguration(
+            cloudKitDatabase: .automatic
+        )
+        let schema = Schema([
             Entry.self,
             Client.self,
             Invoice.self,
@@ -22,7 +20,17 @@ struct BrickDotApp: App {
             TimeLog.self,
             EntryTemplate.self,
             TemplateSubtask.self
-        ], cloudKitDatabase: .automatic)
+        ])
+        return try! ModelContainer(for: schema, configurations: [config])
+    }()
+
+    var body: some Scene {
+        WindowGroup {
+            RootView()
+                .preferredColorScheme(colorScheme(from: appearanceRaw))
+                .tint(accentColor(from: accentRaw))
+        }
+        .modelContainer(container)
     }
 
     // MARK: - Appearance mapping
