@@ -57,7 +57,7 @@ struct HomeView: View {
                         } header: {
                             Label("Overdue", systemImage: "exclamationmark.triangle.fill")
                                 .foregroundStyle(.red)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                         }
                     }
 
@@ -75,7 +75,7 @@ struct HomeView: View {
                         } header: {
                             Label("Due Today", systemImage: "sun.max.fill")
                                 .foregroundStyle(.orange)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                         }
                     }
 
@@ -93,7 +93,7 @@ struct HomeView: View {
                         } header: {
                             Label("In Progress", systemImage: "bolt.fill")
                                 .foregroundStyle(Color.brick)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                         }
                     }
 
@@ -111,7 +111,7 @@ struct HomeView: View {
                         } header: {
                             Label("Up Next", systemImage: "arrow.right.circle.fill")
                                 .foregroundStyle(.accent)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                         }
                     }
 
@@ -129,7 +129,7 @@ struct HomeView: View {
                         } header: {
                             Label("Backlog", systemImage: "tray.fill")
                                 .foregroundStyle(.secondary)
-                                .font(.subheadline.weight(.semibold))
+                                .font(.title3.weight(.semibold))
                         }
                     }
                 }
@@ -156,7 +156,7 @@ struct HomeView: View {
                                 Text("Done")
                                 Spacer()
                                 Text("\(doneEntries.count)")
-                                    .font(.subheadline.weight(.semibold))
+                                    .font(.title3.weight(.semibold))
                                     .foregroundStyle(.secondary)
                             }
                         }
@@ -166,7 +166,9 @@ struct HomeView: View {
             .listStyle(.insetGrouped)
             .listRowSpacing(4)
             .navigationTitle("Ohno Design")
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
+            .if(sizeClass == .compact) { view in
+                view.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
+            }
             .sheet(isPresented: $showNewEntry) {
                 NavigationStack {
                     NewEntryView(onSaved: { showNewEntry = false })
@@ -190,6 +192,17 @@ struct HomeView: View {
                             Image(systemName: "plus.circle")
                                 .imageScale(.large)
                                 .accessibilityLabel("New Entry")
+                        }
+                    }
+                }
+                if sizeClass == .regular {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "magnifyingglass")
+                                .foregroundStyle(.secondary)
+                            TextField("Search", text: $searchText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: 220)
                         }
                     }
                 }
@@ -451,7 +464,7 @@ private struct ActionRow: View {
                 )
 
                 Text(entry.clientName)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.title3.weight(.semibold))
 
                 if let due = entry.dueDate, badge != .none {
                     dueBadgeView(due: due)
@@ -538,6 +551,17 @@ private struct ActionRow: View {
 }
 
 // MARK: - Helpers
+
+private extension View {
+    @ViewBuilder
+    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
+    }
+}
 
 private extension Double {
     var shortCurrency: String {
