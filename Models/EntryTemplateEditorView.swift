@@ -52,7 +52,7 @@ struct EntryTemplateEditorView: View {
                 }
 
                 SubtasksSectionView(template: template)
-                    .onChange(of: template.subtasks.count) { _, _ in checkForChanges() }
+                    .onChange(of: template.subtasksList.count) { _, _ in checkForChanges() }
             }
             .navigationTitle("Entry Template")
             .navigationBarTitleDisplayMode(.inline)
@@ -78,7 +78,7 @@ struct EntryTemplateEditorView: View {
                 originalDetail = template.detail
                 originalNotes = template.notes
                 originalDefaultHours = template.defaultHours
-                originalSubtaskCount = template.subtasks.count
+                originalSubtaskCount = template.subtasksList.count
             }
         }
         .presentationDetents([.large])
@@ -91,7 +91,7 @@ struct EntryTemplateEditorView: View {
                      template.detail != originalDetail ||
                      template.notes != originalNotes ||
                      template.defaultHours != originalDefaultHours ||
-                     template.subtasks.count != originalSubtaskCount
+                     template.subtasksList.count != originalSubtaskCount
     }
 
     private func saveTemplate() {
@@ -125,7 +125,7 @@ private struct ModelPreviewHost: View {
         // Create minimal sample graph
         let client = Client(name: "Acme Corp", rate: 0)
         let template = EntryTemplate(name: "Website Update", service: "WEBUP", client: client)
-        template.subtasks = [
+        template.subtasksList = [
             TemplateSubtask(title: "Design review", order: 0, template: template),
             TemplateSubtask(title: "Implement changes", order: 1, template: template),
             TemplateSubtask(title: "QA & handoff", order: 2, template: template)

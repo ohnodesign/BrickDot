@@ -28,7 +28,7 @@ struct EntriesListView: View, Identifiable {
                             if let idx = allEntries.firstIndex(where: { $0.persistentModelID == entry.persistentModelID }) {
                                 let e = allEntries[idx]
                                 e.hours += 0.25
-                                e.timeLogs.append(TimeLog(hours: 0.25, entry: e))
+                                e.timeLogsList.append(TimeLog(hours: 0.25, entry: e))
                                 try? ctx.save()
                             }
                         } label: { Text("+15m") }.tint(.blue)
@@ -37,7 +37,7 @@ struct EntriesListView: View, Identifiable {
                             if let idx = allEntries.firstIndex(where: { $0.persistentModelID == entry.persistentModelID }) {
                                 let e = allEntries[idx]
                                 e.hours += 0.5
-                                e.timeLogs.append(TimeLog(hours: 0.5, entry: e))
+                                e.timeLogsList.append(TimeLog(hours: 0.5, entry: e))
                                 try? ctx.save()
                             }
                         } label: { Text("+30m") }.tint(.indigo)
@@ -46,7 +46,7 @@ struct EntriesListView: View, Identifiable {
                             if let idx = allEntries.firstIndex(where: { $0.persistentModelID == entry.persistentModelID }) {
                                 let e = allEntries[idx]
                                 e.hours += 1.0
-                                e.timeLogs.append(TimeLog(hours: 1.0, entry: e))
+                                e.timeLogsList.append(TimeLog(hours: 1.0, entry: e))
                                 try? ctx.save()
                             }
                         } label: { Text("+1h") }.tint(.purple)
@@ -80,7 +80,7 @@ struct EntriesListView: View, Identifiable {
                             if let idx = allEntries.firstIndex(where: { $0.persistentModelID == entry.persistentModelID }) {
                                 let e = allEntries[idx]
                                 e.hours += 0.25
-                                e.timeLogs.append(TimeLog(hours: 0.25, entry: e))
+                                e.timeLogsList.append(TimeLog(hours: 0.25, entry: e))
                                 try? ctx.save()
                             }
                         } label: { Text("+15m") }.tint(.blue)
@@ -89,7 +89,7 @@ struct EntriesListView: View, Identifiable {
                             if let idx = allEntries.firstIndex(where: { $0.persistentModelID == entry.persistentModelID }) {
                                 let e = allEntries[idx]
                                 e.hours += 0.5
-                                e.timeLogs.append(TimeLog(hours: 0.5, entry: e))
+                                e.timeLogsList.append(TimeLog(hours: 0.5, entry: e))
                                 try? ctx.save()
                             }
                         } label: { Text("+30m") }.tint(.indigo)
@@ -98,7 +98,7 @@ struct EntriesListView: View, Identifiable {
                             if let idx = allEntries.firstIndex(where: { $0.persistentModelID == entry.persistentModelID }) {
                                 let e = allEntries[idx]
                                 e.hours += 1.0
-                                e.timeLogs.append(TimeLog(hours: 1.0, entry: e))
+                                e.timeLogsList.append(TimeLog(hours: 1.0, entry: e))
                                 try? ctx.save()
                             }
                         } label: { Text("+1h") }.tint(.purple)
@@ -172,7 +172,7 @@ private struct LoggedTodayEntryRow: View {
     let entry: Entry
 
     private var todayHours: Double {
-        entry.timeLogs.filter { Calendar.current.isDateInToday($0.addedAt) }
+        entry.timeLogsList.filter { Calendar.current.isDateInToday($0.addedAt) }
             .reduce(0.0) { $0 + $1.hours }
     }
 
