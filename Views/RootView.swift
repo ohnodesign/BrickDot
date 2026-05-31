@@ -94,15 +94,20 @@ private struct iPadRootView: View {
 
     @State private var selection: SidebarDestination? = .home
     @State private var showNewEntry = false
+    @State private var detailPath = NavigationPath()
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
                 // Home
                 Section {
-                    NavigationLink(value: SidebarDestination.home) {
+                    Button {
+                        detailPath = NavigationPath()
+                        selection = .home
+                    } label: {
                         Label("Home", systemImage: "house")
                     }
+                    .listItemTint(selection == .home ? .accentColor : nil)
                 }
 
                 // New Entry
@@ -204,6 +209,9 @@ private struct iPadRootView: View {
             detailView
                 .environment(\.modelContext, ctx)
         }
+        .onChange(of: selection) { _, _ in
+            detailPath = NavigationPath()
+        }
         .sheet(isPresented: $showNewEntry) {
             NavigationStack {
                 NewEntryView(onSaved: {
@@ -222,7 +230,7 @@ private struct iPadRootView: View {
     private var detailView: some View {
         switch selection {
         case .home, .none:
-            NavigationStack { HomeView() }
+            NavigationStack(path: $detailPath) { HomeView() }
         case .overdue:
             EntriesListView(title: "Overdue", entries: overdueEntries)
         case .dueToday:
