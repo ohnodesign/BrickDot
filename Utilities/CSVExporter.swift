@@ -62,7 +62,7 @@ struct CSVExporter {
             case "Service":
                 return escape(e.service)
             case "Description":
-                return escape(e.detail)
+                return escape(descriptionWithSubtasks(e))
             case "Quantity", "Qty":
                 return String(format: "%.2f", e.hours)
             case "Rate":
@@ -148,7 +148,7 @@ struct CSVExporter {
                 "",                                     // Location
                 memo ?? "",                             // Memo
                 escapeQB(e.service),                    // Item(Product/Service)
-                escapeQB(e.detail),                     // ItemDescription
+                escapeQB(descriptionWithSubtasks(e)),     // ItemDescription
                 qty,                                    // ItemQuantity
                 rate,                                   // ItemRate
                 amount,                                 // ItemAmount *
@@ -222,6 +222,15 @@ struct CSVExporter {
         guard !s.isEmpty else { return "" }
         let q = s.replacingOccurrences(of: "\"", with: "\"\"")
         return "\"\(q)\""
+    }
+
+    private static func descriptionWithSubtasks(_ entry: Entry) -> String {
+        var desc = entry.detail
+        if !entry.subtasks.isEmpty {
+            let bullets = entry.subtasks.map { "• \($0.title)" }.joined(separator: "\n")
+            desc = desc.isEmpty ? bullets : desc + "\n" + bullets
+        }
+        return desc
     }
 
     private static func safeFilename(_ raw: String) -> String {
