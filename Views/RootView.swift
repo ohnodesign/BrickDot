@@ -112,64 +112,46 @@ private struct iPadRootView: View {
                 }
                 .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
 
-                // Dashboard
-                Section("Dashboard") {
+                // Dashboard cards (Reminders-style 2x2 grid)
+                Section {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        SidebarCard(
+                            icon: "exclamationmark.triangle.fill",
+                            label: "Overdue",
+                            value: "\(overdueCount)",
+                            tint: .red,
+                            destination: .overdue,
+                            selection: $selection
+                        )
+                        SidebarCard(
+                            icon: "sun.max.fill",
+                            label: "Today",
+                            value: "\(dueTodayCount)",
+                            tint: .orange,
+                            destination: .dueToday,
+                            selection: $selection
+                        )
+                        SidebarCard(
+                            icon: "timer",
+                            label: "Running",
+                            value: "\(timersRunning)",
+                            tint: Color.brick,
+                            destination: .running,
+                            selection: $selection
+                        )
+                        SidebarCard(
+                            icon: "dollarsign.circle.fill",
+                            label: "This Week",
+                            value: weekAmount.shortCurrency,
+                            tint: .green,
+                            destination: .thisWeek,
+                            selection: $selection
+                        )
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+
                     NavigationLink(value: SidebarDestination.home) {
                         Label("Home", systemImage: "house")
-                    }
-
-                    NavigationLink(value: SidebarDestination.overdue) {
-                        HStack {
-                            Label("Overdue", systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(overdueCount > 0 ? .red : .secondary)
-                            Spacer()
-                            if overdueCount > 0 {
-                                Text("\(overdueCount)")
-                                    .font(.subheadline.weight(.bold))
-                                    .monospacedDigit()
-                                    .foregroundStyle(.red)
-                            }
-                        }
-                    }
-
-                    NavigationLink(value: SidebarDestination.dueToday) {
-                        HStack {
-                            Label("Due Today", systemImage: "sun.max.fill")
-                                .foregroundStyle(dueTodayCount > 0 ? .orange : .secondary)
-                            Spacer()
-                            if dueTodayCount > 0 {
-                                Text("\(dueTodayCount)")
-                                    .font(.subheadline.weight(.bold))
-                                    .monospacedDigit()
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                    }
-
-                    NavigationLink(value: SidebarDestination.running) {
-                        HStack {
-                            Label("Running", systemImage: "timer")
-                                .foregroundStyle(timersRunning > 0 ? Color.brick : .secondary)
-                            Spacer()
-                            if timersRunning > 0 {
-                                Text("\(timersRunning)")
-                                    .font(.subheadline.weight(.bold))
-                                    .monospacedDigit()
-                                    .foregroundStyle(Color.brick)
-                            }
-                        }
-                    }
-
-                    NavigationLink(value: SidebarDestination.thisWeek) {
-                        HStack {
-                            Label("This Week", systemImage: "dollarsign.circle.fill")
-                                .foregroundStyle(.green)
-                            Spacer()
-                            Text(weekAmount.shortCurrency)
-                                .font(.subheadline.weight(.bold))
-                                .monospacedDigit()
-                                .foregroundStyle(.green)
-                        }
                     }
                 }
 
@@ -353,6 +335,47 @@ private struct iPadRootView: View {
 }
 
 // MARK: - Helpers
+
+// MARK: - Sidebar Card (Reminders-style)
+
+private struct SidebarCard: View {
+    let icon: String
+    let label: String
+    let value: String
+    let tint: Color
+    let destination: SidebarDestination
+    @Binding var selection: SidebarDestination?
+
+    private var isSelected: Bool { selection == destination }
+
+    var body: some View {
+        Button {
+            selection = destination
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Image(systemName: icon)
+                        .font(.title2)
+                        .foregroundStyle(isSelected ? .white : tint)
+                    Spacer()
+                    Text(value)
+                        .font(.title.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(isSelected ? .white : .primary)
+                }
+                Text(label)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(isSelected ? .white.opacity(0.85) : .secondary)
+            }
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(isSelected ? tint : tint.opacity(0.12))
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
 
 private extension Double {
     var shortCurrency: String {

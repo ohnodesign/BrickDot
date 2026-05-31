@@ -3,6 +3,7 @@ import SwiftData
 
 struct HomeView: View {
     @Environment(\.modelContext) private var ctx
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
     @State private var showNewEntry = false
@@ -11,16 +12,18 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             List {
-                // MARK: - Dashboard
-                Section {
-                    DashboardRow(
-                        overdueCount: overdueEntries.count,
-                        dueTodayCount: allDueTodayCount,
-                        timersRunning: timersRunningCount,
-                        weekAmount: thisWeekAmount
-                    )
+                // MARK: - Dashboard (iPhone only — iPad shows this in the sidebar)
+                if sizeClass == .compact {
+                    Section {
+                        DashboardRow(
+                            overdueCount: overdueEntries.count,
+                            dueTodayCount: allDueTodayCount,
+                            timersRunning: timersRunningCount,
+                            weekAmount: thisWeekAmount
+                        )
+                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
 
                 // MARK: - Action List
                 if actionEntries.isEmpty {
