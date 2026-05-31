@@ -27,20 +27,19 @@ struct BrickDotApp: App {
             return container
         }
 
-        // If that fails (schema migration issue), delete the old store and retry
-        let storeURL = ModelConfiguration().url
-        let storePath = storeURL.path()
-        for suffix in ["", "-wal", "-shm"] {
-            try? FileManager.default.removeItem(atPath: storePath + suffix)
-        }
-
-        if let container = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
+        // CloudKit init failed — fall back to local-only storage.
+        // Do NOT delete the store; the data is still there and may sync
+        // once the CloudKit issue resolves on next launch.
+        let localConfig = ModelConfiguration(cloudKitDatabase: .none)
+        if let container = try? ModelContainer(for: schema, configurations: [localConfig]) {
+            UserDefaults.standard.set(true, forKey: "cloudkit.fallbackToLocal")
             return container
         }
 
-        // Last resort: local-only (no CloudKit)
-        let localConfig = ModelConfiguration(cloudKitDatabase: .none)
-        return try! ModelContainer(for: schema, configurations: [localConfig])
+        // Last resort: if even local fails, use a fresh in-memory store
+        // so the app at least launches (user can export/import later)
+        let memoryConfig = ModelConfiguration(isStoredInMemoryOnly: true)
+        return try! ModelContainer(for: schema, configurations: [memoryConfig])
     }()
 
     var body: some Scene {
@@ -48,6 +47,12 @@ struct BrickDotApp: App {
             RootView()
                 .preferredColorScheme(colorScheme(from: appearanceRaw))
                 .tint(accentColor(from: accentRaw))
+                .onAppear {
+                    if UserDefaults.standard.bool(forKey: "cloudkit.fallbackToLocal") {
+                        UserDefaults.standard.set(false, forKey: "cloudkit.fallbackToLocal")
+                        // Next launch will retry CloudKit
+                    }
+                }
         }
         .modelContainer(container)
     }

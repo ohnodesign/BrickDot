@@ -15,7 +15,7 @@ struct HomeView: View {
                 Section {
                     DashboardRow(
                         overdueCount: overdueEntries.count,
-                        dueTodayCount: dueTodayEntries.count,
+                        dueTodayCount: allDueTodayCount,
                         timersRunning: timersRunningCount,
                         weekAmount: thisWeekAmount
                     )
@@ -255,6 +255,13 @@ struct HomeView: View {
         }.sorted(by: prioritySort)
     }
 
+    private var allDueTodayCount: Int {
+        openEntries.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due >= todayStart && due <= todayEnd
+        }.count
+    }
+
     private var dueTodayEntries: [Entry] {
         openEntries.filter { e in
             guard let due = e.dueDate else { return false }
@@ -412,7 +419,10 @@ private struct ActionRow: View {
     let badge: ActionRowBadge
 
     @State private var tick = Date()
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    private var hasRunningTimer: Bool {
+        entry.status == .inProgress && entry.timerStartedAt != nil
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -478,7 +488,13 @@ private struct ActionRow: View {
             }
         }
         .padding(.vertical, 2)
-        .onReceive(timer) { tick = $0 }
+        .task(id: hasRunningTimer) {
+            guard hasRunningTimer else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(1))
+                tick = Date()
+            }
+        }
     }
 
     @ViewBuilder

@@ -38,22 +38,16 @@ public struct CalendarMonthView: View {
     }
 
     private func dueCount(for day: Date) -> Int {
-        let dayStart = day.startOfDay(in: calendar)
-        let dayEnd = day.endOfDay(in: calendar)
-        return entries.filter { entry in
-            entry.status != .done &&
-            entry.serviceDate >= dayStart &&
-            entry.serviceDate <= dayEnd
-        }.count
+        dueEntries(for: day).count
     }
 
     private func dueEntries(for day: Date) -> [Entry] {
         let dayStart = day.startOfDay(in: calendar)
         let dayEnd = day.endOfDay(in: calendar)
         return entries.filter { entry in
-            entry.status != .done &&
-            entry.serviceDate >= dayStart &&
-            entry.serviceDate <= dayEnd
+            guard entry.status != .done else { return false }
+            let relevantDate = entry.dueDate ?? entry.serviceDate
+            return relevantDate >= dayStart && relevantDate <= dayEnd
         }
     }
 

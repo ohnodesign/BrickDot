@@ -440,8 +440,9 @@ struct ClientDetailView: View {
     }
     private func quickPauseAndAdd(_ e: Entry) {
         guard e.timerStartedAt != nil else { return }
-        e.hours += e.runningElapsedHoursOrZero
-        e.timeLogsList.append(TimeLog(hours: e.runningElapsedHoursOrZero, entry: e))
+        let elapsed = e.runningElapsedHoursOrZero
+        e.hours += elapsed
+        e.timeLogsList.append(TimeLog(hours: elapsed, entry: e))
         e.timerStartedAt = nil
         try? ctx.save()
     }

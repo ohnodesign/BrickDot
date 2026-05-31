@@ -59,6 +59,7 @@ struct EntryTemplateEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        revertChanges()
                         dismiss()
                     }
                 }
@@ -92,6 +93,15 @@ struct EntryTemplateEditorView: View {
                      template.notes != originalNotes ||
                      template.defaultHours != originalDefaultHours ||
                      template.subtasksList.count != originalSubtaskCount
+    }
+
+    private func revertChanges() {
+        template.name = originalName
+        template.service = originalService
+        template.detail = originalDetail
+        template.notes = originalNotes
+        template.defaultHours = originalDefaultHours
+        modelContext.rollback()
     }
 
     private func saveTemplate() {

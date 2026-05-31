@@ -270,10 +270,15 @@ struct SettingsView: View {
     private func performReset() {
         do {
             let backupURL = try Backup.exportJSON(ctx: modelContext, fileName: "PreReset_\(Backup.defaultBackupName())")
+            // Delete children first to avoid orphaned rows
+            // (batch delete may not trigger cascade rules)
+            try modelContext.delete(model: Subtask.self)
+            try modelContext.delete(model: TimeLog.self)
+            try modelContext.delete(model: TemplateSubtask.self)
             try modelContext.delete(model: Entry.self)
-            try modelContext.delete(model: Client.self)
             try modelContext.delete(model: Invoice.self)
             try modelContext.delete(model: EntryTemplate.self)
+            try modelContext.delete(model: Client.self)
             try modelContext.save()
             alertTitle = "Reset Complete"
             alertMessage = "All data has been deleted.\n\nA safety backup was saved to:\n\(backupURL.lastPathComponent)"

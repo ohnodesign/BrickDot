@@ -71,11 +71,20 @@ struct NewEntryView: View {
 
             // Due date & billing
             Section("Deadline & Billing") {
-                Toggle("Set Due Date", isOn: $showDueDatePicker)
-                if showDueDatePicker {
+                Toggle("Set Due Date", isOn: Binding(
+                    get: { showDueDatePicker },
+                    set: { on in
+                        showDueDatePicker = on
+                        if on && dueDate == nil {
+                            dueDate = Calendar.current.date(byAdding: .weekOfYear, value: 1, to: serviceDate) ?? serviceDate
+                        }
+                        if !on { dueDate = nil }
+                    }
+                ))
+                if showDueDatePicker, let _ = dueDate {
                     DatePicker("Due Date",
                                selection: Binding(
-                                   get: { dueDate ?? Calendar.current.date(byAdding: .weekOfYear, value: 1, to: serviceDate) ?? serviceDate },
+                                   get: { dueDate ?? serviceDate },
                                    set: { dueDate = $0 }
                                ),
                                displayedComponents: .date)
