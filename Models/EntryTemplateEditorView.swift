@@ -139,8 +139,8 @@ private struct ModelPreviewHost: View {
             .onAppear {
                 if !didSeed {
                     // Insert client and template into the in-memory context once
-                    if template.client.modelContext == nil {
-                        context.insert(template.client)
+                    if let client = template.client, client.modelContext == nil {
+                        context.insert(client)
                     }
                     if template.modelContext == nil {
                         context.insert(template)

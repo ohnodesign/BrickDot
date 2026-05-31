@@ -25,7 +25,6 @@ final class Entry {
 
     var subtasks: [Subtask] = []
 
-    @Transient
     var status: EntryStatus {
         get { EntryStatus(rawValue: statusRaw) ?? .todo }
         set { statusRaw = newValue.rawValue }
