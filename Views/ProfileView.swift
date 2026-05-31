@@ -1,8 +1,14 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @AppStorage("user.displayName") private var displayName = ""
+
     var body: some View {
         List {
+            Section("Your Name") {
+                TextField("Enter your name", text: $displayName)
+            }
+
             Section("Account") {
                 NavigationLink("Settings") { SettingsView() }
             }

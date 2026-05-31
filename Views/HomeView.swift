@@ -9,10 +9,24 @@ struct HomeView: View {
     @State private var showNewEntry = false
     @State private var searchText = ""
     @AppStorage("home.showDoneSection") private var showDoneSection = false
+    @AppStorage("user.displayName") private var displayName = ""
 
     var body: some View {
         NavigationStack {
             List {
+                // MARK: - Greeting & Today's Focus
+                if searchText.isEmpty {
+                    Section {
+                        GreetingHeader(
+                            name: displayName,
+                            focusEntries: todayFocusEntries,
+                            potentialRevenue: todayFocusRevenue
+                        )
+                    }
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    .listRowSeparator(.hidden)
+                }
+
                 // MARK: - Dashboard (iPhone only — iPad shows this in the sidebar)
                 if sizeClass == .compact {
                     Section {
@@ -334,6 +348,44 @@ struct HomeView: View {
 
     private var actionEntries: [Entry] { openEntries }
 
+    // Today's Focus: top 5 most urgent entries (overdue → due today → in progress → starred)
+    private var todayFocusEntries: [Entry] {
+        var focus: [Entry] = []
+        // Overdue first (ignore search filter for focus)
+        let allOpen = allEntries.filter { $0.status != .done }
+        let overdue = allOpen.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due < todayStart
+        }.sorted(by: prioritySort)
+        focus.append(contentsOf: overdue)
+
+        // Due today
+        let today = allOpen.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due >= todayStart && due <= todayEnd
+        }.sorted(by: prioritySort)
+        focus.append(contentsOf: today)
+
+        // In progress with timers
+        let running = allOpen.filter { $0.status == .inProgress && $0.timerStartedAt != nil }
+        for e in running where !focus.contains(where: { $0.persistentModelID == e.persistentModelID }) {
+            focus.append(e)
+        }
+
+        // Starred
+        let starred = allOpen.filter { $0.isImportant }
+            .sorted(by: prioritySort)
+        for e in starred where !focus.contains(where: { $0.persistentModelID == e.persistentModelID }) {
+            focus.append(e)
+        }
+
+        return Array(focus.prefix(5))
+    }
+
+    private var todayFocusRevenue: Double {
+        todayFocusEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
+    }
+
     private var doneEntries: [Entry] {
         allEntries.filter { $0.status == .done && matchesSearch($0) }
             .sorted { ($0.completedAt ?? $0.serviceDate) > ($1.completedAt ?? $1.serviceDate) }
@@ -547,6 +599,76 @@ private struct ActionRow: View {
             .padding(.vertical, 2)
             .background(Capsule().fill(color.opacity(0.15)))
             .foregroundStyle(color)
+    }
+}
+
+// MARK: - Greeting Header
+
+private struct GreetingHeader: View {
+    let name: String
+    let focusEntries: [Entry]
+    let potentialRevenue: Double
+
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 0..<12:  return "Good Morning"
+        case 12..<17: return "Good Afternoon"
+        default:      return "Good Evening"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Greeting
+            Text("\(greeting)\(name.isEmpty ? "" : " \(name)")")
+                .font(.title2.weight(.bold))
+
+            if !focusEntries.isEmpty {
+                // Today's Focus
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Today's Focus")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+
+                    ForEach(Array(focusEntries.enumerated()), id: \.element.persistentModelID) { index, entry in
+                        HStack(alignment: .top, spacing: 10) {
+                            Text("\(index + 1).")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 20, alignment: .trailing)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(focusLabel(for: entry))
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                                Text(entry.clientName)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
+                // Revenue
+                HStack {
+                    Text("Potential Revenue Today:")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(potentialRevenue, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                        .font(.subheadline.weight(.bold))
+                }
+                .padding(.top, 4)
+            }
+        }
+    }
+
+    private func focusLabel(for entry: Entry) -> String {
+        if !entry.detail.isEmpty {
+            return "\(entry.service) — \(entry.detail)"
+        }
+        return entry.service
     }
 }
 
