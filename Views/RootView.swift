@@ -98,19 +98,21 @@ private struct iPadRootView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                // New Entry button
+                // Home
+                Section {
+                    NavigationLink(value: SidebarDestination.home) {
+                        Label("Home", systemImage: "house")
+                    }
+                }
+
+                // New Entry
                 Section {
                     Button { showNewEntry = true } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("New Entry").fontWeight(.semibold)
-                            Spacer()
-                        }
+                        Label("New Entry", systemImage: "plus.circle.fill")
+                            .fontWeight(.semibold)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    .tint(Color.brick)
                 }
-                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
 
                 // Dashboard cards (Reminders-style 2x2 grid)
                 Section {
@@ -149,10 +151,6 @@ private struct iPadRootView: View {
                         )
                     }
                     .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
-
-                    NavigationLink(value: SidebarDestination.home) {
-                        Label("Home", systemImage: "house")
-                    }
                 }
 
                 // Top Clients
