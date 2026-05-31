@@ -17,7 +17,10 @@ struct NewEntryView: View {
     @State private var rate: Double = 0
     @State private var status: EntryStatus = .todo
     @State private var timerStartedAt: Date? = nil
-    @State private var isImportant: Bool = false   // ✅ NEW
+    @State private var isImportant: Bool = false
+    @State private var dueDate: Date? = nil
+    @State private var showDueDatePicker: Bool = false
+    @State private var billOnCompletion: Bool = false
 
     // New: notes and pending subtasks for brand new entries
     @State private var notes: String = ""
@@ -65,6 +68,25 @@ struct NewEntryView: View {
                 timerStartedAt: $timerStartedAt,
                 isImportant: $isImportant         // ✅ pass down
             )
+
+            // Due date & billing
+            Section("Deadline & Billing") {
+                Toggle("Set Due Date", isOn: $showDueDatePicker)
+                if showDueDatePicker {
+                    DatePicker("Due Date",
+                               selection: Binding(
+                                   get: { dueDate ?? Calendar.current.date(byAdding: .weekOfYear, value: 1, to: serviceDate) ?? serviceDate },
+                                   set: { dueDate = $0 }
+                               ),
+                               displayedComponents: .date)
+                }
+                Toggle("Bill on Completion", isOn: $billOnCompletion)
+                if billOnCompletion {
+                    Text("Invoice date will use the completion date instead of the service date.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
             // Notes section (visible when creating a new entry)
             Section("Notes") {
@@ -316,10 +338,12 @@ struct NewEntryView: View {
             hours: hours,
             rate: rate,
             client: client,
-            status: status,              // keep order: status before timerStartedAt
+            status: status,
             timerStartedAt: timerStartedAt,
             createdAt: Date(),
-            isImportant: isImportant     // ✅ persist it
+            isImportant: isImportant,
+            dueDate: showDueDatePicker ? dueDate : nil,
+            billOnCompletion: billOnCompletion
         )
         entry.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
 
@@ -365,6 +389,9 @@ struct NewEntryView: View {
         status         = .todo
         timerStartedAt = nil
         isImportant    = false
+        dueDate        = nil
+        showDueDatePicker = false
+        billOnCompletion = false
         notes = ""
         pendingSubtasks = []
         pendingLogs = []

@@ -57,6 +57,20 @@ struct EditEntryView: View {
                     DatePicker("", selection: $entry.serviceDate, displayedComponents: .date)
                         .labelsHidden()
                 }
+                Toggle("Due Date", isOn: Binding(
+                    get: { entry.dueDate != nil },
+                    set: { on in
+                        entry.dueDate = on ? (entry.dueDate ?? Calendar.current.date(byAdding: .weekOfYear, value: 1, to: entry.serviceDate) ?? entry.serviceDate) : nil
+                        try? ctx.save()
+                    }
+                ))
+                if let _ = entry.dueDate {
+                    DatePicker("", selection: Binding(
+                        get: { entry.dueDate ?? Date() },
+                        set: { entry.dueDate = $0; try? ctx.save() }
+                    ), displayedComponents: .date)
+                    .labelsHidden()
+                }
                 HStack {
                     Text("Completed Date")
                     Spacer()
@@ -73,6 +87,16 @@ struct EditEntryView: View {
                 }
                 if entry.status != .done {
                     Text("Set status to Done to edit Completed Date")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // MARK: Billing
+            Section("Billing") {
+                Toggle("Bill on Completion", isOn: $entry.billOnCompletion)
+                if entry.billOnCompletion {
+                    Text("Invoice date will use the completion date instead of the service date.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

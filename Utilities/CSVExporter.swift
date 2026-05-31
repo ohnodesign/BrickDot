@@ -53,10 +53,11 @@ struct CSVExporter {
     /// Builds one row for your legacy/simple exports (non-QuickBooks).
     private static func makeRow(for e: Entry, columns: [String]) -> String {
         let df = DateFormatter.iso8601Day
+        let billingDate = e.billOnCompletion ? (e.completedAt ?? e.serviceDate) : e.serviceDate
         let values: [String] = columns.map { col in
             switch col {
             case "Service Date", "TxnDate":
-                return df.string(from: e.serviceDate)
+                return df.string(from: billingDate)
             case "Customer":
                 return escape(e.client.name)
             case "Service":
@@ -137,7 +138,8 @@ struct CSVExporter {
             let qty = String(format: "%.2f", e.hours)
             let rate = String(format: "%.2f", e.rate)
             let amount = String(format: "%.2f", e.hours * e.rate)
-            let serviceDate = qbDFUS.string(from: e.serviceDate)
+            let billingDate = e.billOnCompletion ? (e.completedAt ?? e.serviceDate) : e.serviceDate
+            let serviceDate = qbDFUS.string(from: billingDate)
 
             let cols: [String] = [
                 invNo,                                  // InvoiceNo *

@@ -36,6 +36,8 @@ struct EntryDTO: Codable {
     var starred: Bool?
     var notes: String?
     var subtasks: [SubtaskDTO]?
+    var dueDate: Date?
+    var billOnCompletion: Bool?
 }
 
 enum BackupError: Error, LocalizedError {
@@ -96,7 +98,9 @@ enum Backup {
                 status: entry.status,
                 starred: entry.isImportant,
                 notes: entry.notes.isEmpty ? nil : entry.notes,
-                subtasks: subtaskDTOs
+                subtasks: subtaskDTOs,
+                dueDate: entry.dueDate,
+                billOnCompletion: entry.billOnCompletion ? true : nil
             )
         }
 
@@ -200,7 +204,9 @@ enum Backup {
                 status: inferredStatus,
                 timerStartedAt: e.timerStartedAt,
                 isImportant: e.starred ?? false,
-                notes: e.notes ?? ""
+                notes: e.notes ?? "",
+                dueDate: e.dueDate,
+                billOnCompletion: e.billOnCompletion ?? false
             )
             ctx.insert(model)
             for st in e.subtasks ?? [] {
@@ -267,7 +273,9 @@ enum Backup {
                 status: inferredStatus,
                 timerStartedAt: e.timerStartedAt,
                 isImportant: e.starred ?? false,
-                notes: e.notes ?? ""
+                notes: e.notes ?? "",
+                dueDate: e.dueDate,
+                billOnCompletion: e.billOnCompletion ?? false
             )
             ctx.insert(model)
             for st in e.subtasks ?? [] {
