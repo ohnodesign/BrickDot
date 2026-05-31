@@ -7,7 +7,7 @@ struct InvoiceDetailView: View {
 
     // Sorted entries on this invoice
     private var items: [Entry] {
-        invoice.entries.sorted { $0.serviceDate < $1.serviceDate }
+        invoice.entriesList.sorted { $0.serviceDate < $1.serviceDate }
     }
 
     private var totalHours: Double {
