@@ -20,10 +20,11 @@ final class Entry {
     var createdAt: Date = Date()
     var completedAt: Date? = nil
 
-    @Relationship(deleteRule: .cascade)
-    var timeLogs: [TimeLog] = []
+    @Relationship(deleteRule: .cascade, inverse: \TimeLog.entry)
+    var timeLogs: [TimeLog]? = []
 
-    var subtasks: [Subtask] = []
+    @Relationship(deleteRule: .cascade, inverse: \Subtask.parent)
+    var subtasks: [Subtask]? = []
 
     var status: EntryStatus {
         get { EntryStatus(rawValue: statusRaw) ?? .todo }
@@ -32,6 +33,16 @@ final class Entry {
 
     var clientName: String { client?.name ?? "Unknown" }
     var clientRate: Double { client?.rate ?? 0 }
+
+    // Non-optional accessors for CloudKit-optional arrays
+    var timeLogsList: [TimeLog] {
+        get { timeLogs ?? [] }
+        set { timeLogs = newValue }
+    }
+    var subtasksList: [Subtask] {
+        get { subtasks ?? [] }
+        set { subtasks = newValue }
+    }
 
     init(serviceDate: Date = Date(),
          service: String = "",

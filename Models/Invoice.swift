@@ -10,7 +10,12 @@ final class Invoice {
     var client: Client?
 
     @Relationship(deleteRule: .noAction, inverse: \Entry.invoice)
-    var entries: [Entry] = []
+    var entries: [Entry]? = []
+
+    var entriesList: [Entry] {
+        get { entries ?? [] }
+        set { entries = newValue }
+    }
 
     init(title: String = "", number: String? = nil, createdAt: Date = Date(), client: Client? = nil) {
         self.title = title

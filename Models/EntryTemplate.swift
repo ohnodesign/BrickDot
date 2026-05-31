@@ -29,7 +29,12 @@ final class EntryTemplate {
     var createdAt: Date = Date()
 
     @Relationship(deleteRule: .cascade)
-    var subtasks: [TemplateSubtask] = []
+    var subtasks: [TemplateSubtask]? = []
+
+    var subtasksList: [TemplateSubtask] {
+        get { subtasks ?? [] }
+        set { subtasks = newValue }
+    }
 
     init(
         name: String = "",
@@ -50,7 +55,7 @@ final class EntryTemplate {
         self.createdAt = createdAt
         self.subtasks = subtasks
 
-        for subtask in self.subtasks {
+        for subtask in self.subtasksList {
             if subtask.template == nil {
                 subtask.template = self
             }

@@ -7,7 +7,6 @@ final class TimeLog {
     var hours: Double = 0
     var note: String = ""
 
-    @Relationship(deleteRule: .noAction)
     var entry: Entry?
 
     init(addedAt: Date = Date(), hours: Double = 0, note: String = "", entry: Entry? = nil) {
