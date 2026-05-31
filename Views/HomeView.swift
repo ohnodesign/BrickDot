@@ -173,20 +173,22 @@ struct HomeView: View {
                 .presentationDragIndicator(.visible)
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        ProfileView()
-                    } label: {
-                        Image(systemName: "person.crop.circle")
-                            .imageScale(.large)
-                            .accessibilityLabel("Profile")
+                if sizeClass == .compact {
+                    ToolbarItem(placement: .topBarLeading) {
+                        NavigationLink {
+                            ProfileView()
+                        } label: {
+                            Image(systemName: "person.crop.circle")
+                                .imageScale(.large)
+                                .accessibilityLabel("Profile")
+                        }
                     }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showNewEntry = true } label: {
-                        Image(systemName: "plus.circle")
-                            .imageScale(.large)
-                            .accessibilityLabel("New Entry")
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showNewEntry = true } label: {
+                            Image(systemName: "plus.circle")
+                                .imageScale(.large)
+                                .accessibilityLabel("New Entry")
+                        }
                     }
                 }
             }
