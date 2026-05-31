@@ -83,7 +83,7 @@ enum Backup {
 
         // in makeJSONData(ctx:)
         let entryDTOs: [EntryDTO] = entries.map { entry in
-            let subtaskDTOs: [SubtaskDTO]? = entry.subtasks.isEmpty ? nil : entry.subtasks.map {
+            let subtaskDTOs: [SubtaskDTO]? = entry.subtasksList.isEmpty ? nil : entry.subtasksList.map {
                 SubtaskDTO(title: $0.title, hours: $0.hours, isDone: $0.isDone)
             }
             return EntryDTO(
