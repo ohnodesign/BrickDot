@@ -5,203 +5,162 @@ struct HomeView: View {
     @Environment(\.modelContext) private var ctx
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
-    // Section states
-    @AppStorage("home.showStarred") private var showStarred = true
-    @AppStorage("home.showTodo") private var showTodo = false
-    @AppStorage("home.showInProgress") private var showInProgress = false
-    @AppStorage("home.showAllDone") private var showAllDone = false
-    @AppStorage("home.showDone") private var showDone = false
-    @AppStorage("home.showStats") private var showStats = false
-    @AppStorage("home.showRecent") private var showRecent = false
-    @AppStorage("home.recentCount") private var recentCount: Int = 10
-
-    // UI state
     @State private var showNewEntry = false
-    @State private var selectedStat: SelectedStat? = nil
+    @AppStorage("home.showDoneSection") private var showDoneSection = false
 
     var body: some View {
         NavigationStack {
             List {
-                // Quick: New Entry
+                // MARK: - Dashboard
                 Section {
-                    Button { showNewEntry = true } label: {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("New Entry").fontWeight(.semibold)
-                            Spacer()
-                        }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
+                    DashboardRow(
+                        overdueCount: overdueEntries.count,
+                        dueTodayCount: dueTodayEntries.count,
+                        timersRunning: timersRunningCount,
+                        weekAmount: thisWeekAmount
+                    )
                 }
+                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
 
-                // ⭐️ Starred
-                Section {
-                    DisclosureGroup(isExpanded: $showStarred) {
-                        let starred = starredEntries
-                        if starred.isEmpty {
-                            Text("No starred items").foregroundStyle(.secondary)
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                        } else {
-                            ForEach(starred) { e in
-                                NavigationLink { EditEntryView(entry: e) } label: {
-                                    if e.status == .inProgress {
-                                        SharedInProgressRow(entry: e)
-                                    } else {
-                                        SharedTodoRow(entry: e)
-                                    }
-                                }
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                            }
+                // MARK: - Action List
+                if actionEntries.isEmpty {
+                    Section {
+                        VStack(spacing: 12) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .font(.largeTitle)
+                                .foregroundStyle(.green)
+                            Text("All caught up!")
+                                .font(.headline)
+                            Text("No open entries right now.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                    } label: {
-                        SectionHeaderLabel(icon: "star.fill", title: "Starred", tint: .yellow, count: starredEntries.count)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
                     }
-                }
-
-                // To Do
-                Section {
-                    DisclosureGroup(isExpanded: $showTodo) {
-                        let items = todoEntries
-                        if items.isEmpty {
-                            Text("No to-do items").foregroundStyle(.secondary)
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                        } else {
-                            ForEach(items) { e in
-                                NavigationLink { EditEntryView(entry: e) } label: {
-                                    SharedTodoRow(entry: e)
+                } else {
+                    // Overdue
+                    if !overdueEntries.isEmpty {
+                        Section {
+                            ForEach(overdueEntries) { entry in
+                                NavigationLink { EditEntryView(entry: entry) } label: {
+                                    ActionRow(entry: entry, badge: .overdue)
                                 }
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                            }
-                        }
-                    } label: {
-                        SectionHeaderLabel(icon: "checklist", title: "To Do", tint: .orange, count: todoEntries.count)
-                    }
-                }
-
-                // In Progress
-                Section {
-                    DisclosureGroup(isExpanded: $showInProgress) {
-                        let active = inProgressEntries
-                        if active.isEmpty {
-                            Text("No in-progress items").foregroundStyle(.secondary)
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                        } else {
-                            ForEach(active) { e in
-                                NavigationLink { EditEntryView(entry: e) } label: {
-                                    SharedInProgressRow(entry: e)
-                                }
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    if e.timerStartedAt != nil {
-                                        Button { quickPauseAndAdd(e) } label: {
-                                            Label("Pause & Add", systemImage: "pause.circle")
-                                        }.tint(.orange)
-                                    } else {
-                                        Button { quickStart(e) } label: {
-                                            Label("Start", systemImage: "play.circle")
-                                        }.tint(.green)
-                                    }
-                                    Button { quickBump(e, 0.25) } label: { Text("+15m") }.tint(.blue)
-                                    Button { quickBump(e, 0.5) }  label: { Text("+30m") }.tint(.indigo)
-                                    Button { quickBump(e, 1.0) }  label: { Text("+1h") }.tint(.purple)
-                                    Button(role: .destructive) { markDone(e) } label: {
-                                        Label("Done", systemImage: "checkmark.circle")
-                                    }
+                                    entrySwipeActions(entry)
                                 }
                             }
+                        } header: {
+                            Label("Overdue", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.red)
+                                .font(.subheadline.weight(.semibold))
                         }
-                    } label: {
-                        SectionHeaderLabel(icon: "bolt.fill", title: "In Progress", tint: .brick, count: inProgressEntries.count)
+                    }
+
+                    // Due Today
+                    if !dueTodayEntries.isEmpty {
+                        Section {
+                            ForEach(dueTodayEntries) { entry in
+                                NavigationLink { EditEntryView(entry: entry) } label: {
+                                    ActionRow(entry: entry, badge: .dueToday)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    entrySwipeActions(entry)
+                                }
+                            }
+                        } header: {
+                            Label("Due Today", systemImage: "sun.max.fill")
+                                .foregroundStyle(.orange)
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+
+                    // In Progress (with timers)
+                    if !inProgressEntries.isEmpty {
+                        Section {
+                            ForEach(inProgressEntries) { entry in
+                                NavigationLink { EditEntryView(entry: entry) } label: {
+                                    ActionRow(entry: entry, badge: entry.dueDate != nil ? .dueSoon : .none)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    entrySwipeActions(entry)
+                                }
+                            }
+                        } header: {
+                            Label("In Progress", systemImage: "bolt.fill")
+                                .foregroundStyle(.brick)
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+
+                    // Up Next (starred + due this week, not already shown above)
+                    if !upNextEntries.isEmpty {
+                        Section {
+                            ForEach(upNextEntries) { entry in
+                                NavigationLink { EditEntryView(entry: entry) } label: {
+                                    ActionRow(entry: entry, badge: dueBadge(for: entry))
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    entrySwipeActions(entry)
+                                }
+                            }
+                        } header: {
+                            Label("Up Next", systemImage: "arrow.right.circle.fill")
+                                .foregroundStyle(.accent)
+                                .font(.subheadline.weight(.semibold))
+                        }
+                    }
+
+                    // Backlog (remaining to-do with no deadline or deadline > this week)
+                    if !backlogEntries.isEmpty {
+                        Section {
+                            ForEach(backlogEntries) { entry in
+                                NavigationLink { EditEntryView(entry: entry) } label: {
+                                    ActionRow(entry: entry, badge: .none)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    entrySwipeActions(entry)
+                                }
+                            }
+                        } header: {
+                            Label("Backlog", systemImage: "tray.fill")
+                                .foregroundStyle(.secondary)
+                                .font(.subheadline.weight(.semibold))
+                        }
                     }
                 }
 
-                // Done
-                Section {
-                    DisclosureGroup(isExpanded: $showDone) {
-                        let items = doneEntries
-                        let displayed = showAllDone ? items : Array(items.prefix(20))
-                        if items.isEmpty {
-                            Text("No done items").foregroundStyle(.secondary)
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                        } else {
-                            ForEach(displayed) { e in
-                                NavigationLink { EditEntryView(entry: e) } label: {
-                                    SharedDoneRow(entry: e)
-                                }
-                                .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                            }
-                            if items.count > 20 {
-                                Button(action: { withAnimation { showAllDone.toggle() } }) {
-                                    HStack {
-                                        Spacer()
-                                        Text(showAllDone ? "Show Less" : "Show All (\(items.count))")
-                                            .font(.footnote)
-                                            .foregroundStyle(.secondary)
-                                        Spacer()
-                                    }
-                                }
-                                .buttonStyle(.plain)
-                                .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 8, trailing: 12))
-                            }
-                        }
-                    } label: {
-                        SectionHeaderLabel(icon: "checkmark.circle.fill", title: "Done", tint: .green, count: doneEntries.count)
-                    }
-                }
-
-                /*
-                // Stats
-                Section {
-                    DisclosureGroup(isExpanded: $showStats) {
-                        StatsSectionView(
-                            today: todayEntries,
-                            week: thisWeekEntries,
-                            lastWeek: lastWeekEntries,
-                            month: thisMonthEntries,
-                            lastMonth: lastMonthEntries,
-                            quarter: thisQuarterEntries,
-                            yearToDate: yearToDateEntries,
-                            loggedTodayHours: totalHoursLoggedToday,
-                            entriesWithLogsToday: entriesWithLogsToday,
-                            loggedTodayAmount: loggedTodayAmount,
-                            onStatTap: { title, entries in
-                                selectedStat = SelectedStat(title: title, entries: entries)
-                            },
-                            onLoggedTodayTap: {
-                                selectedStat = SelectedStat(title: "Logged Today", entries: entriesWithLogsToday)
-                            }
-                        )
-                        .padding(.top, 4)
-                    } label: {
-                        HStack(spacing: 10) {
-                            ZstackIcon(systemImage: "chart.bar.fill")
-                            Text("Stats")
-                            Spacer()
-                        }
-                    }
-                }
-                */
-
-                // Recent
-                Section {
-                    DisclosureGroup(isExpanded: $showRecent) {
-                        if recentEntries.isEmpty {
-                            Text("No recent entries").foregroundStyle(.secondary)
-                        } else {
-                            ForEach(recentEntries) { e in
-                                NavigationLink { EditEntryView(entry: e) } label: {
-                                    SharedEntryRow(entry: e)
+                // MARK: - Done (collapsed)
+                if !doneEntries.isEmpty {
+                    Section {
+                        DisclosureGroup(isExpanded: $showDoneSection) {
+                            ForEach(Array(doneEntries.prefix(20))) { entry in
+                                NavigationLink { EditEntryView(entry: entry) } label: {
+                                    ActionRow(entry: entry, badge: .none)
                                 }
                             }
+                            if doneEntries.count > 20 {
+                                Text("View all in Log tab")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                                    .frame(maxWidth: .infinity)
+                            }
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                                Text("Done")
+                                Spacer()
+                                Text("\(doneEntries.count)")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
-                    } label: {
-                        SectionHeaderLabel(icon: "clock.fill", title: "Recent", tint: .indigo, count: recentEntries.count)
                     }
                 }
             }
             .listStyle(.insetGrouped)
-            .listRowSpacing(6)
+            .listRowSpacing(4)
             .navigationTitle("Ohno Design")
             .sheet(isPresented: $showNewEntry) {
                 NavigationStack {
@@ -210,12 +169,8 @@ struct HomeView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
-            .sheet(item: $selectedStat) { stat in
-                EntriesListView(title: stat.title, entries: stat.entries)
-            }
             .toolbar {
-                // ⬅︎ Profile (push)
-                ToolbarItem(placement: .topBarLeading) {    // use .navigationBarLeading for iOS 16
+                ToolbarItem(placement: .topBarLeading) {
                     NavigationLink {
                         ProfileView()
                     } label: {
@@ -224,7 +179,6 @@ struct HomeView: View {
                             .accessibilityLabel("Profile")
                     }
                 }
-                // ➝ New Entry
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showNewEntry = true } label: {
                         Image(systemName: "plus.circle")
@@ -236,7 +190,28 @@ struct HomeView: View {
         }
     }
 
-    // MARK: - Quick actions
+    // MARK: - Swipe Actions
+    @ViewBuilder
+    private func entrySwipeActions(_ entry: Entry) -> some View {
+        if entry.status == .inProgress && entry.timerStartedAt != nil {
+            Button { quickPauseAndAdd(entry) } label: {
+                Label("Pause & Add", systemImage: "pause.circle")
+            }.tint(.orange)
+        } else if entry.status != .done {
+            Button { quickStart(entry) } label: {
+                Label("Start", systemImage: "play.circle")
+            }.tint(.green)
+        }
+        Button { quickBump(entry, 0.25) } label: { Text("+15m") }.tint(.blue)
+        Button { quickBump(entry, 0.5) }  label: { Text("+30m") }.tint(.indigo)
+        if entry.status != .done {
+            Button(role: .destructive) { markDone(entry) } label: {
+                Label("Done", systemImage: "checkmark.circle")
+            }
+        }
+    }
+
+    // MARK: - Quick Actions
     private func quickStart(_ e: Entry) {
         e.status = .inProgress
         if e.timerStartedAt == nil { e.timerStartedAt = Date() }
@@ -244,8 +219,9 @@ struct HomeView: View {
     }
     private func quickPauseAndAdd(_ e: Entry) {
         guard e.timerStartedAt != nil else { return }
-        e.hours += e.runningElapsedHoursOrZero
-        e.timeLogs.append(TimeLog(hours: e.runningElapsedHoursOrZero, entry: e))
+        let elapsed = e.runningElapsedHoursOrZero
+        e.hours += elapsed
+        e.timeLogs.append(TimeLog(hours: elapsed, entry: e))
         e.timerStartedAt = nil
         try? ctx.save()
     }
@@ -261,137 +237,289 @@ struct HomeView: View {
         try? ctx.save()
     }
 
-    // MARK: - Derived
-    private func importantFirst(_ lhs: Entry, _ rhs: Entry) -> Bool {
-        if lhs.isImportant != rhs.isImportant { return lhs.isImportant && !rhs.isImportant }
-        return lhs.serviceDate > rhs.serviceDate
-    }
-    private var starredEntries: [Entry] { allEntries.filter { $0.isImportant && ($0.status == .todo || $0.status == .inProgress) }.sorted(by: importantFirst) }
-    private var todoEntries: [Entry] { allEntries.filter { $0.status == .todo }.sorted(by: importantFirst) }
-    private var inProgressEntries: [Entry] { allEntries.filter { $0.status == .inProgress }.sorted(by: importantFirst) }
-    private var doneEntries: [Entry] { allEntries.filter { $0.status == .done }.sorted { $0.serviceDate > $1.serviceDate } }
-    private var recentEntries: [Entry] { Array(allEntries.sorted(by: importantFirst).prefix(max(0, recentCount))) }
-    private var todayEntries: [Entry] { allEntries.filter { $0.status == .done && Calendar.current.isDateInToday(($0.completedAt ?? $0.serviceDate)) } }
+    // MARK: - Entry Sorting & Filtering
 
-    private var timeLogsTodayByEntry: [(entry: Entry, hours: Double)] {
-        let todayLogs = allEntries.flatMap { e in e.timeLogs.map { ($0, e) } }
-            .filter { Calendar.current.isDateInToday($0.0.addedAt) }
-        let grouped = Dictionary(grouping: todayLogs, by: { $0.1.persistentModelID })
-        return grouped.compactMap { (_, pairs) in
-            guard let any = pairs.first?.1 else { return nil }
-            let sum = pairs.reduce(0.0) { $0 + $1.0.hours }
-            return (entry: any, hours: sum)
-        }
-        .sorted { $0.entry.serviceDate > $1.entry.serviceDate }
-    }
-    private var entriesWithLogsToday: [Entry] { timeLogsTodayByEntry.map { $0.entry } }
-    private var totalHoursLoggedToday: Double { timeLogsTodayByEntry.reduce(0.0) { $0 + $1.hours } }
-    private var loggedTodayAmount: Double {
-        // Sum per-entry: (today hours for that entry) * entry.rate
-        timeLogsTodayByEntry.reduce(0.0) { $0 + ($1.hours * $1.entry.rate) }
+    private var cal: Calendar { Calendar.current }
+    private var todayStart: Date { cal.startOfDay(for: Date()) }
+    private var todayEnd: Date { cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? Date() }
+    private var weekEnd: Date { Date().bdEndOfWeek }
+
+    private var openEntries: [Entry] {
+        allEntries.filter { $0.status != .done }
     }
 
-    private var thisWeekEntries: [Entry] {
-        let now = Date(); let start = now.bdStartOfWeek; let end = now.bdEndOfWeek
-        return allEntries.filter { e in let d = (e.completedAt ?? e.serviceDate); return e.status == .done && d >= start && d <= end }
+    private var overdueEntries: [Entry] {
+        openEntries.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due < todayStart
+        }.sorted(by: prioritySort)
     }
-    private var lastWeekEntries: [Entry] {
-        let cal = Calendar.current
-        guard let start = cal.date(byAdding: .weekOfYear, value: -1, to: Date())?.bdStartOfWeek,
-              let end   = cal.date(byAdding: .weekOfYear, value: -1, to: Date())?.bdEndOfWeek else { return [] }
-        return allEntries.filter { e in let d = (e.completedAt ?? e.serviceDate); return e.status == .done && d >= start && d <= end }
-    }
-    private var thisMonthEntries: [Entry] {
-        let now = Date(); let start = now.bdStartOfMonth; let end = now.bdEndOfMonth
-        return allEntries.filter { e in let d = (e.completedAt ?? e.serviceDate); return e.status == .done && d >= start && d <= end }
-    }
-    private var lastMonthEntries: [Entry] {
-        let cal = Calendar.current; guard let prev = cal.date(byAdding: .month, value: -1, to: Date()) else { return [] }
-        let start = prev.bdStartOfMonth; let end = prev.bdEndOfMonth
-        return allEntries.filter { e in let d = (e.completedAt ?? e.serviceDate); return e.status == .done && d >= start && d <= end }
-    }
-    private var thisQuarterEntries: [Entry] {
-        let now = Date(); let b = now.bdQuarterBounds
-        return allEntries.filter { e in let d = (e.completedAt ?? e.serviceDate); return e.status == .done && d >= b.start && d <= b.end }
-    }
-    private var yearToDateEntries: [Entry] {
-        let cal = Calendar.current; let now = Date()
-        let startOfYear = cal.date(from: cal.dateComponents([.year], from: now)) ?? now
-        return allEntries.filter { e in let d = (e.completedAt ?? e.serviceDate); return e.status == .done && d >= startOfYear && d <= now }
-    }
-}
 
-// MARK: - SelectedStat
-private struct SelectedStat: Identifiable {
-    let id = UUID()
-    let title: String
-    let entries: [Entry]
-}
-
-// MARK: - Helpers
-private struct ZstackIcon: View {
-    let systemImage: String
-    var body: some View {
-        ZStack {
-            Circle().fill(Color.accentColor.opacity(0.15))
-            Image(systemName: systemImage).foregroundStyle(Color.accentColor)
-        }
-        .frame(width: 24, height: 24)
+    private var dueTodayEntries: [Entry] {
+        openEntries.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due >= todayStart && due <= todayEnd && e.status != .inProgress
+        }.sorted(by: prioritySort)
     }
-}
 
-private struct SectionHeaderLabel: View {
-    let icon: String
-    let title: String
-    let tint: Color
-    let count: Int
-    var body: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle().fill(tint.opacity(0.15))
-                Image(systemName: icon).foregroundStyle(tint)
+    private var inProgressEntries: [Entry] {
+        openEntries.filter { $0.status == .inProgress }
+            .sorted { a, b in
+                // Timers running first
+                if (a.timerStartedAt != nil) != (b.timerStartedAt != nil) {
+                    return a.timerStartedAt != nil
+                }
+                return prioritySort(a, b)
             }
-            .frame(width: 24, height: 24)
-            Text(title)
-            Spacer()
-            Text("\(count)").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+    }
+
+    private var upNextEntries: [Entry] {
+        let shown = Set(overdueEntries.map(\.persistentModelID))
+            .union(dueTodayEntries.map(\.persistentModelID))
+            .union(inProgressEntries.map(\.persistentModelID))
+
+        return openEntries.filter { e in
+            guard !shown.contains(e.persistentModelID) else { return false }
+            if e.isImportant { return true }
+            if let due = e.dueDate, due > todayEnd && due <= weekEnd { return true }
+            return false
+        }.sorted(by: prioritySort)
+    }
+
+    private var backlogEntries: [Entry] {
+        let shown = Set(overdueEntries.map(\.persistentModelID))
+            .union(dueTodayEntries.map(\.persistentModelID))
+            .union(inProgressEntries.map(\.persistentModelID))
+            .union(upNextEntries.map(\.persistentModelID))
+
+        return openEntries.filter { !shown.contains($0.persistentModelID) }
+            .sorted(by: prioritySort)
+    }
+
+    private var actionEntries: [Entry] { openEntries }
+
+    private var doneEntries: [Entry] {
+        allEntries.filter { $0.status == .done }
+            .sorted { ($0.completedAt ?? $0.serviceDate) > ($1.completedAt ?? $1.serviceDate) }
+    }
+
+    private var timersRunningCount: Int {
+        allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }.count
+    }
+
+    private var thisWeekAmount: Double {
+        let start = Date().bdStartOfWeek
+        let end = Date().bdEndOfWeek
+        return allEntries
+            .filter { $0.status == .done && ($0.completedAt ?? $0.serviceDate) >= start && ($0.completedAt ?? $0.serviceDate) <= end }
+            .reduce(0) { $0 + ($1.hours * $1.rate) }
+    }
+
+    private func prioritySort(_ a: Entry, _ b: Entry) -> Bool {
+        // Starred first
+        if a.isImportant != b.isImportant { return a.isImportant }
+        // Then by due date (soonest first), nil last
+        switch (a.dueDate, b.dueDate) {
+        case let (ad?, bd?): return ad < bd
+        case (_?, nil): return true
+        case (nil, _?): return false
+        default: return a.serviceDate > b.serviceDate
+        }
+    }
+
+    private func dueBadge(for entry: Entry) -> ActionRowBadge {
+        guard let due = entry.dueDate else { return .none }
+        if due < todayStart { return .overdue }
+        if due <= todayEnd { return .dueToday }
+        if due <= weekEnd { return .dueSoon }
+        return .none
+    }
+}
+
+// MARK: - Dashboard Row
+
+private struct DashboardRow: View {
+    let overdueCount: Int
+    let dueTodayCount: Int
+    let timersRunning: Int
+    let weekAmount: Double
+
+    var body: some View {
+        HStack(spacing: 0) {
+            DashboardPill(
+                icon: "exclamationmark.triangle.fill",
+                tint: .red,
+                value: "\(overdueCount)",
+                label: "Overdue"
+            )
+            Divider().frame(height: 36)
+            DashboardPill(
+                icon: "sun.max.fill",
+                tint: .orange,
+                value: "\(dueTodayCount)",
+                label: "Today"
+            )
+            Divider().frame(height: 36)
+            DashboardPill(
+                icon: "timer",
+                tint: .brick,
+                value: "\(timersRunning)",
+                label: "Running"
+            )
+            Divider().frame(height: 36)
+            DashboardPill(
+                icon: "dollarsign.circle.fill",
+                tint: .green,
+                value: weekAmount.shortCurrency,
+                label: "This Week"
+            )
         }
     }
 }
 
-private struct LoggedTodayEntryRow: View {
-    let entry: Entry
+private struct DashboardPill: View {
+    let icon: String
+    let tint: Color
+    let value: String
+    let label: String
 
-    private var todayHours: Double {
-        entry.timeLogs.filter { Calendar.current.isDateInToday($0.addedAt) }
-            .reduce(0.0) { $0 + $1.hours }
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(tint)
+                Text(value)
+                    .font(.subheadline.weight(.bold))
+                    .monospacedDigit()
+            }
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
     }
+}
+
+// MARK: - Action Row
+
+enum ActionRowBadge {
+    case none, overdue, dueToday, dueSoon
+}
+
+private struct ActionRow: View {
+    let entry: Entry
+    let badge: ActionRowBadge
+
+    @State private var tick = Date()
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
+            // Top line: status dot, client, star, timer/amount
+            HStack(spacing: 6) {
                 SharedStatusMark(
                     color: entry.status.color,
                     isImportant: entry.isImportant,
                     pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
                 )
-                Text(entry.client.name).font(.headline)
+
+                Text(entry.client.name)
+                    .font(.subheadline.weight(.semibold))
+
+                if let due = entry.dueDate, badge != .none {
+                    dueBadgeView(due: due)
+                }
+
                 Spacer()
-                // Show today's subtotal amount for this entry
-                let amount = todayHours * entry.rate
-                Text(amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                    .font(.subheadline)
+
+                if entry.status == .inProgress, entry.timerStartedAt != nil {
+                    Text(entry.runningElapsedHoursOrZero.hoursMinutesString)
+                        .font(.caption.weight(.medium))
+                        .monospacedDigit()
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Capsule().fill(Color.brick.opacity(0.15)))
+                        .foregroundStyle(.brick)
+                } else if entry.hours > 0 {
+                    Text("\(entry.hours, specifier: "%.1f")h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
             }
-            if !entry.detail.isEmpty {
-                Text(entry.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-            }
-            HStack(spacing: 8) {
-                Text(entry.service); Text("•")
-                Text(entry.serviceDate, format: .dateTime.year().month().day())
+
+            // Bottom line: service, description
+            HStack(spacing: 6) {
+                Text(entry.service)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(.accent)
+
+                if !entry.detail.isEmpty {
+                    Text("·")
+                        .foregroundStyle(.secondary)
+                    Text(entry.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
                 Spacer()
-                Text("Today: \(todayHours, specifier: "%.2f")h")
+
+                if entry.status == .done, let completed = entry.completedAt {
+                    Text(completed, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
             }
-            .font(.caption).foregroundStyle(.secondary)
         }
+        .padding(.vertical, 2)
+        .onReceive(timer) { tick = $0 }
+    }
+
+    @ViewBuilder
+    private func dueBadgeView(due: Date) -> some View {
+        let text: String
+        let color: Color
+        switch badge {
+        case .overdue:
+            text = "Overdue"
+            color = .red
+        case .dueToday:
+            text = "Today"
+            color = .orange
+        case .dueSoon:
+            text = due.formatted(.dateTime.month(.abbreviated).day())
+            color = .blue
+        case .none:
+            text = ""
+            color = .clear
+        }
+
+        if badge != .none {
+            Text(text)
+                .font(.caption2.weight(.semibold))
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(Capsule().fill(color.opacity(0.15)))
+                .foregroundStyle(color)
+        }
+    }
+}
+
+// MARK: - Helpers
+
+private extension Double {
+    var shortCurrency: String {
+        let code = Locale.current.currency?.identifier ?? "USD"
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.currencyCode = code
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: self)) ?? "$\(Int(self))"
     }
 }
