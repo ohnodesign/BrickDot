@@ -288,6 +288,9 @@ struct NewEntryView: View {
                 if template.defaultHours > 0 {
                     hours = template.defaultHours
                 }
+                pendingSubtasks = template.subtasks
+                    .sorted { $0.order < $1.order }
+                    .map { PendingSubtask(title: $0.title) }
             }
         }
         .onChange(of: selectedClient) { _, c in
