@@ -53,6 +53,17 @@ struct StatsPageView: View {
                     }
                 }
 
+                // Status counts
+                Section {
+                    HStack(spacing: 0) {
+                        StatusCountPill(icon: "circle", label: "To Do", count: todoCount, tint: .orange)
+                        Divider().frame(height: 36)
+                        StatusCountPill(icon: "bolt.fill", label: "In Progress", count: inProgressCount, tint: Color.brick)
+                        Divider().frame(height: 36)
+                        StatusCountPill(icon: "star.fill", label: "Starred", count: starredCount, tint: .yellow)
+                    }
+                }
+
                 // Calendar (minimal month)
                 Section("Calendar") {
                     CalendarMonthView(anchorMonth: calendarMonthAnchor, entries: allEntries)
@@ -111,6 +122,11 @@ struct StatsPageView: View {
             }
         }
     }
+
+    // MARK: - Status Counts
+    private var todoCount: Int { allEntries.filter { $0.status == .todo }.count }
+    private var inProgressCount: Int { allEntries.filter { $0.status == .inProgress }.count }
+    private var starredCount: Int { allEntries.filter { $0.isImportant && $0.status != .done }.count }
 
     // MARK: - Derived (mirrors HomeView)
     private func importantFirst(_ lhs: Entry, _ rhs: Entry) -> Bool {
@@ -198,6 +214,30 @@ fileprivate struct StatsPageSelectedStat: Identifiable {
     let id = UUID()
     let title: String
     let entries: [Entry]
+}
+
+private struct StatusCountPill: View {
+    let icon: String
+    let label: String
+    let count: Int
+    let tint: Color
+
+    var body: some View {
+        VStack(spacing: 4) {
+            HStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(tint)
+                Text("\(count)")
+                    .font(.subheadline.weight(.bold))
+                    .monospacedDigit()
+            }
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
 }
 
 #Preview {
