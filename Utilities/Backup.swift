@@ -15,6 +15,7 @@ struct BackupPayload: Codable {
 struct ClientDTO: Codable {
     var name: String
     var rate: Double
+    var colorIndex: Int?
 }
 
 struct SubtaskDTO: Codable {
@@ -78,7 +79,7 @@ enum Backup {
         // Clients keyed by name; if duplicates exist, keep the first (names should be unique in UI).
         // We still export all as a flat list.
         let clientDTOs: [ClientDTO] = clients.map {
-            ClientDTO(name: $0.name, rate: $0.rate)
+            ClientDTO(name: $0.name, rate: $0.rate, colorIndex: $0.colorIndex)
         }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
         // in makeJSONData(ctx:)
@@ -169,8 +170,9 @@ enum Backup {
             if let match = clientIndex[key] {
                 match.name = c.name
                 match.rate = c.rate
+                if let ci = c.colorIndex { match.colorIndex = ci }
             } else {
-                let model = Client(name: c.name, rate: c.rate)
+                let model = Client(name: c.name, rate: c.rate, colorIndex: c.colorIndex ?? 0)
                 ctx.insert(model)
                 clientIndex[key] = model
                 existingClients.append(model)
@@ -241,8 +243,9 @@ enum Backup {
             if let match = clientIndex[key] {
                 match.name = c.name       // keep canonical casing from backup
                 match.rate = c.rate
+                if let ci = c.colorIndex { match.colorIndex = ci }
             } else {
-                let model = Client(name: c.name, rate: c.rate)
+                let model = Client(name: c.name, rate: c.rate, colorIndex: c.colorIndex ?? 0)
                 ctx.insert(model)
                 clientIndex[key] = model
                 existingClients.append(model)

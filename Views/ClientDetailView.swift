@@ -683,12 +683,14 @@ private struct ClientInlineEditor: View {
 
     @State private var name: String
     @State private var rate: Double
+    @State private var colorIndex: Int
 
     init(client: Client, onClose: @escaping (Bool) -> Void) {
         self._client = Bindable(wrappedValue: client)
         self.onClose = onClose
         _name = State(initialValue: client.name)
         _rate = State(initialValue: client.rate)
+        _colorIndex = State(initialValue: client.colorIndex)
     }
 
     var body: some View {
@@ -703,10 +705,14 @@ private struct ClientInlineEditor: View {
                         .frame(maxWidth: 140)
                 }
             }
+            Section("Color") {
+                ClientColorPicker(selectedIndex: $colorIndex)
+            }
             Section {
                 Button {
                     client.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
                     client.rate = rate
+                    client.colorIndex = colorIndex
                     onClose(true)
                 } label: {
                     Label("Save", systemImage: "tray.and.arrow.down.fill")

@@ -559,18 +559,29 @@ private struct ActionRow: View {
         entry.status == .inProgress && entry.timerStartedAt != nil
     }
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Top line: status dot, client, star, timer/amount
-            HStack(spacing: 6) {
-                SharedStatusMark(
-                    color: entry.status.color,
-                    isImportant: entry.isImportant,
-                    pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
-                )
+    private var clientColor: Color {
+        entry.client?.accentColor ?? ClientColors.palette[0].color
+    }
 
-                Text(entry.clientName)
-                    .font(.title3.weight(.semibold))
+    var body: some View {
+        HStack(spacing: 0) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(clientColor)
+                .frame(width: 4)
+                .padding(.vertical, 2)
+                .padding(.trailing, 8)
+
+            VStack(alignment: .leading, spacing: 4) {
+                // Top line: status dot, client, star, timer/amount
+                HStack(spacing: 6) {
+                    SharedStatusMark(
+                        color: entry.status.color,
+                        isImportant: entry.isImportant,
+                        pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
+                    )
+
+                    Text(entry.clientName)
+                        .font(.title3.weight(.semibold))
 
                 if let due = entry.dueDate, badge != .none {
                     dueBadgeView(due: due)
@@ -621,6 +632,7 @@ private struct ActionRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
+        }
         }
         .padding(.vertical, 2)
         .task(id: hasRunningTimer) {

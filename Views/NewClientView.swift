@@ -9,6 +9,7 @@ struct NewClientView: View {
 
     @State private var name: String = ""
     @State private var rate: Double = 0
+    @State private var colorIndex: Int = 0
     @State private var isSaving = false
 
     @FocusState private var focused: Field?
@@ -32,6 +33,10 @@ struct NewClientView: View {
                 }
             }
 
+            SwiftUI.Section("Color") {
+                ClientColorPicker(selectedIndex: $colorIndex)
+            }
+
             SwiftUI.Section {
                 Button(action: save) {
                     if isSaving {
@@ -44,6 +49,7 @@ struct NewClientView: View {
             }
         }
         .navigationTitle("New Client")
+        .onAppear { colorIndex = ClientColors.nextIndex(existingCount: clients.count) }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
@@ -71,7 +77,7 @@ struct NewClientView: View {
         isSaving = true
 
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let client = Client(name: trimmed, rate: rate)
+        let client = Client(name: trimmed, rate: rate, colorIndex: colorIndex)
         ctx.insert(client)
 
         do {

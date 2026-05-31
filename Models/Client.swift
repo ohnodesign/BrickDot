@@ -4,6 +4,7 @@ import SwiftData
 final class Client {
     var name: String = ""
     var rate: Double = 0
+    var colorIndex: Int = 0
     @Relationship(deleteRule: .cascade, inverse: \Entry.client)
     var entries: [Entry]? = []
     @Relationship(deleteRule: .cascade, inverse: \EntryTemplate.client)
@@ -22,7 +23,11 @@ final class Client {
         get { invoices ?? [] }
         set { invoices = newValue }
     }
-    init(name: String = "", rate: Double = 0) { self.name = name; self.rate = rate }
+    init(name: String = "", rate: Double = 0, colorIndex: Int = 0) {
+        self.name = name
+        self.rate = rate
+        self.colorIndex = colorIndex
+    }
 }
 
 extension Client: Equatable, Hashable {
