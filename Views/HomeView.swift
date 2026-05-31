@@ -253,11 +253,6 @@ struct HomeView: View {
         }
         Button { quickBump(entry, 0.25) } label: { Text("+15m") }.tint(.blue)
         Button { quickBump(entry, 0.5) }  label: { Text("+30m") }.tint(.indigo)
-        if entry.status != .done {
-            Button(role: .destructive) { markDone(entry) } label: {
-                Label("Done", systemImage: "checkmark.circle")
-            }
-        }
     }
 
     @ViewBuilder
