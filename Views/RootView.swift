@@ -5,12 +5,25 @@ import SwiftData
 enum RootTab: Hashable { case home, stats, new, clients, log, export }
 
 struct RootView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        if sizeClass == .regular {
+            iPadRootView()
+        } else {
+            iPhoneRootView()
+        }
+    }
+}
+
+// MARK: - iPhone (Tab Bar)
+
+private struct iPhoneRootView: View {
     @Environment(\.modelContext) private var ctx
     @State private var selectedTab: RootTab = .home
 
     var body: some View {
         TabView(selection: $selectedTab) {
-
             NavigationStack {
                 HomeView()
             }
@@ -26,7 +39,7 @@ struct RootView: View {
             .tag(RootTab.stats)
 
             NavigationStack {
-                NewEntryView(onSaved: { selectedTab = .home })   // 👈 bounce to Home on save
+                NewEntryView(onSaved: { selectedTab = .home })
             }
             .environment(\.modelContext, ctx)
             .tabItem { Label("New", systemImage: "plus.circle") }
@@ -53,5 +66,301 @@ struct RootView: View {
             .tabItem { Label("Export", systemImage: "square.and.arrow.up") }
             .tag(RootTab.export)
         }
+    }
+}
+
+// MARK: - iPad (Sidebar)
+
+private enum SidebarDestination: Hashable {
+    case home
+    case overdue
+    case dueToday
+    case running
+    case thisWeek
+    case stats
+    case log
+    case export
+    case newEntry
+    case allClients
+    case client(PersistentIdentifier)
+    case profile
+    case settings
+}
+
+private struct iPadRootView: View {
+    @Environment(\.modelContext) private var ctx
+    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(sort: \Client.name) private var allClients: [Client]
+
+    @State private var selection: SidebarDestination? = .home
+    @State private var showNewEntry = false
+
+    var body: some View {
+        NavigationSplitView {
+            List(selection: $selection) {
+                // New Entry button
+                Section {
+                    Button { showNewEntry = true } label: {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("New Entry").fontWeight(.semibold)
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                }
+                .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
+
+                // Dashboard
+                Section("Dashboard") {
+                    NavigationLink(value: SidebarDestination.home) {
+                        Label("Home", systemImage: "house")
+                    }
+
+                    NavigationLink(value: SidebarDestination.overdue) {
+                        HStack {
+                            Label("Overdue", systemImage: "exclamationmark.triangle.fill")
+                                .foregroundStyle(overdueCount > 0 ? .red : .secondary)
+                            Spacer()
+                            if overdueCount > 0 {
+                                Text("\(overdueCount)")
+                                    .font(.subheadline.weight(.bold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(.red)
+                            }
+                        }
+                    }
+
+                    NavigationLink(value: SidebarDestination.dueToday) {
+                        HStack {
+                            Label("Due Today", systemImage: "sun.max.fill")
+                                .foregroundStyle(dueTodayCount > 0 ? .orange : .secondary)
+                            Spacer()
+                            if dueTodayCount > 0 {
+                                Text("\(dueTodayCount)")
+                                    .font(.subheadline.weight(.bold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                    }
+
+                    NavigationLink(value: SidebarDestination.running) {
+                        HStack {
+                            Label("Running", systemImage: "timer")
+                                .foregroundStyle(timersRunning > 0 ? Color.brick : .secondary)
+                            Spacer()
+                            if timersRunning > 0 {
+                                Text("\(timersRunning)")
+                                    .font(.subheadline.weight(.bold))
+                                    .monospacedDigit()
+                                    .foregroundStyle(Color.brick)
+                            }
+                        }
+                    }
+
+                    NavigationLink(value: SidebarDestination.thisWeek) {
+                        HStack {
+                            Label("This Week", systemImage: "dollarsign.circle.fill")
+                                .foregroundStyle(.green)
+                            Spacer()
+                            Text(weekAmount.shortCurrency)
+                                .font(.subheadline.weight(.bold))
+                                .monospacedDigit()
+                                .foregroundStyle(.green)
+                        }
+                    }
+                }
+
+                // Top Clients
+                Section("Clients") {
+                    ForEach(topClients, id: \.persistentModelID) { client in
+                        NavigationLink(value: SidebarDestination.client(client.persistentModelID)) {
+                            HStack {
+                                Text(client.name)
+                                Spacer()
+                                let count = client.entriesList.filter { $0.status != .done }.count
+                                if count > 0 {
+                                    Text("\(count)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+
+                    NavigationLink(value: SidebarDestination.allClients) {
+                        Label("All Clients", systemImage: "person.2")
+                    }
+                }
+
+                // Tools
+                Section("Tools") {
+                    NavigationLink(value: SidebarDestination.stats) {
+                        Label("Stats", systemImage: "chart.bar.fill")
+                    }
+                    NavigationLink(value: SidebarDestination.log) {
+                        Label("Log", systemImage: "doc.text")
+                    }
+                    NavigationLink(value: SidebarDestination.export) {
+                        Label("Export", systemImage: "square.and.arrow.up")
+                    }
+                }
+
+                // Profile & Settings
+                Section {
+                    NavigationLink(value: SidebarDestination.profile) {
+                        Label("Profile", systemImage: "person.crop.circle")
+                    }
+                    NavigationLink(value: SidebarDestination.settings) {
+                        Label("Settings", systemImage: "gear")
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+            .navigationTitle("BrickDot")
+        } detail: {
+            NavigationStack {
+                detailView
+            }
+            .environment(\.modelContext, ctx)
+        }
+        .sheet(isPresented: $showNewEntry) {
+            NavigationStack {
+                NewEntryView(onSaved: {
+                    showNewEntry = false
+                    selection = .home
+                })
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+
+    // MARK: - Detail View
+
+    @ViewBuilder
+    private var detailView: some View {
+        switch selection {
+        case .home, .none:
+            HomeView()
+        case .overdue:
+            EntriesListView(title: "Overdue", entries: overdueEntries)
+        case .dueToday:
+            EntriesListView(title: "Due Today", entries: dueTodayEntries)
+        case .running:
+            EntriesListView(title: "Running Timers", entries: runningEntries)
+        case .thisWeek:
+            EntriesListView(title: "This Week", entries: thisWeekEntries)
+        case .stats:
+            StatsPageView()
+        case .log:
+            LogView()
+        case .export:
+            ExportView()
+        case .newEntry:
+            NewEntryView(onSaved: { selection = .home })
+        case .allClients:
+            ClientListView()
+        case .client(let id):
+            if let client = allClients.first(where: { $0.persistentModelID == id }) {
+                ClientDetailView(client: client)
+            } else {
+                Text("Client not found").foregroundStyle(.secondary)
+            }
+        case .profile:
+            ProfileView()
+        case .settings:
+            SettingsView()
+        }
+    }
+
+    // MARK: - Sidebar Data
+
+    private var cal: Calendar { Calendar.current }
+    private var todayStart: Date { cal.startOfDay(for: Date()) }
+    private var todayEnd: Date { cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? Date() }
+
+    private var openEntries: [Entry] {
+        allEntries.filter { $0.status != .done }
+    }
+
+    private var overdueCount: Int {
+        openEntries.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due < todayStart
+        }.count
+    }
+
+    private var overdueEntries: [Entry] {
+        openEntries.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due < todayStart
+        }
+    }
+
+    private var dueTodayCount: Int {
+        openEntries.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due >= todayStart && due <= todayEnd
+        }.count
+    }
+
+    private var dueTodayEntries: [Entry] {
+        openEntries.filter { e in
+            guard let due = e.dueDate else { return false }
+            return due >= todayStart && due <= todayEnd
+        }
+    }
+
+    private var timersRunning: Int {
+        allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }.count
+    }
+
+    private var runningEntries: [Entry] {
+        allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }
+    }
+
+    private var weekAmount: Double {
+        let start = Date().bdStartOfWeek
+        let end = Date().bdEndOfWeek
+        return allEntries
+            .filter { $0.status == .done && ($0.completedAt ?? $0.serviceDate) >= start && ($0.completedAt ?? $0.serviceDate) <= end }
+            .reduce(0) { $0 + ($1.hours * $1.rate) }
+    }
+
+    private var thisWeekEntries: [Entry] {
+        let start = Date().bdStartOfWeek
+        let end = Date().bdEndOfWeek
+        return allEntries.filter { e in
+            let d = e.completedAt ?? e.serviceDate
+            return e.status == .done && d >= start && d <= end
+        }
+    }
+
+    private var topClients: [Client] {
+        // Top 5 clients by number of open entries
+        allClients
+            .sorted { a, b in
+                let aOpen = a.entriesList.filter { $0.status != .done }.count
+                let bOpen = b.entriesList.filter { $0.status != .done }.count
+                return aOpen > bOpen
+            }
+            .prefix(5)
+            .map { $0 }
+    }
+}
+
+// MARK: - Helpers
+
+private extension Double {
+    var shortCurrency: String {
+        let code = Locale.current.currency?.identifier ?? "USD"
+        let nf = NumberFormatter()
+        nf.numberStyle = .currency
+        nf.currencyCode = code
+        nf.maximumFractionDigits = 0
+        return nf.string(from: NSNumber(value: self)) ?? "$\(Int(self))"
     }
 }
