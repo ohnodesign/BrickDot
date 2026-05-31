@@ -17,6 +17,12 @@ struct ClientDTO: Codable {
     var rate: Double
 }
 
+struct SubtaskDTO: Codable {
+    var title: String
+    var hours: Double
+    var isDone: Bool
+}
+
 struct EntryDTO: Codable {
     var serviceDate: Date
     var service: String
@@ -26,9 +32,10 @@ struct EntryDTO: Codable {
     var clientName: String
     var isInProgress: Bool
     var timerStartedAt: Date?
-    // NEW: optional so old files still decode
     var status: EntryStatus?
-    var starred: Bool?  // Added to support legacy starred detection
+    var starred: Bool?
+    var notes: String?
+    var subtasks: [SubtaskDTO]?
 }
 
 enum BackupError: Error, LocalizedError {
@@ -73,18 +80,23 @@ enum Backup {
         }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
         // in makeJSONData(ctx:)
-        let entryDTOs: [EntryDTO] = entries.map {
-            EntryDTO(
-                serviceDate: $0.serviceDate,
-                service: $0.service,
-                detail: $0.detail,
-                hours: $0.hours,
-                rate: $0.rate,
-                clientName: $0.client.name,
-                isInProgress: ($0.status == .inProgress),   // derive for old readers
-                timerStartedAt: $0.timerStartedAt,
-                status: $0.status,                           // NEW
-                starred: $0.isImportant                      // export the starred flag
+        let entryDTOs: [EntryDTO] = entries.map { entry in
+            let subtaskDTOs: [SubtaskDTO]? = entry.subtasks.isEmpty ? nil : entry.subtasks.map {
+                SubtaskDTO(title: $0.title, hours: $0.hours, isDone: $0.isDone)
+            }
+            return EntryDTO(
+                serviceDate: entry.serviceDate,
+                service: entry.service,
+                detail: entry.detail,
+                hours: entry.hours,
+                rate: entry.rate,
+                clientName: entry.client.name,
+                isInProgress: (entry.status == .inProgress),
+                timerStartedAt: entry.timerStartedAt,
+                status: entry.status,
+                starred: entry.isImportant,
+                notes: entry.notes.isEmpty ? nil : entry.notes,
+                subtasks: subtaskDTOs
             )
         }
 
@@ -186,10 +198,15 @@ enum Backup {
                 rate: e.rate,
                 client: client,
                 status: inferredStatus,
-                timerStartedAt: e.timerStartedAt
+                timerStartedAt: e.timerStartedAt,
+                isImportant: e.starred ?? false,
+                notes: e.notes ?? ""
             )
-            model.isImportant = e.starred ?? false
             ctx.insert(model)
+            for st in e.subtasks ?? [] {
+                let subtask = Subtask(title: st.title, parent: model, hours: st.hours, isDone: st.isDone)
+                model.subtasks.append(subtask)
+            }
             importedEntries += 1
         }
 
@@ -248,9 +265,15 @@ enum Backup {
                 rate: e.rate,
                 client: client,
                 status: inferredStatus,
-                timerStartedAt: e.timerStartedAt
+                timerStartedAt: e.timerStartedAt,
+                isImportant: e.starred ?? false,
+                notes: e.notes ?? ""
             )
             ctx.insert(model)
+            for st in e.subtasks ?? [] {
+                let subtask = Subtask(title: st.title, parent: model, hours: st.hours, isDone: st.isDone)
+                model.subtasks.append(subtask)
+            }
         }
 
         try? ctx.save()

@@ -52,6 +52,7 @@ struct SettingsView: View {
     @State private var alertMessage = ""
     @State private var showAlert = false
     @State private var showResetConfirmation = false
+    @State private var showICloudImportWarning = false
 
     // Home & Sections
     @AppStorage(AppPrefsKey.homeShowStarred)    private var showStarred = true
@@ -200,6 +201,12 @@ struct SettingsView: View {
         } message: {
             Text(alertMessage)
         }
+        .alert("iCloud Sync Active", isPresented: $showICloudImportWarning) {
+            Button("Import Anyway") { showImportPicker = true }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("iCloud sync is enabled. Importing a backup may create duplicate entries if the same data exists in iCloud. Consider disabling iCloud sync before importing.")
+        }
         .confirmationDialog("Delete all clients, entries, and related data? This cannot be undone.", isPresented: $showResetConfirmation, titleVisibility: .visible) {
             Button("Delete Everything", role: .destructive) { performReset() }
             Button("Cancel", role: .cancel) { }
@@ -236,7 +243,11 @@ struct SettingsView: View {
     }
 
     private func importBackup() {
-        showImportPicker = true
+        if autoBackupIcloud {
+            showICloudImportWarning = true
+        } else {
+            showImportPicker = true
+        }
     }
 
     private func performImport(url: URL) {
@@ -258,13 +269,14 @@ struct SettingsView: View {
 
     private func performReset() {
         do {
+            let backupURL = try Backup.exportJSON(ctx: modelContext, fileName: "PreReset_\(Backup.defaultBackupName())")
             try modelContext.delete(model: Entry.self)
             try modelContext.delete(model: Client.self)
             try modelContext.delete(model: Invoice.self)
             try modelContext.delete(model: EntryTemplate.self)
             try modelContext.save()
             alertTitle = "Reset Complete"
-            alertMessage = "All data has been deleted."
+            alertMessage = "All data has been deleted.\n\nA safety backup was saved to:\n\(backupURL.lastPathComponent)"
             showAlert = true
         } catch {
             alertTitle = "Reset Failed"
