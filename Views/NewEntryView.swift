@@ -352,7 +352,7 @@ struct NewEntryView: View {
         // Create TimeLog models from pending logs
         for log in pendingLogs {
             let model = TimeLog(hours: log.hours, note: log.note, entry: entry)
-            entry.timeLogs.append(model)
+            entry.timeLogsList.append(model)
         }
 
         // Create Subtask models from pending subtasks
@@ -361,7 +361,7 @@ struct NewEntryView: View {
                                 parent: entry,
                                 hours: 0,
                                 isDone: st.isDone)
-            entry.subtasks.append(model)
+            entry.subtasksList.append(model)
         }
 
         do {

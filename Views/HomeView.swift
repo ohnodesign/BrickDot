@@ -221,13 +221,13 @@ struct HomeView: View {
         guard e.timerStartedAt != nil else { return }
         let elapsed = e.runningElapsedHoursOrZero
         e.hours += elapsed
-        e.timeLogs.append(TimeLog(hours: elapsed, entry: e))
+        e.timeLogsList.append(TimeLog(hours: elapsed, entry: e))
         e.timerStartedAt = nil
         try? ctx.save()
     }
     private func quickBump(_ e: Entry, _ h: Double) {
         e.hours += h
-        e.timeLogs.append(TimeLog(hours: h, entry: e))
+        e.timeLogsList.append(TimeLog(hours: h, entry: e))
         try? ctx.save()
     }
     private func markDone(_ e: Entry) {

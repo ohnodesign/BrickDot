@@ -120,7 +120,7 @@ struct StatsPageView: View {
     private var todayEntries: [Entry] { allEntries.filter { $0.status == .done && Calendar.current.isDateInToday(($0.completedAt ?? $0.serviceDate)) } }
 
     private var timeLogsTodayByEntry: [(entry: Entry, hours: Double)] {
-        let todayLogs = allEntries.flatMap { e in e.timeLogs.map { ($0, e) } }
+        let todayLogs = allEntries.flatMap { e in e.timeLogsList.map { ($0, e) } }
             .filter { Calendar.current.isDateInToday($0.0.addedAt) }
         let grouped = Dictionary(grouping: todayLogs, by: { $0.1.persistentModelID })
         return grouped.compactMap { (_, pairs) in

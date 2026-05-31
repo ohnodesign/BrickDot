@@ -110,7 +110,7 @@ struct ExportView: View {
     private var headers: ExportHeaders { useQuickBooksHeaders ? .quickBooks : ExportHeaders() }
 
     private var invoicedEntryIDs: Set<PersistentIdentifier> {
-        let all = allInvoices.flatMap { $0.entries }
+        let all = allInvoices.flatMap { $0.entriesList }
         return Set(all.map { $0.persistentModelID })
     }
 
@@ -485,7 +485,7 @@ struct ExportView: View {
 
                 let title = uniqueInvoiceTitle(base: "\(monthStart.yearMonthLabel) Invoice", for: c)
                 let inv = Invoice(title: title, number: nil, client: c)
-                inv.entries.append(contentsOf: entries)
+                inv.entriesList.append(contentsOf: entries)
                 ctx.insert(inv); try? ctx.save()
             } else {
                 let name = "\(c.name)_\(monthStart.yearMonthLabel)"
@@ -494,7 +494,7 @@ struct ExportView: View {
 
                 let title = uniqueInvoiceTitle(base: "\(monthStart.yearMonthLabel) Invoice", for: c)
                 let inv = Invoice(title: title, number: nil, client: c)
-                inv.entries.append(contentsOf: entries)
+                inv.entriesList.append(contentsOf: entries)
                 ctx.insert(inv); try? ctx.save()
             }
         }
@@ -520,7 +520,7 @@ struct ExportView: View {
 
                     let title = uniqueInvoiceTitle(base: "\(m.yearMonthLabel) Invoice", for: c)
                     let inv = Invoice(title: title, number: nil, client: c)
-                    inv.entries.append(contentsOf: monthEntries)
+                    inv.entriesList.append(contentsOf: monthEntries)
                     ctx.insert(inv)
                 }
                 try? ctx.save()
@@ -537,7 +537,7 @@ struct ExportView: View {
 
                     let title = uniqueInvoiceTitle(base: "\(m.yearMonthLabel) Invoice", for: c)
                     let inv = Invoice(title: title, number: nil, client: c)
-                    inv.entries.append(contentsOf: monthEntries)
+                    inv.entriesList.append(contentsOf: monthEntries)
                     ctx.insert(inv)
                 }
                 try? ctx.save()
@@ -558,7 +558,7 @@ struct ExportView: View {
                 let base = "\(min(rangeStart, rangeEnd).yearMonthDay) to \(max(rangeStart, rangeEnd).yearMonthDay) Invoice"
                 let title = uniqueInvoiceTitle(base: base, for: c)
                 let inv = Invoice(title: title, number: nil, client: c)
-                inv.entries.append(contentsOf: entries)
+                inv.entriesList.append(contentsOf: entries)
                 ctx.insert(inv); try? ctx.save()
             } else {
                 let start = min(rangeStart, rangeEnd).yearMonthDay
@@ -569,7 +569,7 @@ struct ExportView: View {
 
                 let title = uniqueInvoiceTitle(base: "\(start) to \(end) Invoice", for: c)
                 let inv = Invoice(title: title, number: nil, client: c)
-                inv.entries.append(contentsOf: entries)
+                inv.entriesList.append(contentsOf: entries)
                 ctx.insert(inv); try? ctx.save()
             }
         }

@@ -128,7 +128,7 @@ struct ClientDetailView: View {
 
     // Fast lookup set of invoiced Entry IDs (for green dot in Recent)
     private var invoicedEntryIDs: Set<PersistentIdentifier> {
-        let all = allInvoices.flatMap { $0.entries }
+        let all = allInvoices.flatMap { $0.entriesList }
         return Set(all.map { $0.persistentModelID })
     }
 
@@ -271,10 +271,10 @@ struct ClientDetailView: View {
             // Templates
             Section {
                 DisclosureGroup(isExpanded: $showTemplates) {
-                    if client.templates.isEmpty {
+                    if client.templatesList.isEmpty {
                         Text("No templates yet").foregroundStyle(.secondary)
                     } else {
-                        ForEach(client.templates.sorted { $0.name < $1.name }, id: \.persistentModelID) { template in
+                        ForEach(client.templatesList.sorted { $0.name < $1.name }, id: \.persistentModelID) { template in
                             HStack {
                                 Button {
                                     templateToEdit = template
@@ -323,7 +323,7 @@ struct ClientDetailView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "doc.text")
                             .foregroundStyle(.accent)
-                        Text("Templates (\(client.templates.count))")
+                        Text("Templates (\(client.templatesList.count))")
                     }
                 }
             }
@@ -372,9 +372,9 @@ struct ClientDetailView: View {
                     } label: {
                         Label("Blank Entry", systemImage: "doc")
                     }
-                    if !client.templates.isEmpty {
+                    if !client.templatesList.isEmpty {
                         Divider()
-                        ForEach(client.templates.sorted { $0.name < $1.name }, id: \.persistentModelID) { template in
+                        ForEach(client.templatesList.sorted { $0.name < $1.name }, id: \.persistentModelID) { template in
                             Button {
                                 selectedTemplate = template
                                 showNewEntry = true
@@ -441,13 +441,13 @@ struct ClientDetailView: View {
     private func quickPauseAndAdd(_ e: Entry) {
         guard e.timerStartedAt != nil else { return }
         e.hours += e.runningElapsedHoursOrZero
-        e.timeLogs.append(TimeLog(hours: e.runningElapsedHoursOrZero, entry: e))
+        e.timeLogsList.append(TimeLog(hours: e.runningElapsedHoursOrZero, entry: e))
         e.timerStartedAt = nil
         try? ctx.save()
     }
     private func quickBump(_ e: Entry, _ h: Double) {
         e.hours += h
-        e.timeLogs.append(TimeLog(hours: h, entry: e))
+        e.timeLogsList.append(TimeLog(hours: h, entry: e))
         try? ctx.save()
     }
     private func markDone(_ e: Entry) {
@@ -649,7 +649,7 @@ private struct RecentEntryRowWithInvoiceDot: View {
 private struct InvoiceRow: View {
     let invoice: Invoice
     private var totalAmount: Double {
-        invoice.entries.reduce(0) { $0 + ($1.hours * $1.rate) }
+        invoice.entriesList.reduce(0) { $0 + ($1.hours * $1.rate) }
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -916,7 +916,7 @@ private struct NewTemplateView: View {
                                           isCompleted: st.isCompleted,
                                           order: st.order,
                                           template: template)
-                template.subtasks.append(sub)
+                template.subtasksList.append(sub)
             }
         }
 

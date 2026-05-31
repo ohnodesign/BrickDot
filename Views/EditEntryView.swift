@@ -131,7 +131,7 @@ struct EditEntryView: View {
             // MARK: Time Log
             Section {
                 // Existing logs (most recent first)
-                let logs = entry.timeLogs.sorted { $0.addedAt > $1.addedAt }
+                let logs = entry.timeLogsList.sorted { $0.addedAt > $1.addedAt }
                 if logs.isEmpty {
                     Text("No time logged yet").foregroundStyle(.secondary)
                 } else {
@@ -208,9 +208,9 @@ struct EditEntryView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                if let idx = entry.timeLogs.firstIndex(where: { $0.persistentModelID == log.persistentModelID }) {
-                                    let doomed = entry.timeLogs[idx]
-                                    entry.timeLogs.remove(at: idx)
+                                if let idx = entry.timeLogsList.firstIndex(where: { $0.persistentModelID == log.persistentModelID }) {
+                                    let doomed = entry.timeLogsList[idx]
+                                    entry.timeLogsList.remove(at: idx)
                                     ctx.delete(doomed)
                                     try? ctx.save()
                                 }
@@ -233,7 +233,7 @@ struct EditEntryView: View {
                 NavigationLink {
                     TimeLogEditor(entry: entry) { hours, note in
                         let log = TimeLog(hours: hours, note: note, entry: entry)
-                        entry.timeLogs.append(log)
+                        entry.timeLogsList.append(log)
                         entry.hours += hours
                         try? ctx.save()
                     }
@@ -249,7 +249,7 @@ struct EditEntryView: View {
                 // Add new subtask
                 Button {
                     let new = Subtask(title: "", parent: entry)
-                    entry.subtasks.append(new)
+                    entry.subtasksList.append(new)
                     try? ctx.save()
                     focusedSubtaskID = new.persistentModelID
                 } label: {
@@ -263,7 +263,7 @@ struct EditEntryView: View {
                 .controlSize(.large)
                 .padding(.vertical, 4)
 
-                let items = entry.subtasks.sorted { $0.createdAt < $1.createdAt }
+                let items = entry.subtasksList.sorted { $0.createdAt < $1.createdAt }
 
                 if items.isEmpty {
                     Text("No subtasks yet").foregroundStyle(.secondary)
@@ -379,8 +379,8 @@ struct EditEntryView: View {
 
     // MARK: - Helpers
     private func deleteSubtask(_ st: Subtask) {
-        if let idx = entry.subtasks.firstIndex(where: { $0.id == st.id }) {
-            let doomed = entry.subtasks[idx]
+        if let idx = entry.subtasksList.firstIndex(where: { $0.id == st.id }) {
+            let doomed = entry.subtasksList[idx]
             ctx.delete(doomed)
             try? ctx.save()
         }

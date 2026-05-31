@@ -228,8 +228,8 @@ struct CSVExporter {
 
     private static func descriptionWithSubtasks(_ entry: Entry) -> String {
         var desc = entry.detail
-        if !entry.subtasks.isEmpty {
-            let bullets = entry.subtasks.map { "• \($0.title)" }.joined(separator: "\n")
+        if !entry.subtasksList.isEmpty {
+            let bullets = entry.subtasksList.map { "• \($0.title)" }.joined(separator: "\n")
             desc = desc.isEmpty ? bullets : desc + "\n" + bullets
         }
         return desc
