@@ -67,6 +67,9 @@ struct HomeView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     entrySwipeActions(entry)
                                 }
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    entryLeadingSwipeActions(entry)
+                                }
                             }
                         } header: {
                             Label("Overdue", systemImage: "exclamationmark.triangle.fill")
@@ -84,6 +87,9 @@ struct HomeView: View {
                                 }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     entrySwipeActions(entry)
+                                }
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    entryLeadingSwipeActions(entry)
                                 }
                             }
                         } header: {
@@ -103,6 +109,9 @@ struct HomeView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     entrySwipeActions(entry)
                                 }
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    entryLeadingSwipeActions(entry)
+                                }
                             }
                         } header: {
                             Label("In Progress", systemImage: "bolt.fill")
@@ -121,6 +130,9 @@ struct HomeView: View {
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     entrySwipeActions(entry)
                                 }
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    entryLeadingSwipeActions(entry)
+                                }
                             }
                         } header: {
                             Label("Up Next", systemImage: "arrow.right.circle.fill")
@@ -138,6 +150,9 @@ struct HomeView: View {
                                 }
                                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                     entrySwipeActions(entry)
+                                }
+                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                                    entryLeadingSwipeActions(entry)
                                 }
                             }
                         } header: {
@@ -242,6 +257,52 @@ struct HomeView: View {
             Button(role: .destructive) { markDone(entry) } label: {
                 Label("Done", systemImage: "checkmark.circle")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func entryLeadingSwipeActions(_ entry: Entry) -> some View {
+        // Star / Unstar
+        Button {
+            entry.isImportant.toggle()
+            try? ctx.save()
+        } label: {
+            Label(entry.isImportant ? "Unstar" : "Star",
+                  systemImage: entry.isImportant ? "star.slash.fill" : "star.fill")
+        }
+        .tint(.yellow)
+
+        // Status changes
+        if entry.status != .todo {
+            Button {
+                entry.status = .todo
+                entry.timerStartedAt = nil
+                try? ctx.save()
+            } label: {
+                Label("To Do", systemImage: "circle")
+            }
+            .tint(.orange)
+        }
+        if entry.status != .inProgress {
+            Button {
+                entry.status = .inProgress
+                if entry.timerStartedAt == nil { entry.timerStartedAt = Date() }
+                try? ctx.save()
+            } label: {
+                Label("In Progress", systemImage: "bolt.fill")
+            }
+            .tint(Color.brick)
+        }
+        if entry.status != .done {
+            Button {
+                entry.status = .done
+                entry.timerStartedAt = nil
+                entry.completedAt = Date()
+                try? ctx.save()
+            } label: {
+                Label("Done", systemImage: "checkmark.circle.fill")
+            }
+            .tint(.green)
         }
     }
 
