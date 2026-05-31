@@ -4,14 +4,10 @@ import Foundation
 
 @main
 struct BrickDotApp: App {
-    // Read user-selected appearance from SettingsView
-    @AppStorage(AppPrefsKey.colorScheme)  private var appearanceRaw: String = "system"   // system | light | dark
-    @AppStorage(AppPrefsKey.accentPreset) private var accentRaw: String = "indigo"      // blue | indigo | brick | green | orange
+    @AppStorage(AppPrefsKey.colorScheme)  private var appearanceRaw: String = "system"
+    @AppStorage(AppPrefsKey.accentPreset) private var accentRaw: String = "indigo"
 
     let container: ModelContainer = {
-        let config = ModelConfiguration(
-            cloudKitDatabase: .automatic
-        )
         let schema = Schema([
             Entry.self,
             Client.self,
@@ -21,7 +17,30 @@ struct BrickDotApp: App {
             EntryTemplate.self,
             TemplateSubtask.self
         ])
-        return try! ModelContainer(for: schema, configurations: [config])
+
+        let cloudConfig = ModelConfiguration(
+            cloudKitDatabase: .automatic
+        )
+
+        // Try CloudKit-enabled store first
+        if let container = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
+            return container
+        }
+
+        // If that fails (schema migration issue), delete the old store and retry
+        let storeURL = ModelConfiguration().url
+        let storePath = storeURL.path()
+        for suffix in ["", "-wal", "-shm"] {
+            try? FileManager.default.removeItem(atPath: storePath + suffix)
+        }
+
+        if let container = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
+            return container
+        }
+
+        // Last resort: local-only (no CloudKit)
+        let localConfig = ModelConfiguration(cloudKitDatabase: .none)
+        return try! ModelContainer(for: schema, configurations: [localConfig])
     }()
 
     var body: some Scene {
@@ -38,7 +57,7 @@ struct BrickDotApp: App {
         switch raw {
         case "light": return .light
         case "dark":  return .dark
-        default:      return nil    // system
+        default:      return nil
         }
     }
     private func accentColor(from raw: String) -> Color {
