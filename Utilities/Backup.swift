@@ -162,12 +162,18 @@ enum Backup {
             }
         }
 
+        let existingEntries: [Entry] = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
+        let existingEntryKeys = Set(existingEntries.map { entryDeduplicationKey($0.client.name, $0.serviceDate, $0.service, $0.detail, $0.hours) })
+
         var importedEntries = 0
         var hadLegacyStarred = false
 
         for e in payload.entries {
             let key = e.clientName.lowercased()
             guard let client = clientIndex[key] else { throw BackupError.missingClientForEntry(e.clientName) }
+
+            let dedupKey = entryDeduplicationKey(e.clientName, e.serviceDate, e.service, e.detail, e.hours)
+            if existingEntryKeys.contains(dedupKey) { continue }
 
             let inferredStatus: EntryStatus = e.status ?? (e.isInProgress ? .inProgress : .todo)
             if e.starred == nil { hadLegacyStarred = true }
@@ -220,13 +226,17 @@ enum Backup {
             }
         }
 
-        // Upsert/append entries; we don't attempt dedup here (optional future enhancement).
-        // in importJSON(ctx:data:)
+        let existingEntries: [Entry] = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
+        let existingEntryKeys = Set(existingEntries.map { entryDeduplicationKey($0.client.name, $0.serviceDate, $0.service, $0.detail, $0.hours) })
+
         for e in payload.entries {
             let key = e.clientName.lowercased()
             guard let client = clientIndex[key] else {
                 throw BackupError.missingClientForEntry(e.clientName)
             }
+
+            let dedupKey = entryDeduplicationKey(e.clientName, e.serviceDate, e.service, e.detail, e.hours)
+            if existingEntryKeys.contains(dedupKey) { continue }
 
             let inferredStatus: EntryStatus = e.status ?? (e.isInProgress ? .inProgress : .todo)
 
@@ -237,7 +247,7 @@ enum Backup {
                 hours: e.hours,
                 rate: e.rate,
                 client: client,
-                status: inferredStatus,                 // ← pass status
+                status: inferredStatus,
                 timerStartedAt: e.timerStartedAt
             )
             ctx.insert(model)
@@ -277,6 +287,11 @@ enum Backup {
     }
 
     // MARK: - App version
+
+    private static func entryDeduplicationKey(_ clientName: String, _ serviceDate: Date, _ service: String, _ detail: String, _ hours: Double) -> String {
+        let dateStr = ISO8601DateFormatter().string(from: serviceDate)
+        return "\(clientName.lowercased())|\(dateStr)|\(service)|\(detail)|\(hours)"
+    }
 
     private static func appVersionString() -> String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"

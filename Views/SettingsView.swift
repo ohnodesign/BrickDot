@@ -51,6 +51,7 @@ struct SettingsView: View {
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
+    @State private var showResetConfirmation = false
 
     // Home & Sections
     @AppStorage(AppPrefsKey.homeShowStarred)    private var showStarred = true
@@ -162,7 +163,7 @@ struct SettingsView: View {
                 Button("Export backup (JSON)") { exportBackup() }
                 Button("Import backup (JSON)") { importBackup() }
                 Toggle("Auto-backup to iCloud Drive", isOn: $autoBackupIcloud)
-                Button(role: .destructive) { resetSampleData() } label: { Text("Reset sample data") }
+                Button(role: .destructive) { showResetConfirmation = true } label: { Text("Reset all data") }
             }
 
             // Invoicing Defaults
@@ -198,6 +199,10 @@ struct SettingsView: View {
             Button("OK", role: .cancel) { }
         } message: {
             Text(alertMessage)
+        }
+        .confirmationDialog("Delete all clients, entries, and related data? This cannot be undone.", isPresented: $showResetConfirmation, titleVisibility: .visible) {
+            Button("Delete Everything", role: .destructive) { performReset() }
+            Button("Cancel", role: .cancel) { }
         }
     }
 
@@ -251,7 +256,22 @@ struct SettingsView: View {
         }
     }
 
-    private func resetSampleData() { /* TODO */ }
+    private func performReset() {
+        do {
+            try modelContext.delete(model: Entry.self)
+            try modelContext.delete(model: Client.self)
+            try modelContext.delete(model: Invoice.self)
+            try modelContext.delete(model: EntryTemplate.self)
+            try modelContext.save()
+            alertTitle = "Reset Complete"
+            alertMessage = "All data has been deleted."
+            showAlert = true
+        } catch {
+            alertTitle = "Reset Failed"
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+    }
     private func versionString() -> String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"

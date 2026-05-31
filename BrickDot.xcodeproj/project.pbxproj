@@ -20,6 +20,9 @@
 		EE0E537F2EA9CEDB00C07E2E /* EntriesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E537E2EA9CEDB00C07E2E /* EntriesListView.swift */; };
 		EE150DFA2E920DA7005C4321 /* TimeLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE150DF92E920DA7005C4321 /* TimeLog.swift */; };
 		EE192F542EA9DD68002F38A0 /* CalendarMonthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE192F532EA9DD68002F38A0 /* CalendarMonthView.swift */; };
+		EE205D8A2F1BDAE100E2B088 /* EntryTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE205D892F1BDAE100E2B088 /* EntryTemplate.swift */; };
+		EE205D8C2F1BDF1600E2B088 /* EntryTemplateEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE205D8B2F1BDF1600E2B088 /* EntryTemplateEditorView.swift */; };
+		EE205D8E2F1BE1F800E2B088 /* SubtasksSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE205D8D2F1BE1F800E2B088 /* SubtasksSectionView.swift */; };
 		EE5DFE7F2E4FAE8100D7D747 /* BrickDotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6B12E4D88BA00C792C4 /* BrickDotApp.swift */; };
 		EE854AC72E581BDA00C776C6 /* Entry.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6982E4D7CE200C792C4 /* Entry.swift */; };
 		EE854AC82E581BE000C776C6 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6972E4D7CE200C792C4 /* Client.swift */; };
@@ -51,7 +54,7 @@
 		EEDCD6922E4D7CCF00C792C4 /* ShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6902E4D7CCF00C792C4 /* ShareSheet.swift */; };
 		EEDCD6A02E4D7CFB00C792C4 /* DateFormatter+ISO.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD69F2E4D7CFB00C792C4 /* DateFormatter+ISO.swift */; };
 		EEDCD6B02E4D830C00C792C4 /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6AF2E4D830400C792C4 /* Constants.swift */; };
-		EEE835CF2E9C973300317915 /* SettingsView.swift .swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE835CE2E9C973300317915 /* SettingsView.swift .swift */; };
+		EEE835CF2E9C973300317915 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE835CE2E9C973300317915 /* SettingsView.swift */; };
 		EEE835D12E9C994F00317915 /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE835D02E9C994F00317915 /* ProfileView.swift */; };
 /* End PBXBuildFile section */
 
@@ -69,6 +72,9 @@
 		EE0E537E2EA9CEDB00C07E2E /* EntriesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntriesListView.swift; sourceTree = "<group>"; };
 		EE150DF92E920DA7005C4321 /* TimeLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeLog.swift; sourceTree = "<group>"; };
 		EE192F532EA9DD68002F38A0 /* CalendarMonthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarMonthView.swift; sourceTree = "<group>"; };
+		EE205D892F1BDAE100E2B088 /* EntryTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryTemplate.swift; sourceTree = "<group>"; };
+		EE205D8B2F1BDF1600E2B088 /* EntryTemplateEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryTemplateEditorView.swift; sourceTree = "<group>"; };
+		EE205D8D2F1BE1F800E2B088 /* SubtasksSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtasksSectionView.swift; sourceTree = "<group>"; };
 		EE2B90972E59589E00DB8809 /* BrickDot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BrickDot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EE78B4E62E4F98C40061790A /* RootViewDIAG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewDIAG.swift; sourceTree = "<group>"; };
 		EE854AC92E58257000C776C6 /* ClientFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientFormView.swift; sourceTree = "<group>"; };
@@ -104,7 +110,7 @@
 		EEDCD69F2E4D7CFB00C792C4 /* DateFormatter+ISO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DateFormatter+ISO.swift"; sourceTree = "<group>"; };
 		EEDCD6AF2E4D830400C792C4 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		EEDCD6B12E4D88BA00C792C4 /* BrickDotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickDotApp.swift; sourceTree = "<group>"; };
-		EEE835CE2E9C973300317915 /* SettingsView.swift .swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift .swift"; sourceTree = "<group>"; };
+		EEE835CE2E9C973300317915 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
 		EEE835D02E9C994F00317915 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -146,10 +152,13 @@
 		EEDCD6792E4D798C00C792C4 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				EE205D892F1BDAE100E2B088 /* EntryTemplate.swift */,
 				EEDCD6972E4D7CE200C792C4 /* Client.swift */,
 				EEDCD6982E4D7CE200C792C4 /* Entry.swift */,
 				EEC744BA2E5D0F5100E9D21A /* Invoice.swift */,
 				EE8CDECD2E78B9D20011B686 /* Subtask.swift */,
+				EE205D8B2F1BDF1600E2B088 /* EntryTemplateEditorView.swift */,
+				EE205D8D2F1BE1F800E2B088 /* SubtasksSectionView.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -179,7 +188,7 @@
 				EE02CC672E4DB0D600173CC4 /* RootView.swift */,
 				EE78B4E62E4F98C40061790A /* RootViewDIAG.swift */,
 				EEC3778F2E921A860066C54E /* StatPill.swift */,
-				EEE835CE2E9C973300317915 /* SettingsView.swift .swift */,
+				EEE835CE2E9C973300317915 /* SettingsView.swift */,
 				EEC377952E921DCB0066C54E /* TimeFormatting.swift */,
 				EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */,
 				EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */,
@@ -289,6 +298,7 @@
 			files = (
 				EEC744BF2E71F07700E9D21A /* AgendaExporter.swift in Sources */,
 				EEE835D12E9C994F00317915 /* ProfileView.swift in Sources */,
+				EE205D8C2F1BDF1600E2B088 /* EntryTemplateEditorView.swift in Sources */,
 				EE854ACF2E58BC9000C776C6 /* EntryFormSection.swift in Sources */,
 				EE854AC72E581BDA00C776C6 /* Entry.swift in Sources */,
 				EEC377942E921DC80066C54E /* Colors.swift in Sources */,
@@ -299,14 +309,16 @@
 				EE0E537B2EA9CDE300C07E2E /* StatsPageView.swift in Sources */,
 				EE8CDECE2E78B9D20011B686 /* Subtask.swift in Sources */,
 				EEC744B92E5CFB0000E9D21A /* InvoiceNumberManager.swift in Sources */,
+				EE205D8A2F1BDAE100E2B088 /* EntryTemplate.swift in Sources */,
 				EEABCEB72E4E845E0029A98C /* AutoBackup.swift in Sources */,
 				EE02CC682E4DB0D600173CC4 /* RootView.swift in Sources */,
 				EE02CC702E4E373900173CC4 /* DocumentPicker.swift in Sources */,
 				EE854AD12E58C1A000C776C6 /* EntryStatus.swift in Sources */,
 				EE02CC692E4DB0D600173CC4 /* ExportView.swift in Sources */,
 				EEABCEB52E4E5E3F0029A98C /* DateExtensions.swift in Sources */,
+				EE205D8E2F1BE1F800E2B088 /* SubtasksSectionView.swift in Sources */,
 				EEC377962E921DCB0066C54E /* TimeFormatting.swift in Sources */,
-				EEE835CF2E9C973300317915 /* SettingsView.swift .swift in Sources */,
+				EEE835CF2E9C973300317915 /* SettingsView.swift in Sources */,
 				EE854AC82E581BE000C776C6 /* Client.swift in Sources */,
 				EEDCD6842E4D7CB900C792C4 /* LogView.swift in Sources */,
 				EEDCD6B02E4D830C00C792C4 /* Constants.swift in Sources */,
