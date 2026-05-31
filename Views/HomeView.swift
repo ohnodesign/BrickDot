@@ -7,6 +7,7 @@ struct HomeView: View {
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
     @State private var showNewEntry = false
+    @State private var searchText = ""
     @AppStorage("home.showDoneSection") private var showDoneSection = false
 
     var body: some View {
@@ -165,6 +166,7 @@ struct HomeView: View {
             .listStyle(.insetGrouped)
             .listRowSpacing(4)
             .navigationTitle("Ohno Design")
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
             .sheet(isPresented: $showNewEntry) {
                 NavigationStack {
                     NewEntryView(onSaved: { showNewEntry = false })
@@ -249,8 +251,17 @@ struct HomeView: View {
     private var todayEnd: Date { cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? Date() }
     private var weekEnd: Date { Date().bdEndOfWeek }
 
+    private func matchesSearch(_ entry: Entry) -> Bool {
+        guard !searchText.isEmpty else { return true }
+        let q = searchText.lowercased()
+        return entry.clientName.lowercased().contains(q)
+            || entry.service.lowercased().contains(q)
+            || entry.detail.lowercased().contains(q)
+            || entry.notes.lowercased().contains(q)
+    }
+
     private var openEntries: [Entry] {
-        allEntries.filter { $0.status != .done }
+        allEntries.filter { $0.status != .done && matchesSearch($0) }
     }
 
     private var overdueEntries: [Entry] {
@@ -311,7 +322,7 @@ struct HomeView: View {
     private var actionEntries: [Entry] { openEntries }
 
     private var doneEntries: [Entry] {
-        allEntries.filter { $0.status == .done }
+        allEntries.filter { $0.status == .done && matchesSearch($0) }
             .sorted { ($0.completedAt ?? $0.serviceDate) > ($1.completedAt ?? $1.serviceDate) }
     }
 
