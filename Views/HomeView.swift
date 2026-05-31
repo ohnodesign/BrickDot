@@ -12,7 +12,6 @@ struct HomeView: View {
     @AppStorage("user.displayName") private var displayName = ""
 
     var body: some View {
-        NavigationStack {
             List {
                 // MARK: - Greeting & Today's Focus
                 if searchText.isEmpty {
@@ -236,7 +235,6 @@ struct HomeView: View {
                     }
                 }
             }
-        }
     }
 
     // MARK: - Swipe Actions

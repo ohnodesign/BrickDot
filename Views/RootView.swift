@@ -201,10 +201,8 @@ private struct iPadRootView: View {
             .listStyle(.sidebar)
             .navigationTitle("BrickDot")
         } detail: {
-            NavigationStack {
-                detailView
-            }
-            .environment(\.modelContext, ctx)
+            detailView
+                .environment(\.modelContext, ctx)
         }
         .sheet(isPresented: $showNewEntry) {
             NavigationStack {
@@ -224,7 +222,7 @@ private struct iPadRootView: View {
     private var detailView: some View {
         switch selection {
         case .home, .none:
-            HomeView()
+            NavigationStack { HomeView() }
         case .overdue:
             EntriesListView(title: "Overdue", entries: overdueEntries)
         case .dueToday:
