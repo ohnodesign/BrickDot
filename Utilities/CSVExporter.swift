@@ -59,7 +59,7 @@ struct CSVExporter {
             case "Service Date", "TxnDate":
                 return df.string(from: billingDate)
             case "Customer":
-                return escape(e.client.name)
+                return escape(e.clientName)
             case "Service":
                 return escape(e.service)
             case "Description":

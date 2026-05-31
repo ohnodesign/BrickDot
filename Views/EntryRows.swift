@@ -33,7 +33,7 @@ struct SharedTodoRow: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 SharedStatusMark(color: .orange, isImportant: entry.isImportant)
-                Text(entry.client.name)
+                Text(entry.clientName)
                     .font(.subheadline).fontWeight(.semibold)
                 Spacer()
                 Text(entry.service)
@@ -62,7 +62,7 @@ struct SharedInProgressRow: View {
                     isImportant: entry.isImportant,
                     pulsing: entry.timerStartedAt != nil
                 )
-                Text(entry.client.name)
+                Text(entry.clientName)
                     .font(.subheadline).fontWeight(.semibold)
                 Spacer()
                 if entry.timerStartedAt != nil {
@@ -94,7 +94,7 @@ struct SharedDoneRow: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 SharedStatusMark(color: .green, isImportant: entry.isImportant)
-                Text(entry.client.name)
+                Text(entry.clientName)
                     .font(.subheadline).fontWeight(.semibold)
                 Spacer()
                 Text(entry.service)
@@ -122,7 +122,7 @@ struct SharedEntryRow: View {
                     isImportant: entry.isImportant,
                     pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
                 )
-                Text(entry.client.name).font(.headline)
+                Text(entry.clientName).font(.headline)
                 Spacer()
                 Text(entry.hours * entry.rate,
                      format: .currency(code: Locale.current.currency?.identifier ?? "USD"))

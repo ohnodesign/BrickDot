@@ -10,33 +10,47 @@ struct SubtasksSectionView: View {
 
     var body: some View {
         Section(header: header) {
-            if template.subtasks.isEmpty {
-                Text("No subtasks yet").foregroundStyle(.secondary)
-            } else {
-                List {
-                    ForEach($template.subtasks) { $subtask in
-                        HStack {
-                            Button(action: { subtask.isCompleted.toggle() }) {
-                                Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(subtask.isCompleted ? .green : .secondary)
-                            }
-                            .buttonStyle(.plain)
-
-                            TextField("Subtask title", text: $subtask.title)
-
-                            Spacer()
-
-                            Image(systemName: "line.3.horizontal")
-                                .foregroundStyle(.tertiary)
-                        }
+            // Subtasks list - expands as items are added
+            ForEach($template.subtasks) { $subtask in
+                HStack {
+                    Button(action: { subtask.isCompleted.toggle() }) {
+                        Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(subtask.isCompleted ? .green : .secondary)
                     }
-                    .onDelete(perform: deleteSubtasks)
-                    .onMove(perform: moveSubtasks)
-                }
-                .listStyle(.plain)
-                .frame(minHeight: 44)
-            }
+                    .buttonStyle(.plain)
 
+                    TextField("Subtask title", text: $subtask.title)
+
+                    Spacer()
+
+                    Image(systemName: "line.3.horizontal")
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 4)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        deleteSubtask(subtask)
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+                .contextMenu {
+                    Button {
+                        moveSubtaskUp(subtask)
+                    } label: { Label("Move Up", systemImage: "arrow.up") }
+                    Button {
+                        moveSubtaskDown(subtask)
+                    } label: { Label("Move Down", systemImage: "arrow.down") }
+                    Divider()
+                    Button(role: .destructive) {
+                        deleteSubtask(subtask)
+                    } label: { Label("Delete", systemImage: "trash") }
+                }
+            }
+            .onMove(perform: moveSubtasks)
+            .onDelete(perform: deleteSubtasks)
+
+            // Add new subtask row
             HStack {
                 TextField("New subtask", text: $newSubtaskTitle)
                     .onSubmit(addSubtask)
@@ -45,8 +59,9 @@ struct SubtasksSectionView: View {
                 }
                 .disabled(newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
+            .padding(.vertical, 4)
         }
-        .onChange(of: template.subtasks) { _ in normalizeOrders() }
+        .onChange(of: template.subtasks) { _, _ in normalizeOrders() }
     }
 
     private var header: some View {
@@ -63,27 +78,65 @@ struct SubtasksSectionView: View {
     private func addSubtask() {
         let title = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else { return }
-        let order = (template.subtasks.map(\.order).max() ?? -1) + 1
-        let subtask = TemplateSubtask(title: title, isCompleted: false, order: order, template: template)
-        template.subtasks.append(subtask)
-        newSubtaskTitle = ""
-        try? modelContext.save()
+        withAnimation {
+            let order = (template.subtasks.map(\.order).max() ?? -1) + 1
+            let subtask = TemplateSubtask(title: title, isCompleted: false, order: order, template: template)
+            template.subtasks.append(subtask)
+            newSubtaskTitle = ""
+            try? modelContext.save()
+        }
+    }
+
+    private func deleteSubtask(_ subtask: TemplateSubtask) {
+        withAnimation {
+            if let idx = template.subtasks.firstIndex(where: { $0 === subtask }) {
+                let doomed = template.subtasks[idx]
+                modelContext.delete(doomed)
+                template.subtasks.remove(at: idx)
+                normalizeOrders()
+                try? modelContext.save()
+            }
+        }
+    }
+
+    private func moveSubtaskUp(_ subtask: TemplateSubtask) {
+        if let idx = template.subtasks.firstIndex(where: { $0 === subtask }), idx > 0 {
+            withAnimation {
+                template.subtasks.move(fromOffsets: IndexSet(integer: idx), toOffset: idx - 1)
+                normalizeOrders()
+                try? modelContext.save()
+            }
+        }
+    }
+
+    private func moveSubtaskDown(_ subtask: TemplateSubtask) {
+        if let idx = template.subtasks.firstIndex(where: { $0 === subtask }), idx < template.subtasks.count - 1 {
+            withAnimation {
+                template.subtasks.move(fromOffsets: IndexSet(integer: idx), toOffset: idx + 2)
+                normalizeOrders()
+                try? modelContext.save()
+            }
+        }
     }
 
     private func deleteSubtasks(at offsets: IndexSet) {
-        for index in offsets {
-            let item = template.subtasks[index]
-            modelContext.delete(item)
+        withAnimation {
+            for index in offsets {
+                let item = template.subtasks[index]
+                modelContext.delete(item)
+            }
+            template.subtasks.remove(atOffsets: offsets)
+            normalizeOrders()
+            try? modelContext.save()
         }
-        template.subtasks.remove(atOffsets: offsets)
-        normalizeOrders()
-        try? modelContext.save()
     }
 
     private func moveSubtasks(from source: IndexSet, to destination: Int) {
-        template.subtasks.move(fromOffsets: source, toOffset: destination)
-        normalizeOrders()
-        try? modelContext.save()
+        withAnimation {
+            template.subtasks.move(fromOffsets: source, toOffset: destination)
+            normalizeOrders()
+            try? modelContext.save()
+        }
     }
 
     private func normalizeOrders() {
@@ -94,12 +147,11 @@ struct SubtasksSectionView: View {
 }
 
 #Preview {
-    // Preview host for the section only
     struct Host: View {
         @State private var template: EntryTemplate
         init() {
             let client = Client(name: "Acme", rate: 0)
-            let t = EntryTemplate(name: "Demo", service: "Service", client: client)
+            let t = EntryTemplate(name: "Demo", service: "WEBUP", client: client)
             t.subtasks = [
                 TemplateSubtask(title: "One", order: 0, template: t),
                 TemplateSubtask(title: "Two", order: 1, template: t)
@@ -115,3 +167,4 @@ struct SubtasksSectionView: View {
     }
     return Host()
 }
+

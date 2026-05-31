@@ -130,7 +130,7 @@ public struct CalendarMonthView: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
-                        Text(entry.client.name)
+                        Text(entry.clientName)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }

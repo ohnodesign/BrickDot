@@ -3,38 +3,38 @@ import SwiftData
 
 @Model
 final class Entry {
-    // …your existing stored properties…
-    var serviceDate: Date
-    var service: String
-    var detail: String
-    var notes: String = ""      // ← NEW: long-form notes for context
-    var hours: Double
-    var rate: Double
-    var client: Client
+    var serviceDate: Date = Date()
+    var service: String = ""
+    var detail: String = ""
+    var notes: String = ""
+    var hours: Double = 0
+    var rate: Double = 0
+    var client: Client?
     var invoice: Invoice?
-    var status: EntryStatus
+    var status: EntryStatus = .todo
     var timerStartedAt: Date?
     var isImportant: Bool = false
     var dueDate: Date? = nil
     var billOnCompletion: Bool = false
 
-    // Timestamps
     var createdAt: Date = Date()
     var completedAt: Date? = nil
 
-    // Per-entry time logs (increments)
     @Relationship(deleteRule: .cascade)
     var timeLogs: [TimeLog] = []
 
-    // 👇 MUST live here (not in an extension)
     var subtasks: [Subtask] = []
 
-    init(serviceDate: Date,
-         service: String,
-         detail: String,
-         hours: Double,
-         rate: Double,
-         client: Client,
+    // Convenience for views that need a non-optional client name
+    var clientName: String { client?.name ?? "Unknown" }
+    var clientRate: Double { client?.rate ?? 0 }
+
+    init(serviceDate: Date = Date(),
+         service: String = "",
+         detail: String = "",
+         hours: Double = 0,
+         rate: Double = 0,
+         client: Client? = nil,
          status: EntryStatus = .todo,
          timerStartedAt: Date? = nil,
          createdAt: Date = Date(),

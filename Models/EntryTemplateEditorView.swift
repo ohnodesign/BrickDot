@@ -3,115 +3,100 @@ import SwiftData
 
 struct EntryTemplateEditorView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
 
     @Bindable var template: EntryTemplate
 
-    @State private var newSubtaskTitle: String = ""
+    // Track if changes have been made
+    @State private var hasChanges: Bool = false
+
+    // Store original values to detect changes
+    @State private var originalName: String = ""
+    @State private var originalService: String = ""
+    @State private var originalDetail: String = ""
+    @State private var originalNotes: String = ""
+    @State private var originalDefaultHours: Double = 0
+    @State private var originalSubtaskCount: Int = 0
 
     var body: some View {
-        Form {
-            Section("Details") {
-                TextField("Name", text: $template.name)
-                TextField("Service", text: $template.service)
-                TextField("Detail", text: $template.detail, axis: .vertical)
-                TextField("Notes", text: $template.notes, axis: .vertical)
-                HStack {
-                    Text("Default Hours")
-                    Spacer()
-                    TextField("0", value: $template.defaultHours, formatter: NumberFormatter.decimal)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 120)
-                }
-            }
+        NavigationStack {
+            Form {
+                Section("Details") {
+                    TextField("Name", text: $template.name)
+                        .onChange(of: template.name) { _, _ in checkForChanges() }
 
-            Section(header: subtaskHeader) {
-                if template.subtasks.isEmpty {
-                    Text("No subtasks yet").foregroundStyle(.secondary)
-                } else {
-                    List {
-                        ForEach($template.subtasks) { $subtask in
-                            HStack {
-                                Button(action: { subtask.isCompleted.toggle() }) {
-                                    Image(systemName: subtask.isCompleted ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(subtask.isCompleted ? .green : .secondary)
-                                }
-                                .buttonStyle(.plain)
-
-                                TextField("Subtask title", text: $subtask.title)
-
-                                Spacer()
-
-                                // Optional drag handle visual
-                                Image(systemName: "line.3.horizontal")
-                                    .foregroundStyle(.tertiary)
-                            }
+                    Picker("Service", selection: $template.service) {
+                        ForEach(Constants.services, id: \.self) { service in
+                            Text(service).tag(service)
                         }
-                        .onDelete(perform: deleteSubtasks)
-                        .onMove(perform: moveSubtasks)
                     }
-                    .listStyle(.plain)
-                    .frame(minHeight: 44)
+                    .onChange(of: template.service) { _, _ in checkForChanges() }
+
+                    TextField("Detail", text: $template.detail, axis: .vertical)
+                        .lineLimit(2...5)
+                        .onChange(of: template.detail) { _, _ in checkForChanges() }
+
+                    TextField("Notes", text: $template.notes, axis: .vertical)
+                        .lineLimit(2...5)
+                        .onChange(of: template.notes) { _, _ in checkForChanges() }
+
+                    HStack {
+                        Text("Default Hours")
+                        Spacer()
+                        TextField("0", value: $template.defaultHours, formatter: NumberFormatter.decimal)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 120)
+                            .onChange(of: template.defaultHours) { _, _ in checkForChanges() }
+                    }
                 }
 
-                HStack {
-                    TextField("New subtask", text: $newSubtaskTitle)
-                        .onSubmit(addSubtask)
-                    Button(action: addSubtask) {
-                        Label("Add", systemImage: "plus")
+                SubtasksSectionView(template: template)
+                    .onChange(of: template.subtasks.count) { _, _ in checkForChanges() }
+            }
+            .navigationTitle("Entry Template")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
                     }
-                    .disabled(newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Save Template") {
+                        saveTemplate()
+                    }
+                    .disabled(!hasChanges)
+                    .fontWeight(hasChanges ? .semibold : .regular)
                 }
             }
-        }
-        .navigationTitle("Entry Template")
-        .toolbar { EditButton() }
-        .onChange(of: template.subtasks) { _ in
-            normalizeOrders()
-        }
-    }
-
-    private var subtaskHeader: some View {
-        HStack {
-            Text("Subtasks")
-            Spacer()
-            if !template.subtasks.isEmpty {
-                Text("\(template.subtasks.count)")
-                    .foregroundStyle(.secondary)
+            .interactiveDismissDisabled(hasChanges)
+            .onAppear {
+                // Store original values on appear
+                originalName = template.name
+                originalService = template.service
+                originalDetail = template.detail
+                originalNotes = template.notes
+                originalDefaultHours = template.defaultHours
+                originalSubtaskCount = template.subtasks.count
             }
         }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
 
-    private func addSubtask() {
-        let title = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty else { return }
-        let order = (template.subtasks.map(\ .order).max() ?? -1) + 1
-        let subtask = Subtask(title: title, isCompleted: false, order: order, template: template)
-        template.subtasks.append(subtask)
-        newSubtaskTitle = ""
+    private func checkForChanges() {
+        hasChanges = template.name != originalName ||
+                     template.service != originalService ||
+                     template.detail != originalDetail ||
+                     template.notes != originalNotes ||
+                     template.defaultHours != originalDefaultHours ||
+                     template.subtasks.count != originalSubtaskCount
+    }
+
+    private func saveTemplate() {
         try? modelContext.save()
-    }
-
-    private func deleteSubtasks(at offsets: IndexSet) {
-        for index in offsets {
-            let item = template.subtasks[index]
-            modelContext.delete(item)
-        }
-        template.subtasks.remove(atOffsets: offsets)
-        normalizeOrders()
-        try? modelContext.save()
-    }
-
-    private func moveSubtasks(from source: IndexSet, to destination: Int) {
-        template.subtasks.move(fromOffsets: source, toOffset: destination)
-        normalizeOrders()
-        try? modelContext.save()
-    }
-
-    private func normalizeOrders() {
-        for (idx, subtask) in template.subtasks.enumerated() {
-            if subtask.order != idx { subtask.order = idx }
-        }
+        dismiss()
     }
 }
 
@@ -126,27 +111,43 @@ private extension NumberFormatter {
 }
 
 #Preview {
-    do {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(for: EntryTemplate.self, Subtask.self, configurations: config)
-        let context = container.mainContext
+    ModelPreviewHost()
+}
 
-        let client = Client(name: "Acme Corp")
-        context.insert(client)
+// Helper view for previews that sets up an in-memory container and seeds sample data.
+private struct ModelPreviewHost: View {
+    @Environment(\.modelContext) private var context
+    @State private var didSeed = false
 
-        let template = EntryTemplate(name: "Website Update", service: "Development", client: client)
+    @State private var template: EntryTemplate
+
+    init() {
+        // Create minimal sample graph
+        let client = Client(name: "Acme Corp", rate: 0)
+        let template = EntryTemplate(name: "Website Update", service: "WEBUP", client: client)
         template.subtasks = [
-            Subtask(title: "Design review", order: 0, template: template),
-            Subtask(title: "Implement changes", order: 1, template: template),
-            Subtask(title: "QA & handoff", order: 2, template: template)
+            TemplateSubtask(title: "Design review", order: 0, template: template),
+            TemplateSubtask(title: "Implement changes", order: 1, template: template),
+            TemplateSubtask(title: "QA & handoff", order: 2, template: template)
         ]
-        context.insert(template)
+        _template = State(initialValue: template)
+    }
 
-        return NavigationStack {
-            EntryTemplateEditorView(template: template)
-        }
-        .modelContainer(container)
-    } catch {
-        return Text("Preview Error: \(String(describing: error))")
+    var body: some View {
+        EntryTemplateEditorView(template: template)
+            .modelContainer(for: [EntryTemplate.self, TemplateSubtask.self], inMemory: true)
+            .onAppear {
+                if !didSeed {
+                    // Insert client and template into the in-memory context once
+                    if template.client.modelContext == nil {
+                        context.insert(template.client)
+                    }
+                    if template.modelContext == nil {
+                        context.insert(template)
+                    }
+                    didSeed = true
+                }
+            }
     }
 }
+

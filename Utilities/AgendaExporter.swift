@@ -116,7 +116,7 @@ struct AgendaExporter {
     // MARK: - Helpers
 
     private static func groupByClient(_ entries: [Entry]) -> [String: [Entry]] {
-        let grouped = Dictionary(grouping: entries) { $0.client.name }
+        let grouped = Dictionary(grouping: entries) { $0.clientName }
         // Sort each group by service then detail for stable output
         var sorted: [String: [Entry]] = [:]
         for (k, v) in grouped {

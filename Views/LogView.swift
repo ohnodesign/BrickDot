@@ -72,7 +72,7 @@ struct LogView: View {
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if !q.isEmpty {
             result = result.filter { e in
-                let clientName = e.client.name.lowercased()
+                let clientName = e.clientName.lowercased()
                 let service = e.service.lowercased()
                 let detail = e.detail.lowercased()
                 return clientName.contains(q) || service.contains(q) || detail.contains(q)
@@ -112,7 +112,7 @@ private struct LogEntryRow: View {
                 // ⭐️ or colored dot before client name (same color as status)
                 StatusMark(color: color(for: entry.status), starred: entry.isImportant)
 
-                Text(entry.client.name).font(.headline)
+                Text(entry.clientName).font(.headline)
                 Spacer()
                 Text(entry.hours * entry.rate,
                      format: .currency(code: Locale.current.currency?.identifier ?? "USD"))

@@ -424,7 +424,7 @@ private struct ActionRow: View {
                     pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
                 )
 
-                Text(entry.client.name)
+                Text(entry.clientName)
                     .font(.subheadline.weight(.semibold))
 
                 if let due = entry.dueDate, badge != .none {

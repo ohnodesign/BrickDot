@@ -29,7 +29,7 @@ struct InvoiceDetailView: View {
                     InvoiceKeyValueRow("Number", n)
                 }
                 InvoiceKeyValueRow("Date", invoice.createdAt, asDate: true)
-                InvoiceKeyValueRow("Client", invoice.client.name)
+                InvoiceKeyValueRow("Client", invoice.client?.name ?? "Unknown")
 
                 Divider()
 

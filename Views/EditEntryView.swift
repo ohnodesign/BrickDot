@@ -335,7 +335,7 @@ struct EditEntryView: View {
             }
             Button("Cancel", role: .cancel) { }
         } message: {
-            Text("This will remove the entry for \(entry.client.name) on \(DateFormatter.iso8601Day.string(from: entry.serviceDate)). This action can’t be undone.")
+            Text("This will remove the entry for \(entry.clientName) on \(DateFormatter.iso8601Day.string(from: entry.serviceDate)). This action can’t be undone.")
         }
         .toolbar {
             // Keyboard accessory

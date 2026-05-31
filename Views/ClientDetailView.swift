@@ -20,6 +20,7 @@ struct ClientDetailView: View {
     @State private var showNewTemplate = false
     @State private var selectedTemplate: EntryTemplate? = nil
     @State private var showEntryPicker = false
+    @State private var templateToEdit: EntryTemplate? = nil
 
     // Broad queries; filter in Swift
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
@@ -275,13 +276,19 @@ struct ClientDetailView: View {
                     } else {
                         ForEach(client.templates.sorted { $0.name < $1.name }, id: \.persistentModelID) { template in
                             HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(template.name).font(.subheadline).fontWeight(.semibold)
-                                    Text("\(template.service) — \(template.detail.isEmpty ? "No detail" : template.detail)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
+                                Button {
+                                    templateToEdit = template
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(template.name).font(.subheadline).fontWeight(.semibold)
+                                        Text("\(template.service) — \(template.detail.isEmpty ? "No detail" : template.detail)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                            .lineLimit(1)
+                                    }
                                 }
+                                .buttonStyle(.plain)
+
                                 Spacer()
                                 Button {
                                     selectedTemplate = template
@@ -292,7 +299,12 @@ struct ClientDetailView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button {
+                                    templateToEdit = template
+                                } label: {
+                                    Label("Edit", systemImage: "square.and.pencil")
+                                }.tint(.blue)
                                 Button(role: .destructive) {
                                     ctx.delete(template)
                                     try? ctx.save()
@@ -401,14 +413,22 @@ struct ClientDetailView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $showNewTemplate) {
+        .fullScreenCover(isPresented: $showNewTemplate) {
             NavigationStack {
                 NewTemplateView(client: client) {
                     showNewTemplate = false
                 }
             }
-            .presentationDetents([.medium])
-            .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(item: $templateToEdit) { template in
+            NavigationStack {
+                EntryTemplateEditorView(template: template)
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("Close") { templateToEdit = nil }
+                        }
+                    }
+            }
         }
     }
 
@@ -509,7 +529,7 @@ private struct ClientTodoRow: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
-                Text(entry.client.name)
+                Text(entry.clientName)
                     .font(.subheadline).fontWeight(.semibold)
                 Spacer()
                 Text(entry.service)
@@ -535,7 +555,7 @@ private struct ClientInProgressRow: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack {
                 StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.timerStartedAt != nil)
-                Text(entry.client.name)
+                Text(entry.clientName)
                     .font(.subheadline).fontWeight(.semibold)
                 Spacer()
                 if entry.timerStartedAt != nil && !entry.isImportant {
@@ -570,7 +590,7 @@ private struct ClientDoneRow: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
-                Text(entry.client.name)
+                Text(entry.clientName)
                     .font(.subheadline).fontWeight(.semibold)
                 Spacer()
                 Text(entry.service)
@@ -597,7 +617,7 @@ private struct RecentEntryRowWithInvoiceDot: View {
             HStack(spacing: 8) {
                 StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.status == .inProgress && entry.timerStartedAt != nil)
 
-                Text(entry.client.name).font(.headline)
+                Text(entry.clientName).font(.headline)
 
                 // Invoiced indicator stays (small green dot)
                 if isInvoiced {
@@ -740,6 +760,16 @@ private struct NewTemplateView: View {
     @State private var notes: String = ""
     @State private var defaultHours: Double = 0
 
+    @State private var newSubtaskTitle: String = ""
+    @State private var pendingSubtasks: [PendingTemplateSubtask] = []
+
+    private struct PendingTemplateSubtask: Identifiable, Hashable {
+        let id = UUID()
+        var title: String
+        var isCompleted: Bool = false
+        var order: Int = 0
+    }
+
     var body: some View {
         Form {
             Section("Template Info") {
@@ -776,6 +806,61 @@ private struct NewTemplateView: View {
                 }
             }
 
+            // Subtasks editor - no nested List, just ForEach
+            Section {
+                if pendingSubtasks.isEmpty {
+                    Text("No subtasks yet").foregroundStyle(.secondary)
+                } else {
+                    ForEach($pendingSubtasks) { $st in
+                        HStack {
+                            Button(action: { st.isCompleted.toggle() }) {
+                                Image(systemName: st.isCompleted ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(st.isCompleted ? .green : .secondary)
+                            }
+                            .buttonStyle(.plain)
+
+                            TextField("Subtask title", text: $st.title)
+
+                            Spacer()
+
+                            Image(systemName: "line.3.horizontal")
+                                .foregroundStyle(.tertiary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .onDelete { offsets in
+                        withAnimation {
+                            pendingSubtasks.remove(atOffsets: offsets)
+                            normalizeOrders()
+                        }
+                    }
+                    .onMove { source, dest in
+                        withAnimation {
+                            pendingSubtasks.move(fromOffsets: source, toOffset: dest)
+                            normalizeOrders()
+                        }
+                    }
+                }
+
+                HStack {
+                    TextField("New subtask", text: $newSubtaskTitle)
+                        .onSubmit(addPendingSubtask)
+                    Button(action: addPendingSubtask) {
+                        Label("Add", systemImage: "plus")
+                    }
+                    .disabled(newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                .padding(.vertical, 4)
+            } header: {
+                HStack {
+                    Text("Subtasks")
+                    Spacer()
+                    if !pendingSubtasks.isEmpty {
+                        Text("\(pendingSubtasks.count)").foregroundStyle(.secondary)
+                    }
+                }
+            }
+
             Section {
                 Button {
                     saveTemplate()
@@ -790,6 +875,25 @@ private struct NewTemplateView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Cancel") { dismiss() }
             }
+            ToolbarItem(placement: .navigationBarTrailing) {
+                EditButton()
+            }
+        }
+    }
+
+    private func addPendingSubtask() {
+        let title = newSubtaskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        withAnimation {
+            let order = (pendingSubtasks.map { $0.order }.max() ?? -1) + 1
+            pendingSubtasks.append(PendingTemplateSubtask(title: title, isCompleted: false, order: order))
+            newSubtaskTitle = ""
+        }
+    }
+
+    private func normalizeOrders() {
+        for idx in pendingSubtasks.indices {
+            if pendingSubtasks[idx].order != idx { pendingSubtasks[idx].order = idx }
         }
     }
 
@@ -803,6 +907,19 @@ private struct NewTemplateView: View {
             client: client
         )
         ctx.insert(template)
+
+        // Attach any pending subtasks to the template
+        if !pendingSubtasks.isEmpty {
+            let sorted = pendingSubtasks.sorted { $0.order < $1.order }
+            for st in sorted where !st.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let sub = TemplateSubtask(title: st.title.trimmingCharacters(in: .whitespacesAndNewlines),
+                                          isCompleted: st.isCompleted,
+                                          order: st.order,
+                                          template: template)
+                template.subtasks.append(sub)
+            }
+        }
+
         try? ctx.save()
         onSaved()
     }

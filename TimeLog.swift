@@ -3,15 +3,14 @@ import SwiftData
 
 @Model
 final class TimeLog {
-    var addedAt: Date
-    var hours: Double
-    var note: String
+    var addedAt: Date = Date()
+    var hours: Double = 0
+    var note: String = ""
 
-    // Relationship back to the owning entry
     @Relationship(deleteRule: .noAction)
-    var entry: Entry
+    var entry: Entry?
 
-    init(addedAt: Date = Date(), hours: Double, note: String = "", entry: Entry) {
+    init(addedAt: Date = Date(), hours: Double = 0, note: String = "", entry: Entry? = nil) {
         self.addedAt = addedAt
         self.hours = hours
         self.note = note

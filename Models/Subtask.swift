@@ -3,17 +3,16 @@ import SwiftData
 
 @Model
 final class Subtask {
-    var title: String
-    var hours: Double         // ⏱ time logged for this subtask
-    var isDone: Bool          // ✅ checkbox state
-    var completedAt: Date?    // 📅 when it was marked done
-    var createdAt: Date       // 🕒 audit / sort helper
+    var title: String = ""
+    var hours: Double = 0
+    var isDone: Bool = false
+    var completedAt: Date?
+    var createdAt: Date = Date()
 
-    // Relationship back to entry
-    var parent: Entry
+    var parent: Entry?
 
-    init(title: String,
-         parent: Entry,
+    init(title: String = "",
+         parent: Entry? = nil,
          hours: Double = 0,
          isDone: Bool = false,
          completedAt: Date? = nil,

@@ -92,7 +92,7 @@ enum Backup {
                 detail: entry.detail,
                 hours: entry.hours,
                 rate: entry.rate,
-                clientName: entry.client.name,
+                clientName: entry.clientName,
                 isInProgress: (entry.status == .inProgress),
                 timerStartedAt: entry.timerStartedAt,
                 status: entry.status,
@@ -179,7 +179,7 @@ enum Backup {
         }
 
         let existingEntries: [Entry] = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
-        let existingEntryKeys = Set(existingEntries.map { entryDeduplicationKey($0.client.name, $0.serviceDate, $0.service, $0.detail, $0.hours) })
+        let existingEntryKeys = Set(existingEntries.map { entryDeduplicationKey($0.clientName, $0.serviceDate, $0.service, $0.detail, $0.hours) })
 
         var importedEntries = 0
         var hadLegacyStarred = false
@@ -250,7 +250,7 @@ enum Backup {
         }
 
         let existingEntries: [Entry] = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
-        let existingEntryKeys = Set(existingEntries.map { entryDeduplicationKey($0.client.name, $0.serviceDate, $0.service, $0.detail, $0.hours) })
+        let existingEntryKeys = Set(existingEntries.map { entryDeduplicationKey($0.clientName, $0.serviceDate, $0.service, $0.detail, $0.hours) })
 
         for e in payload.entries {
             let key = e.clientName.lowercased()

@@ -184,7 +184,7 @@ private struct LoggedTodayEntryRow: View {
                     isImportant: entry.isImportant,
                     pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
                 )
-                Text(entry.client.name).font(.headline)
+                Text(entry.clientName).font(.headline)
                 Spacer()
                 let amount = todayHours * entry.rate
                 Text(amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))

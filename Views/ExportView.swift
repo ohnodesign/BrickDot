@@ -452,7 +452,7 @@ struct ExportView: View {
     private var entriesForSingleMonth: [Entry] {
         guard let c = selectedClient else { return [] }
         let range = monthStart.bdStartOfMonth ... monthStart.bdEndOfMonth
-        let base = allEntries.filter { $0.client.persistentModelID == c.persistentModelID && range.contains($0.serviceDate) }
+        let base = allEntries.filter { $0.client?.persistentModelID == c.persistentModelID && range.contains($0.serviceDate) }
         return applyingServiceFilter(base)
     }
 
@@ -460,7 +460,7 @@ struct ExportView: View {
         guard let c = selectedClient else { return [] }
         let start = min(monthStart.bdStartOfMonth, monthEnd.bdStartOfMonth)
         let end   = max(monthStart.bdEndOfMonth, monthEnd.bdEndOfMonth)
-        let base = allEntries.filter { $0.client.persistentModelID == c.persistentModelID && $0.serviceDate >= start && $0.serviceDate <= end }
+        let base = allEntries.filter { $0.client?.persistentModelID == c.persistentModelID && $0.serviceDate >= start && $0.serviceDate <= end }
         return applyingServiceFilter(base)
     }
 
@@ -468,7 +468,7 @@ struct ExportView: View {
         guard let c = selectedClient else { return [] }
         let start = min(rangeStart, rangeEnd)
         let end   = max(rangeStart, rangeEnd)
-        let base = allEntries.filter { $0.client.persistentModelID == c.persistentModelID && $0.serviceDate >= start && $0.serviceDate <= end }
+        let base = allEntries.filter { $0.client?.persistentModelID == c.persistentModelID && $0.serviceDate >= start && $0.serviceDate <= end }
         return applyingServiceFilter(base)
     }
 
@@ -610,7 +610,7 @@ struct ExportView: View {
                                             .foregroundStyle(.green)
                                             .accessibilityLabel("Invoiced")
                                     }
-                                    Text(e.client.name).font(.headline)
+                                    Text(e.clientName).font(.headline)
                                 }
                                 if !e.detail.isEmpty {
                                     Text(e.detail)
@@ -749,7 +749,7 @@ struct ExportView: View {
 
     /// (To Do, In Progress, Done-last-20). Done respects service filter and ignores date scope.
     private func agendaLists(for client: Client) -> (todos: [Entry], inProg: [Entry], done: [Entry]) {
-        let clientEntries = allEntries.filter { $0.client.persistentModelID == client.persistentModelID }
+        let clientEntries = allEntries.filter { $0.client?.persistentModelID == client.persistentModelID }
         let filtered = applyingServiceFilter(clientEntries)
 
         let sortedActive = filtered.sorted {
@@ -908,7 +908,7 @@ struct ExportView: View {
     private func uniqueInvoiceTitle(base: String, for client: Client) -> String {
         let baseTrim = base.trimmingCharacters(in: .whitespacesAndNewlines)
         let fetched: [Invoice] = (try? ctx.fetch(FetchDescriptor<Invoice>())) ?? []
-        let clientInvoices = fetched.filter { $0.client.persistentModelID == client.persistentModelID }
+        let clientInvoices = fetched.filter { $0.client?.persistentModelID == client.persistentModelID }
         let count = clientInvoices.filter { $0.title.hasPrefix(baseTrim) }.count
         return count == 0 ? baseTrim : "\(baseTrim) \(count + 1)"
     }

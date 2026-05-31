@@ -20,8 +20,9 @@ struct BrickDotApp: App {
             Invoice.self,
             Subtask.self,
             TimeLog.self,
-            EntryTemplate.self
-        ])
+            EntryTemplate.self,
+            TemplateSubtask.self
+        ], cloudKitDatabase: .automatic)
     }
 
     // MARK: - Appearance mapping

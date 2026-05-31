@@ -110,8 +110,10 @@
 		EEDCD69F2E4D7CFB00C792C4 /* DateFormatter+ISO.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "DateFormatter+ISO.swift"; sourceTree = "<group>"; };
 		EEDCD6AF2E4D830400C792C4 /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Constants.swift; sourceTree = "<group>"; };
 		EEDCD6B12E4D88BA00C792C4 /* BrickDotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrickDotApp.swift; sourceTree = "<group>"; };
-		EEE835CE2E9C973300317915 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SettingsView.swift"; sourceTree = "<group>"; };
+		EEE835CE2E9C973300317915 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		EEE835D02E9C994F00317915 /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		EEF0D1BE2FCCAEDB00DD4158 /* BrickDotDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BrickDotDebug.entitlements; sourceTree = "<group>"; };
+		EEF0D1BF2FCCAF2400DD4158 /* BrickDot-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "BrickDot-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -128,6 +130,8 @@
 		EEDCD6462E4D77EF00C792C4 = {
 			isa = PBXGroup;
 			children = (
+				EEF0D1BF2FCCAF2400DD4158 /* BrickDot-Info.plist */,
+				EEF0D1BE2FCCAEDB00DD4158 /* BrickDotDebug.entitlements */,
 				EEDCD6B12E4D88BA00C792C4 /* BrickDotApp.swift */,
 				EEDCD6AF2E4D830400C792C4 /* Constants.swift */,
 				EEDA2F642E4F78A6007CA39B /* BrickDot.entitlements */,
@@ -479,13 +483,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
-				CODE_SIGN_ENTITLEMENTS = BrickDot.entitlements;
+				CODE_SIGN_ENTITLEMENTS = BrickDotDebug.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 87M434KNBL;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "BrickDot-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = BrickDot;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -519,6 +524,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "BrickDot-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = BrickDot;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;

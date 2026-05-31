@@ -2,15 +2,14 @@ import SwiftData
 
 @Model
 final class Client {
-    @Attribute(.unique) var name: String
-    var rate: Double
+    var name: String = ""
+    var rate: Double = 0
     @Relationship(deleteRule: .cascade, inverse: \Entry.client)
     var entries: [Entry] = []
     @Relationship(deleteRule: .cascade, inverse: \EntryTemplate.client)
     var templates: [EntryTemplate] = []
-    init(name: String, rate: Double) { self.name = name; self.rate = rate }
+    init(name: String = "", rate: Double = 0) { self.name = name; self.rate = rate }
 }
-import SwiftData
 
 extension Client: Equatable, Hashable {
     static func == (lhs: Client, rhs: Client) -> Bool {
