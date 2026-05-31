@@ -11,7 +11,7 @@ final class Entry {
     var rate: Double = 0
     var client: Client?
     var invoice: Invoice?
-    var status: EntryStatus = .todo
+    var status: EntryStatus = EntryStatus.todo
     var timerStartedAt: Date?
     var isImportant: Bool = false
     var dueDate: Date? = nil
