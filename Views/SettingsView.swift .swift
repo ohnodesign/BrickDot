@@ -43,6 +43,15 @@ enum AppPrefsKey {
 
 // MARK: - Settings screen
 struct SettingsView: View {
+    @Environment(\.modelContext) private var modelContext
+
+    @State private var showImportPicker = false
+    @State private var showExportShare = false
+    @State private var exportURL: URL?
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var showAlert = false
+
     // Home & Sections
     @AppStorage(AppPrefsKey.homeShowStarred)    private var showStarred = true
     @AppStorage(AppPrefsKey.homeShowTodo)       private var showTodo = false
@@ -175,6 +184,21 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .dynamicTypeSize(largeControls ? .accessibility2 : .large)
+        .sheet(isPresented: $showImportPicker) {
+            DocumentPicker { url in
+                performImport(url: url)
+            }
+        }
+        .sheet(isPresented: $showExportShare) {
+            if let exportURL {
+                ShareSheet(activityItems: [exportURL])
+            }
+        }
+        .alert(alertTitle, isPresented: $showAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(alertMessage)
+        }
     }
 
     // MARK: - Helpers
@@ -194,8 +218,39 @@ struct SettingsView: View {
     private func accentColor(from key: String) -> Color {
         switch key { case "blue": return .blue; case "indigo": return .indigo; case "brick": return .brick; case "green": return .green; case "orange": return .orange; default: return .indigo }
     }
-    private func exportBackup() { /* TODO */ }
-    private func importBackup() { /* TODO */ }
+    private func exportBackup() {
+        do {
+            let url = try Backup.exportJSON(ctx: modelContext)
+            exportURL = url
+            showExportShare = true
+        } catch {
+            alertTitle = "Export Failed"
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+    }
+
+    private func importBackup() {
+        showImportPicker = true
+    }
+
+    private func performImport(url: URL) {
+        do {
+            let report = try Backup.importJSONWithReport(ctx: modelContext, url: url)
+            alertTitle = "Import Complete"
+            var msg = "Imported \(report.importedClients) new client(s) and \(report.importedEntries) entry/entries."
+            if report.hadLegacyStarred {
+                msg += "\n\nSome entries came from an older backup without starred info — they default to unstarred."
+            }
+            alertMessage = msg
+            showAlert = true
+        } catch {
+            alertTitle = "Import Failed"
+            alertMessage = error.localizedDescription
+            showAlert = true
+        }
+    }
+
     private func resetSampleData() { /* TODO */ }
     private func versionString() -> String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
