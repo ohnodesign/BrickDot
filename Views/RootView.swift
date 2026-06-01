@@ -104,22 +104,15 @@ private struct iPadRootView: View {
                 // Quick Add
                 Section {
                     Button { showNewEntry = true } label: {
-                        HStack(spacing: 8) {
+                        HStack(spacing: 10) {
                             Image(systemName: "hare.fill")
-                                .font(.title3)
+                                .font(.title2)
                             Text("Quick Add")
-                                .font(.subheadline.weight(.bold))
+                                .font(.headline.weight(.bold))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .foregroundStyle(.white)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(red: 0.75, green: 0.60, blue: 0.0))
-                        )
+                        .foregroundStyle(Color(red: 0.75, green: 0.60, blue: 0.0))
                     }
                     .buttonStyle(.plain)
-                    .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
                 }
 
                 // Dashboard cards (Reminders-style 2x2 grid)
