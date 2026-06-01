@@ -243,17 +243,6 @@ struct HomeView: View {
                         }
                     }
                 }
-                if sizeClass == .regular {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.secondary)
-                            TextField("Search", text: $searchText)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: 220)
-                        }
-                    }
-                }
             }
     }
 
