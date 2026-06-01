@@ -140,6 +140,17 @@ struct SearchView: View {
             .onSubmit(of: .search) {
                 saveRecent(searchText)
             }
+            .onChange(of: searchText) { old, new in
+                // Save to recents when user clears or changes away from a meaningful search
+                if !old.isEmpty && old.count >= 3 && (new.isEmpty || new.count < old.count - 2) {
+                    saveRecent(old)
+                }
+            }
+            .onDisappear {
+                if searchText.count >= 3 {
+                    saveRecent(searchText)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Done") { dismiss() }
