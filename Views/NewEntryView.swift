@@ -47,6 +47,8 @@ struct NewEntryView: View {
 
     var prefillClient: Client? = nil
     var prefillTemplate: EntryTemplate? = nil
+    var prefillService: String? = nil
+    var prefillDetail: String? = nil
 
     private struct PendingSubtask: Identifiable, Hashable {
         let id = UUID()
@@ -311,6 +313,9 @@ struct NewEntryView: View {
                 if selectedClient == nil { selectedClient = clients.first }
                 if let c = selectedClient { rate = c.rate }
             }
+            // Apply Quick Add prefills
+            if let s = prefillService { service = s }
+            if let d = prefillDetail { detail = d }
             // Apply template if provided
             if let template = prefillTemplate {
                 service = template.service

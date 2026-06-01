@@ -39,7 +39,7 @@ private struct iPhoneRootView: View {
             .tag(RootTab.stats)
 
             NavigationStack {
-                NewEntryView(onSaved: { selectedTab = .home })
+                QuickAddView(onSaved: { selectedTab = .home })
             }
             .environment(\.modelContext, ctx)
             .tabItem { Label("New", systemImage: "plus.circle") }
@@ -229,13 +229,11 @@ private struct iPadRootView: View {
             detailPath = NavigationPath()
         }
         .sheet(isPresented: $showNewEntry) {
-            NavigationStack {
-                NewEntryView(onSaved: {
-                    showNewEntry = false
-                    selection = .home
-                })
-            }
-            .presentationDetents([.medium, .large])
+            QuickAddView(onSaved: {
+                showNewEntry = false
+                selection = .home
+            })
+            .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
     }

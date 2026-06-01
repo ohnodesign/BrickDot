@@ -218,11 +218,9 @@ struct HomeView: View {
                 view.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
             }
             .sheet(isPresented: $showNewEntry) {
-                NavigationStack {
-                    NewEntryView(onSaved: { showNewEntry = false })
-                }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                QuickAddView(onSaved: { showNewEntry = false })
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
             }
             .toolbar {
                 if sizeClass == .compact {

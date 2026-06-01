@@ -7,6 +7,7 @@ struct StatsPageView: View {
     @State private var selectedStat: StatsPageSelectedStat? = nil
     @State private var selectedDueList: StatsPageSelectedStat? = nil
     @State private var calendarMonthAnchor: Date = Date()
+    @State private var showNewEntry = false
 
     var body: some View {
         NavigationStack {
@@ -117,9 +118,7 @@ struct StatsPageView: View {
                 }
                 // ➝ New Entry
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink {
-                        NewEntryView()
-                    } label: {
+                    Button { showNewEntry = true } label: {
                         Image(systemName: "plus.circle")
                             .imageScale(.large)
                             .accessibilityLabel("New Entry")
@@ -131,6 +130,11 @@ struct StatsPageView: View {
             }
             .sheet(item: $selectedDueList) { stat in
                 EntriesListView(title: stat.title, entries: stat.entries)
+            }
+            .sheet(isPresented: $showNewEntry) {
+                QuickAddView(onSaved: { showNewEntry = false })
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
             }
         }
     }

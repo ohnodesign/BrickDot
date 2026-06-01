@@ -61,10 +61,11 @@ struct ClientListView: View {
             NavigationStack { NewClientView() }
         }
         .sheet(isPresented: $showNewEntry) {
-            NavigationStack {
-                NewEntryView(onSaved: { showNewEntry = false }, prefillClient: newEntryPrefillClient)
-            }
-            .presentationDetents([.medium, .large])
+            QuickAddView(
+                prefillClient: newEntryPrefillClient,
+                onSaved: { showNewEntry = false }
+            )
+            .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
     }

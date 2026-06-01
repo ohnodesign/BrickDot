@@ -422,15 +422,24 @@ struct ClientDetailView: View {
             }
         }
         .sheet(isPresented: $showNewEntry) {
-            NavigationStack {
-                NewEntryView(
-                    onSaved: { showNewEntry = false; selectedTemplate = nil },
+            if let template = selectedTemplate {
+                NavigationStack {
+                    NewEntryView(
+                        onSaved: { showNewEntry = false; selectedTemplate = nil },
+                        prefillClient: client,
+                        prefillTemplate: template
+                    )
+                }
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
+            } else {
+                QuickAddView(
                     prefillClient: client,
-                    prefillTemplate: selectedTemplate
+                    onSaved: { showNewEntry = false }
                 )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
         }
         .fullScreenCover(isPresented: $showNewTemplate) {
             NavigationStack {
