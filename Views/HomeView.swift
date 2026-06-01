@@ -16,14 +16,34 @@ struct HomeView: View {
                 // MARK: - Greeting & Today's Focus
                 if searchText.isEmpty {
                     Section {
-                        GreetingHeader(
-                            name: displayName,
-                            focusEntries: todayFocusEntries,
-                            potentialRevenue: todayFocusRevenue
-                        )
+                        GreetingText(name: displayName)
+                            .listRowSeparator(.hidden)
                     }
-                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 4, trailing: 16))
+
+                    if !todayFocusEntries.isEmpty {
+                        Section {
+                            Text("Today's Focus")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                                .listRowSeparator(.hidden)
+
+                            ForEach(Array(todayFocusEntries.enumerated()), id: \.element.persistentModelID) { index, entry in
+                                NavigationLink { EditEntryView(entry: entry) } label: {
+                                    FocusRow(index: index, entry: entry)
+                                }
+                            }
+
+                            HStack {
+                                Text("Potential Revenue:")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(todayFocusRevenue, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                                    .font(.subheadline.weight(.bold))
+                            }
+                        }
+                    }
                 }
 
                 // MARK: - Dashboard (iPhone only — iPad shows this in the sidebar)
@@ -668,12 +688,10 @@ private struct ActionRow: View {
     }
 }
 
-// MARK: - Greeting Header
+// MARK: - Greeting & Focus Components
 
-private struct GreetingHeader: View {
+private struct GreetingText: View {
     let name: String
-    let focusEntries: [Entry]
-    let potentialRevenue: Double
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -685,63 +703,39 @@ private struct GreetingHeader: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            // Greeting
-            Text("\(greeting)\(name.isEmpty ? "" : " \(name)")")
-                .font(.title2.weight(.bold))
+        Text("\(greeting)\(name.isEmpty ? "" : " \(name)")")
+            .font(.title2.weight(.bold))
+    }
+}
 
-            if !focusEntries.isEmpty {
-                // Today's Focus
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("Today's Focus")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+private struct FocusRow: View {
+    let index: Int
+    let entry: Entry
 
-                    ForEach(Array(focusEntries.enumerated()), id: \.element.persistentModelID) { index, entry in
-                        NavigationLink {
-                            EditEntryView(entry: entry)
-                        } label: {
-                            HStack(alignment: .top, spacing: 10) {
-                                Text("\(index + 1).")
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.secondary)
-                                    .frame(width: 20, alignment: .trailing)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(focusLabel(for: entry))
-                                        .font(.subheadline.weight(.medium))
-                                        .lineLimit(1)
-                                    Text(entry.clientName)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-
-                                Spacer()
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                // Revenue
-                HStack {
-                    Text("Potential Revenue Today:")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text(potentialRevenue, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                        .font(.subheadline.weight(.bold))
-                }
-                .padding(.top, 4)
-            }
-        }
+    private var clientColor: Color {
+        entry.client?.accentColor ?? ClientColors.palette[0].color
     }
 
-    private func focusLabel(for entry: Entry) -> String {
-        if !entry.detail.isEmpty {
-            return "\(entry.service) — \(entry.detail)"
+    var body: some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(clientColor)
+                .frame(width: 4)
+
+            Text("\(index + 1).")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 20, alignment: .trailing)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.detail.isEmpty ? entry.service : "\(entry.service) — \(entry.detail)")
+                    .font(.subheadline.weight(.medium))
+                    .lineLimit(1)
+                Text(entry.clientName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
-        return entry.service
     }
 }
 

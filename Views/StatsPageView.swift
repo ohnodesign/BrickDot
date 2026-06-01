@@ -56,11 +56,23 @@ struct StatsPageView: View {
                 // Status counts
                 Section {
                     HStack(spacing: 0) {
-                        StatusCountPill(icon: "circle", label: "To Do", count: todoCount, tint: .orange)
+                        Button {
+                            selectedStat = StatsPageSelectedStat(title: "To Do", entries: todoEntries)
+                        } label: {
+                            StatusCountPill(icon: "circle", label: "To Do", count: todoCount, tint: .orange)
+                        }.buttonStyle(.plain)
                         Divider().frame(height: 36)
-                        StatusCountPill(icon: "bolt.fill", label: "In Progress", count: inProgressCount, tint: Color.brick)
+                        Button {
+                            selectedStat = StatsPageSelectedStat(title: "In Progress", entries: inProgressEntriesList)
+                        } label: {
+                            StatusCountPill(icon: "bolt.fill", label: "In Progress", count: inProgressCount, tint: Color.brick)
+                        }.buttonStyle(.plain)
                         Divider().frame(height: 36)
-                        StatusCountPill(icon: "star.fill", label: "Starred", count: starredCount, tint: .yellow)
+                        Button {
+                            selectedStat = StatsPageSelectedStat(title: "Starred", entries: starredEntries)
+                        } label: {
+                            StatusCountPill(icon: "star.fill", label: "Starred", count: starredCount, tint: .yellow)
+                        }.buttonStyle(.plain)
                     }
                 }
 
@@ -124,9 +136,12 @@ struct StatsPageView: View {
     }
 
     // MARK: - Status Counts
-    private var todoCount: Int { allEntries.filter { $0.status == .todo }.count }
-    private var inProgressCount: Int { allEntries.filter { $0.status == .inProgress }.count }
-    private var starredCount: Int { allEntries.filter { $0.isImportant && $0.status != .done }.count }
+    private var todoEntries: [Entry] { allEntries.filter { $0.status == .todo } }
+    private var todoCount: Int { todoEntries.count }
+    private var inProgressEntriesList: [Entry] { allEntries.filter { $0.status == .inProgress } }
+    private var inProgressCount: Int { inProgressEntriesList.count }
+    private var starredEntries: [Entry] { allEntries.filter { $0.isImportant && $0.status != .done } }
+    private var starredCount: Int { starredEntries.count }
 
     // MARK: - Derived (mirrors HomeView)
     private func importantFirst(_ lhs: Entry, _ rhs: Entry) -> Bool {

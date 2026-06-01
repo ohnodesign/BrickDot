@@ -158,11 +158,14 @@ private struct iPadRootView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                 }
 
-                // Top Clients
-                Section("Clients") {
-                    ForEach(topClients, id: \.persistentModelID) { client in
+                // Clients
+                Section {
+                    ForEach(allClients, id: \.persistentModelID) { client in
                         NavigationLink(value: SidebarDestination.client(client.persistentModelID)) {
-                            HStack {
+                            HStack(spacing: 8) {
+                                Circle()
+                                    .fill(client.accentColor)
+                                    .frame(width: 10, height: 10)
                                 Text(client.name)
                                 Spacer()
                                 let count = client.entriesList.filter { $0.status != .done }.count
@@ -173,10 +176,6 @@ private struct iPadRootView: View {
                                 }
                             }
                         }
-                    }
-
-                    NavigationLink(value: SidebarDestination.allClients) {
-                        Label("All Clients", systemImage: "person.2")
                     }
                 }
 
@@ -325,17 +324,6 @@ private struct iPadRootView: View {
         }
     }
 
-    private var topClients: [Client] {
-        // Top 5 clients by number of open entries
-        allClients
-            .sorted { a, b in
-                let aOpen = a.entriesList.filter { $0.status != .done }.count
-                let bOpen = b.entriesList.filter { $0.status != .done }.count
-                return aOpen > bOpen
-            }
-            .prefix(5)
-            .map { $0 }
-    }
 }
 
 // MARK: - Helpers

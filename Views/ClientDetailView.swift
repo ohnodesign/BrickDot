@@ -7,6 +7,7 @@ struct ClientDetailView: View {
     @Bindable var client: Client
 
     // Collapsible sections (To Do / In Progress start collapsed)
+    @AppStorage("client.showStarred") private var showStarred = true
     @AppStorage("client.showTodo") private var showTodo = false
     @AppStorage("client.showInProgress") private var showInProgress = false
     @AppStorage("client.showAllClientDone") private var showAllClientDone = false
@@ -28,6 +29,12 @@ struct ClientDetailView: View {
 
     // Filtered for this client
     private var clientEntries: [Entry] { allEntries.filter { $0.client == client } }
+
+    private var clientStarredSorted: [Entry] {
+        clientEntries
+            .filter { $0.isImportant && $0.status != .done }
+            .sorted { $0.serviceDate > $1.serviceDate }
+    }
 
     // Important-first sorting, then newest first
     private var clientTodosSorted: [Entry] {
@@ -146,6 +153,27 @@ struct ClientDetailView: View {
                 HStack { Text("Invoices"); Spacer(); Text("\(clientInvoices.count)").foregroundStyle(.secondary) }
             }
 
+            // Starred
+            Section {
+                DisclosureGroup(isExpanded: $showStarred) {
+                    let items = clientStarredSorted
+                    if items.isEmpty {
+                        Text("No starred items").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(items) { e in
+                            NavigationLink { EditEntryView(entry: e) } label: {
+                                SharedEntryRow(entry: e)
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "star.fill").foregroundStyle(.yellow)
+                        Text("Starred (\(clientStarredSorted.count))")
+                    }
+                }
+            }
+
             // To Do - matches HomeView (star/dot before client, important-first)
             Section {
                 DisclosureGroup(isExpanded: $showTodo) {
@@ -159,6 +187,8 @@ struct ClientDetailView: View {
                                 ClientTodoRow(entry: e)
                             }
                             .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
                         }
                     }
                 } label: {
@@ -182,23 +212,8 @@ struct ClientDetailView: View {
                                 ClientInProgressRow(entry: e)
                             }
                             .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if e.timerStartedAt != nil {
-                                    Button { quickPauseAndAdd(e) } label: {
-                                        Label("Pause & Add", systemImage: "pause.circle")
-                                    }.tint(.orange)
-                                } else {
-                                    Button { quickStart(e) } label: {
-                                        Label("Start", systemImage: "play.circle")
-                                    }.tint(.green)
-                                }
-                                Button { quickBump(e, 0.25) } label: { Text("+15m") }.tint(.blue)
-                                Button { quickBump(e, 0.5) }  label: { Text("+30m") }.tint(.indigo)
-                                Button { quickBump(e, 1.0) }  label: { Text("+1h") }.tint(.purple)
-                                Button(role: .destructive) { markDone(e) } label: {
-                                    Label("Done", systemImage: "checkmark.circle")
-                                }
-                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
                         }
                     }
                 } label: {
@@ -223,6 +238,8 @@ struct ClientDetailView: View {
                                 ClientDoneRow(entry: e)
                             }
                             .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
                         }
                         if items.count > 20 {
                             Button(action: { withAnimation { showAllClientDone.toggle() } }) {
@@ -456,6 +473,48 @@ struct ClientDetailView: View {
         e.status = .done
         e.completedAt = Date()
         try? ctx.save()
+    }
+
+    @ViewBuilder
+    func trailingSwipe(_ e: Entry) -> some View {
+        if e.status == .inProgress && e.timerStartedAt != nil {
+            Button { quickPauseAndAdd(e) } label: {
+                Label("Pause & Add", systemImage: "pause.circle")
+            }.tint(.orange)
+        } else if e.status != .done {
+            Button { quickStart(e) } label: {
+                Label("Start", systemImage: "play.circle")
+            }.tint(.green)
+        }
+        Button { quickBump(e, 0.25) } label: { Text("+15m") }.tint(.blue)
+        Button { quickBump(e, 0.5) }  label: { Text("+30m") }.tint(.indigo)
+    }
+
+    @ViewBuilder
+    func leadingSwipe(_ e: Entry) -> some View {
+        Button {
+            e.isImportant.toggle()
+            try? ctx.save()
+        } label: {
+            Label(e.isImportant ? "Unstar" : "Star",
+                  systemImage: e.isImportant ? "star.slash.fill" : "star.fill")
+        }.tint(.yellow)
+
+        if e.status != .todo {
+            Button { e.status = .todo; e.timerStartedAt = nil; try? ctx.save() } label: {
+                Label("To Do", systemImage: "circle")
+            }.tint(.orange)
+        }
+        if e.status != .inProgress {
+            Button { e.status = .inProgress; if e.timerStartedAt == nil { e.timerStartedAt = Date() }; try? ctx.save() } label: {
+                Label("In Progress", systemImage: "bolt.fill")
+            }.tint(Color.brick)
+        }
+        if e.status != .done {
+            Button { markDone(e) } label: {
+                Label("Done", systemImage: "checkmark.circle.fill")
+            }.tint(.green)
+        }
     }
 }
 
