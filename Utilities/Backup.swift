@@ -213,6 +213,7 @@ enum Backup {
             ctx.insert(model)
             for st in e.subtasks ?? [] {
                 let subtask = Subtask(title: st.title, parent: model, hours: st.hours, isDone: st.isDone)
+                ctx.insert(subtask)
                 model.subtasksList.append(subtask)
             }
             importedEntries += 1
@@ -283,6 +284,7 @@ enum Backup {
             ctx.insert(model)
             for st in e.subtasks ?? [] {
                 let subtask = Subtask(title: st.title, parent: model, hours: st.hours, isDone: st.isDone)
+                ctx.insert(subtask)
                 model.subtasksList.append(subtask)
             }
         }

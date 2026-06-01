@@ -370,6 +370,7 @@ struct NewEntryView: View {
                                 parent: entry,
                                 hours: 0,
                                 isDone: st.isDone)
+            ctx.insert(model)
             entry.subtasksList.append(model)
         }
 

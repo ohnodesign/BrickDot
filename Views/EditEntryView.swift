@@ -249,6 +249,7 @@ struct EditEntryView: View {
                 // Add new subtask
                 Button {
                     let new = Subtask(title: "", parent: entry)
+                    ctx.insert(new)
                     entry.subtasksList.append(new)
                     try? ctx.save()
                     focusedSubtaskID = new.persistentModelID
