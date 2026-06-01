@@ -259,7 +259,6 @@ struct HomeView: View {
     // MARK: - Capped Section Builder
 
     @ViewBuilder
-    @ViewBuilder
     private func cappedSection(key: String, entries: [Entry], badge: ActionRowBadge?, icon: String, title: String, tint: Color, iconScale: CGFloat = 1.0) -> some View {
         if !entries.isEmpty {
             let cap = 3
