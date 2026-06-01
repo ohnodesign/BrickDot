@@ -91,7 +91,9 @@ struct QuickAddView: View {
                     HStack(spacing: 8) {
                         Circle().fill(parsed.client.accentColor).frame(width: 10, height: 10)
                         Text(parsed.client.name).font(.subheadline.weight(.semibold))
-                        Text(parsed.service).font(.caption).foregroundStyle(.secondary)
+                        if !parsed.service.isEmpty {
+                            Text(parsed.service).font(.caption).foregroundStyle(.secondary)
+                        }
                         if !parsed.description.isEmpty {
                             Text("·").foregroundStyle(.secondary)
                             Text(parsed.description).font(.caption).foregroundStyle(.secondary).lineLimit(1)
@@ -100,12 +102,35 @@ struct QuickAddView: View {
                     }
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 8).fill(theme.accentLight.opacity(0.35)))
-                } else if !rawInput.isEmpty && rawInput.contains(" ") {
+                } else if rawInput.count >= 2 {
                     Text("No match — try a different shortcode or use Pick Manually")
                         .font(.caption).foregroundStyle(.orange)
                 }
 
-                // Buttons row
+                // Quick Save button
+                Button(action: save) {
+                    HStack {
+                        ZStack {
+                            Circle()
+                                .fill(.white.opacity(0.2))
+                                .frame(width: 24, height: 24)
+                            Image(systemName: "plus")
+                                .font(.system(size: 12, weight: .bold))
+                        }
+                        Text(isSaving ? "Saving…" : "Quick Save")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(canSave ? theme.quickCapture : Color(.systemGray4))
+                    )
+                    .foregroundStyle(theme.buttonText)
+                }
+                .disabled(!canSave || isSaving)
+
+                // Alternative entry buttons
                 HStack(spacing: 12) {
                     Button {
                         showManualPickers = true
@@ -136,28 +161,10 @@ struct QuickAddView: View {
                     .buttonStyle(.plain)
                 }
 
-                // Quick Save button
-                Button(action: save) {
-                    HStack {
-                        Image(systemName: "hare.fill")
-                            .scaleEffect(0.8)
-                        Text(isSaving ? "Saving…" : "Quick Save")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(canSave ? theme.quickCapture : Color(.systemGray4))
-                    )
-                    .foregroundStyle(theme.buttonText)
-                }
-                .disabled(!canSave || isSaving)
-
                 Spacer()
             }
             .padding()
-            .navigationTitle("Quick Add")
+            .navigationTitle("Quick Capture")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -212,16 +219,19 @@ struct QuickAddView: View {
 
     private func parseInput() {
         let words = rawInput.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
-        guard words.count >= 2 else { parsedPreview = nil; return }
+        guard !words.isEmpty else { parsedPreview = nil; return }
 
         let clientQuery = String(words[0]).lowercased()
-        let serviceQuery = String(words[1]).lowercased()
-        let desc = words.count > 2 ? String(words[2]) : ""
-
         guard let matchedClient = matchClient(clientQuery) else { parsedPreview = nil; return }
-        guard let matchedService = matchService(serviceQuery) else { parsedPreview = nil; return }
 
-        parsedPreview = ParsedInput(client: matchedClient, service: matchedService, description: desc)
+        if words.count >= 2 {
+            let serviceQuery = String(words[1]).lowercased()
+            let desc = words.count > 2 ? String(words[2]) : ""
+            let matchedService = matchService(serviceQuery) ?? ""
+            parsedPreview = ParsedInput(client: matchedClient, service: matchedService, description: desc)
+        } else {
+            parsedPreview = ParsedInput(client: matchedClient, service: "", description: "")
+        }
     }
 
     private func matchClient(_ query: String) -> Client? {

@@ -20,7 +20,8 @@ struct BrickDotApp: App {
             Subtask.self,
             TimeLog.self,
             EntryTemplate.self,
-            TemplateSubtask.self
+            TemplateSubtask.self,
+            UserProfile.self
         ])
 
         let cloudConfig = ModelConfiguration(

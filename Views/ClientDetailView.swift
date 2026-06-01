@@ -600,57 +600,70 @@ private struct StatusIconOrDot: View {
 // To Do row (star/dot before client)
 private struct ClientTodoRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
-                Text(entry.clientName)
-                    .font(.subheadline).fontWeight(.semibold)
-                Spacer()
-                Text(entry.service)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            Text(entry.detail.isEmpty ? "No description" : entry.detail)
-                .font(.footnote)
+            Spacer()
+            Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
         .padding(.vertical, 2)
     }
 }
 
-// In-Progress row (star or pulsing red dot)
 private struct ClientInProgressRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
     @State private var tick = Date()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack {
-                StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.timerStartedAt != nil)
-                Text(entry.clientName)
-                    .font(.subheadline).fontWeight(.semibold)
-                Spacer()
-                if entry.timerStartedAt != nil && !entry.isImportant {
-                    HStack(spacing: 4) {
-                        Image(systemName: "clock")
-                        Text(entry.runningElapsedHoursOrZero.hoursMinutesString).monospacedDigit()
-                    }
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                } else {
-                    Text(entry.service)
-                        .font(.subheadline)
+        HStack(spacing: 10) {
+            StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.timerStartedAt != nil)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            if !entry.detail.isEmpty {
-                Text(entry.detail)
-                    .font(.footnote)
+            Spacer()
+            if entry.timerStartedAt != nil {
+                Text(entry.runningElapsedHoursOrZero.hoursMinutesString)
+                    .font(.caption.weight(.medium))
+                    .monospacedDigit()
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(theme.running.opacity(0.15)))
+                    .foregroundStyle(theme.running)
+            } else {
+                Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
         }
         .padding(.vertical, 2)
@@ -658,66 +671,82 @@ private struct ClientInProgressRow: View {
     }
 }
 
-// Done row (star/dot before client like others)
 private struct ClientDoneRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
-                Text(entry.clientName)
-                    .font(.subheadline).fontWeight(.semibold)
-                Spacer()
-                Text(entry.service)
+        HStack(spacing: 10) {
+            StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            if let completed = entry.completedAt {
+                Text(completed, format: .dateTime.month(.abbreviated).day())
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            }
-            if !entry.detail.isEmpty {
-                Text(entry.detail)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
         }
         .padding(.vertical, 2)
     }
 }
 
-// Recent entry row - status star/dot + keep green invoiced dot
 private struct RecentEntryRowWithInvoiceDot: View {
     let entry: Entry
     let isInvoiced: Bool
+    @Environment(\.appTheme) private var theme
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.status == .inProgress && entry.timerStartedAt != nil)
-
-                Text(entry.clientName).font(.headline)
-
-                // Invoiced indicator stays (small green dot)
-                if isInvoiced {
-                    Image(systemName: "circle.fill")
-                        .font(.system(size: 6))
-                        .foregroundStyle(.green)
-                        .accessibilityLabel("Invoiced")
+        HStack(spacing: 10) {
+            StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.status == .inProgress && entry.timerStartedAt != nil)
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                    if isInvoiced {
+                        Image(systemName: "circle.fill")
+                            .font(.system(size: 6))
+                            .foregroundStyle(.green)
+                            .accessibilityLabel("Invoiced")
+                    }
                 }
-
-                Spacer()
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(entry.hours * entry.rate,
                      format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                .font(.subheadline)
+                    .font(.subheadline)
+                if entry.hours > 0 {
+                    Text("\(entry.hours, specifier: "%.1f")h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
             }
-            if !entry.detail.isEmpty {
-                Text(entry.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-            }
-            HStack(spacing: 8) {
-                Text(entry.service); Text("•")
-                Text(entry.serviceDate, format: .dateTime.year().month().day())
-                Spacer()
-                Text("\(entry.hours, specifier: "%.2f")h")
-            }
-            .font(.caption).foregroundStyle(.secondary)
         }
+        .padding(.vertical, 2)
     }
 }
 

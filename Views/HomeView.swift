@@ -9,8 +9,9 @@ struct HomeView: View {
 
     @State private var showNewEntry = false
     @State private var searchText = ""
-    @AppStorage("home.showDoneSection") private var showDoneSection = false
-    @AppStorage("user.displayName") private var displayName = ""
+    @State private var showSearch = false
+    @Query private var profiles: [UserProfile]
+    private var profile: UserProfile? { profiles.first }
 
     @State private var expandedSections: Set<String> = []
 
@@ -27,35 +28,46 @@ struct HomeView: View {
 
     var body: some View {
             List {
+                // MARK: - Search bar (iPhone)
+                if showSearch && sizeClass == .compact {
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundStyle(.secondary)
+                        TextField("Search entries…", text: $searchText)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                        if !searchText.isEmpty {
+                            Button { searchText = "" } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(.secondary)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                }
+
                 // MARK: - Greeting & Today's Focus
                 if searchText.isEmpty {
                     Section {
-                        GreetingText(name: displayName)
+                        GreetingText(name: profile?.displayName ?? "")
                             .listRowSeparator(.hidden)
                     }
                     .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 4, trailing: 16))
 
                     if !todayFocusEntries.isEmpty {
                         Section {
-                            Text("Today's Focus")
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                                .listRowSeparator(.hidden)
-
-                            ForEach(Array(todayFocusEntries.enumerated()), id: \.element.persistentModelID) { index, entry in
+                            ForEach(Array(todayFocusEntries.prefix(3).enumerated()), id: \.element.persistentModelID) { index, entry in
                                 NavigationLink { EditEntryView(entry: entry) } label: {
                                     FocusRow(index: index, entry: entry)
                                 }
+                                .listRowSeparator(.hidden)
                             }
-
-                            HStack {
-                                Text("Potential Revenue:")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                Spacer()
-                                Text(todayFocusRevenue, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                                    .font(.subheadline.weight(.bold))
-                            }
+                        } header: {
+                            sectionHeader("Today's Focus", count: todayFocusEntries.count, cap: 3, key: "focus")
                         }
                     }
                 }
@@ -98,9 +110,9 @@ struct HomeView: View {
                     cappedSection(key: "today", entries: dueTodayEntries, badge: .dueToday,
                                   icon: "sun.max.fill", title: "Due Today", tint: theme.dueToday)
 
-                    // Quick Adds
+                    // Quick Captures
                     cappedSection(key: "quickadd", entries: quickAddEntries, badge: ActionRowBadge.none,
-                                  icon: "hare.fill", title: "Quick Adds", tint: theme.quickCapture, iconScale: 0.8)
+                                  icon: "plus.circle.fill", title: "Quick Captures", tint: theme.quickCapture, iconScale: 1.0)
 
                     // In Progress (with timers)
                     cappedSection(key: "inprogress", entries: inProgressEntries, badge: ActionRowBadge.none,
@@ -117,39 +129,24 @@ struct HomeView: View {
 
                 // MARK: - Done (collapsed)
                 if !doneEntries.isEmpty {
+                    let doneCap = 5
+                    let doneExpanded = isExpanded("done")
                     Section {
-                        DisclosureGroup(isExpanded: $showDoneSection) {
-                            ForEach(Array(doneEntries.prefix(20))) { entry in
-                                NavigationLink { EditEntryView(entry: entry) } label: {
-                                    ActionRow(entry: entry, badge: .none)
-                                }
-                            }
-                            if doneEntries.count > 20 {
-                                Text("View all in Log tab")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                                    .frame(maxWidth: .infinity)
-                            }
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundStyle(.green)
-                                Text("Done")
-                                Spacer()
-                                Text("\(doneEntries.count)")
-                                    .font(.title3.weight(.semibold))
-                                    .foregroundStyle(.secondary)
+                        ForEach(doneExpanded ? Array(doneEntries.prefix(20)) : Array(doneEntries.prefix(doneCap))) { entry in
+                            NavigationLink { EditEntryView(entry: entry) } label: {
+                                ActionRow(entry: entry, badge: .none)
                             }
                         }
+                    } header: {
+                        sectionHeader("Done", count: doneEntries.count, cap: doneCap, key: "done")
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .listRowSpacing(4)
-            .navigationTitle("Ohno Design")
-            .if(sizeClass == .compact) { view in
-                view.searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
-            }
+            .listStyle(.plain)
+            .listRowSpacing(6)
+            .listSectionSeparator(.hidden)
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showNewEntry) {
                 QuickAddView(onSaved: { showNewEntry = false })
                     .presentationDetents([.medium])
@@ -158,21 +155,34 @@ struct HomeView: View {
             .toolbar {
                 if sizeClass == .compact {
                     ToolbarItem(placement: .topBarLeading) {
-                        NavigationLink {
-                            ProfileView()
-                        } label: {
-                            Image(systemName: "person.crop.circle")
-                                .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
-                                .accessibilityLabel("Profile")
-                        }
+                        Image(systemName: "house")
+                            .imageScale(.large)
+                            .foregroundStyle(Color(.darkGray))
+                            .accessibilityLabel("Home")
+                    }
+                    ToolbarItem(placement: .principal) {
+                        Text(profile?.companyName.isEmpty == false ? profile!.companyName : "BrickDot")
+                            .font(.headline)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button { showNewEntry = true } label: {
-                            Image(systemName: "plus.circle")
-                                .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
-                                .accessibilityLabel("New Entry")
+                        HStack(spacing: 16) {
+                            Button {
+                                withAnimation {
+                                    showSearch.toggle()
+                                    if !showSearch { searchText = "" }
+                                }
+                            } label: {
+                                Image(systemName: showSearch ? "xmark" : "magnifyingglass")
+                                    .imageScale(.large)
+                                    .foregroundStyle(Color(.darkGray))
+                                    .accessibilityLabel("Search")
+                            }
+                            Button { showNewEntry = true } label: {
+                                Image(systemName: "plus.circle")
+                                    .imageScale(.large)
+                                    .foregroundStyle(Color(.darkGray))
+                                    .accessibilityLabel("New Entry")
+                            }
                         }
                     }
                 }
@@ -288,30 +298,33 @@ struct HomeView: View {
                         entryLeadingSwipeActions(entry)
                     }
                 }
-                if entries.count > cap {
-                    Button {
-                        withAnimation { toggleExpanded(key) }
-                    } label: {
-                        HStack {
-                            Spacer()
-                            Text(expanded ? "Show Less" : "Show All (\(entries.count))")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                            Spacer()
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
             } header: {
-                HStack(spacing: 6) {
-                    Image(systemName: icon)
-                        .scaleEffect(iconScale)
-                    Text(title)
-                }
-                    .foregroundStyle(tint)
-                    .font(.title3.weight(.semibold))
+                sectionHeader(title, count: entries.count, cap: cap, key: key)
             }
         }
+    }
+
+    @ViewBuilder
+    private func sectionHeader(_ title: String, count: Int, cap: Int, key: String) -> some View {
+        HStack {
+            Text(title.uppercased())
+                .font(.caption.weight(.bold))
+                .foregroundStyle(theme.secondaryText)
+                .tracking(0.5)
+            Spacer()
+            if count > cap {
+                Button {
+                    withAnimation { toggleExpanded(key) }
+                } label: {
+                    Text(isExpanded(key) ? "Show less" : "View all")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(theme.accent)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
     // MARK: - Entry Sorting & Filtering
@@ -563,31 +576,38 @@ private struct ActionRow: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(clientColor)
-                .frame(width: 4)
-                .padding(.vertical, 2)
-                .padding(.trailing, 8)
+        HStack(spacing: 10) {
+            SharedStatusMark(
+                color: statusColor(entry.status),
+                isImportant: entry.isImportant,
+                pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
+            )
 
-            VStack(alignment: .leading, spacing: 4) {
-                // Top line: status dot, client, star, timer/amount
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    SharedStatusMark(
-                        color: statusColor(entry.status),
-                        isImportant: entry.isImportant,
-                        pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
-                    )
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
 
-                    Text(entry.clientName)
-                        .font(.title3.weight(.semibold))
-
-                if let due = entry.dueDate, badge != .none {
-                    dueBadgeView(due: due)
+                    if let due = entry.dueDate, badge != .none {
+                        dueBadgeView(due: due)
+                    }
                 }
 
-                Spacer()
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
 
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 3) {
                 if entry.status == .inProgress, entry.timerStartedAt != nil {
                     Text(entry.runningElapsedHoursOrZero.hoursMinutesString)
                         .font(.caption.weight(.medium))
@@ -596,42 +616,19 @@ private struct ActionRow: View {
                         .padding(.vertical, 2)
                         .background(Capsule().fill(theme.running.opacity(0.15)))
                         .foregroundStyle(theme.running)
-                } else if entry.hours > 0 {
+                } else {
+                    Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                if entry.hours > 0 {
                     Text("\(entry.hours, specifier: "%.1f")h")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
             }
-
-            // Bottom line: service, description
-            HStack(spacing: 6) {
-                Text(entry.service)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.accent)
-
-                if !entry.detail.isEmpty {
-                    Text("·")
-                        .foregroundStyle(.secondary)
-                    Text(entry.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                if entry.status == .done, let completed = entry.completedAt {
-                    Text(completed, format: .dateTime.month(.abbreviated).day())
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
         }
         .padding(.vertical, 2)
         .task(id: hasRunningTimer) {
@@ -671,6 +668,12 @@ private struct ActionRow: View {
 
 private struct GreetingText: View {
     let name: String
+    @Environment(\.appTheme) private var theme
+    @AppStorage(AppPrefsKey.showDailyPhrase) private var showDailyPhrase = true
+
+    private var firstName: String {
+        name.split(separator: " ").first.map(String.init) ?? name
+    }
 
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: Date())
@@ -681,40 +684,83 @@ private struct GreetingText: View {
         }
     }
 
+    private static let dailyPhrases: [String] = [
+        "Let's make today productive.",
+        "Small steps, big results.",
+        "Your best work starts now.",
+        "\"The secret of getting ahead is getting started.\"",
+        "One task at a time.",
+        "Build something you're proud of.",
+        "Progress over perfection.",
+        "\"Do what you can, with what you have, where you are.\"",
+        "Today's effort is tomorrow's momentum.",
+        "Stay focused, stay sharp.",
+        "Great things take time — keep going.",
+        "\"Simplicity is the ultimate sophistication.\"",
+        "Clear the decks, own the day.",
+        "Your clients are counting on you.",
+        "\"Well begun is half done.\"",
+        "Make it happen.",
+        "The work you do today matters.",
+        "\"Quality is not an act, it is a habit.\"",
+        "Less talk, more build.",
+        "You've got this."
+    ]
+
+    private var dailyPhrase: String {
+        let day = Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0
+        return Self.dailyPhrases[day % Self.dailyPhrases.count]
+    }
+
     var body: some View {
-        Text("\(greeting)\(name.isEmpty ? "" : " \(name)")")
-            .font(.title2.weight(.bold))
+        VStack(alignment: .leading, spacing: 8) {
+            Text("\(greeting)\(firstName.isEmpty ? "" : " \(firstName)")")
+                .font(.system(size: 34, weight: .bold, design: .serif))
+            if showDailyPhrase {
+                Text(dailyPhrase)
+                    .font(.subheadline)
+                    .foregroundStyle(theme.mutedText)
+                    .padding(.bottom, 8)
+            }
+        }
     }
 }
 
 private struct FocusRow: View {
     let index: Int
     let entry: Entry
-
-    private var clientColor: Color {
-        entry.client?.accentColor ?? ClientColors.palette[0].color
-    }
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(clientColor)
-                .frame(width: 4)
-
-            Text("\(index + 1).")
-                .font(.subheadline.weight(.semibold))
+        HStack(spacing: 10) {
+            Text("\(index + 1)")
+                .font(.headline)
                 .foregroundStyle(.secondary)
-                .frame(width: 20, alignment: .trailing)
+                .frame(width: 28, height: 28)
+                .background(Circle().strokeBorder(Color(.systemGray4), lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.detail.isEmpty ? entry.service : "\(entry.service) — \(entry.detail)")
-                    .font(.subheadline.weight(.medium))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
                     .lineLimit(1)
-                Text(entry.clientName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
+
+            Spacer()
+
+            Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
+        .padding(.vertical, 2)
     }
 }
 

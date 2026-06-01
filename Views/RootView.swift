@@ -2,7 +2,11 @@
 import SwiftUI
 import SwiftData
 
-enum RootTab: Hashable { case home, stats, new, clients, log, export }
+enum RootTab: Hashable { case home, profile, clients, stats, settings, log, export }
+
+extension Notification.Name {
+    static let goHome = Notification.Name("goHome")
+}
 
 struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -20,52 +24,129 @@ struct RootView: View {
 
 private struct iPhoneRootView: View {
     @Environment(\.modelContext) private var ctx
-    @State private var selectedTab: RootTab = .home
+    @State private var selectedTab: RootTab = .profile
+    @State private var showingHome = true
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack {
-                HomeView()
-            }
-            .environment(\.modelContext, ctx)
-            .tabItem { Label("Home", systemImage: "house") }
-            .tag(RootTab.home)
+        ZStack {
+            TabView(selection: $selectedTab) {
+                NavigationStack {
+                    ProfileView()
+                        .toolbar { homeButton }
+                }
+                .environment(\.modelContext, ctx)
+                .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+                .tag(RootTab.profile)
 
-            NavigationStack {
-                StatsPageView()
-            }
-            .environment(\.modelContext, ctx)
-            .tabItem { Label("Stats", systemImage: "chart.bar.fill") }
-            .tag(RootTab.stats)
+                NavigationStack {
+                    ClientListView()
+                        .toolbar { homeButton }
+                }
+                .environment(\.modelContext, ctx)
+                .tabItem { Label("Clients", systemImage: "person.2") }
+                .tag(RootTab.clients)
 
-            NavigationStack {
-                QuickAddView(onSaved: { selectedTab = .home })
-            }
-            .environment(\.modelContext, ctx)
-            .tabItem { Label("New", systemImage: "plus.circle") }
-            .tag(RootTab.new)
+                NavigationStack {
+                    StatsPageView()
+                        .toolbar { homeButton }
+                }
+                .environment(\.modelContext, ctx)
+                .tabItem { Label("Stats", systemImage: "chart.bar.xaxis") }
+                .tag(RootTab.stats)
 
-            NavigationStack {
-                ClientListView()
-            }
-            .environment(\.modelContext, ctx)
-            .tabItem { Label("Clients", systemImage: "person.2") }
-            .tag(RootTab.clients)
+                NavigationStack {
+                    SettingsView()
+                        .toolbar { homeButton }
+                }
+                .environment(\.modelContext, ctx)
+                .tabItem { Label("Settings", systemImage: "gear") }
+                .tag(RootTab.settings)
 
-            NavigationStack {
-                LogView()
-            }
-            .environment(\.modelContext, ctx)
-            .tabItem { Label("Log", systemImage: "doc.text") }
-            .tag(RootTab.log)
+                NavigationStack {
+                    LogView()
+                        .toolbar { homeButton }
+                }
+                .environment(\.modelContext, ctx)
+                .tabItem { Label("Log", systemImage: "doc.text") }
+                .tag(RootTab.log)
 
-            NavigationStack {
-                ExportView()
+                NavigationStack {
+                    ExportView()
+                        .toolbar { homeButton }
+                }
+                .environment(\.modelContext, ctx)
+                .tabItem { Label("Export", systemImage: "square.and.arrow.up") }
+                .tag(RootTab.export)
             }
-            .environment(\.modelContext, ctx)
-            .tabItem { Label("Export", systemImage: "square.and.arrow.up") }
-            .tag(RootTab.export)
+            .onChange(of: selectedTab) { _, _ in
+                if showingHome { withAnimation { showingHome = false } }
+            }
+
+            if showingHome {
+                VStack(spacing: 0) {
+                    NavigationStack {
+                        HomeView()
+                    }
+                    .environment(\.modelContext, ctx)
+
+                    Divider()
+                    tabBarMirror
+                }
+                .transition(.opacity)
+                .ignoresSafeArea(.keyboard)
+            }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .goHome)) { _ in
+            withAnimation { showingHome = true }
+        }
+    }
+
+    private var homeButton: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            Button {
+                NotificationCenter.default.post(name: .goHome, object: nil)
+            } label: {
+                Image(systemName: "house")
+                    .imageScale(.large)
+                    .foregroundStyle(Color(.darkGray))
+                    .accessibilityLabel("Home")
+            }
+        }
+    }
+
+    private var tabBarMirror: some View {
+        HStack {
+            tabButton("Profile", icon: "person.crop.circle", tab: .profile)
+            tabButton("Clients", icon: "person.2", tab: .clients)
+            tabButton("Stats", icon: "chart.bar.xaxis", tab: .stats)
+            tabButton("Settings", icon: "gear", tab: .settings)
+            tabButton("More", icon: "ellipsis", tab: nil)
+        }
+        .padding(.top, 6)
+        .padding(.bottom, 2)
+        .background(Color(.systemBackground))
+    }
+
+    private func tabButton(_ label: String, icon: String, tab: RootTab?) -> some View {
+        Button {
+            if let tab {
+                selectedTab = tab
+                withAnimation { showingHome = false }
+            } else {
+                selectedTab = .log
+                withAnimation { showingHome = false }
+            }
+        } label: {
+            VStack(spacing: 2) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                Text(label)
+                    .font(.caption2)
+            }
+            .foregroundStyle(Color(.secondaryLabel))
+            .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
     }
 }
 
@@ -92,6 +173,8 @@ private struct iPadRootView: View {
     @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @Query(sort: \Client.name) private var allClients: [Client]
+    @Query private var profiles: [UserProfile]
+    private var profile: UserProfile? { profiles.first }
 
     @State private var selection: SidebarDestination? = .home
     @State private var showNewEntry = false
@@ -102,88 +185,62 @@ private struct iPadRootView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                // Quick Add
+                // Quick Capture
                 Section {
                     Button { showNewEntry = true } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "hare.fill")
-                                .font(.title2)
-                            Text("Quick Add")
-                                .font(.headline.weight(.bold))
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(theme.quickCapture)
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "plus")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Quick Capture")
+                                    .font(.headline)
+                                    .foregroundStyle(theme.primaryText)
+                                Text("Log work in seconds")
+                                    .font(.subheadline)
+                                    .foregroundStyle(theme.secondaryText)
+                            }
                         }
-                        .foregroundStyle(theme.quickCapture)
+                        .padding(.vertical, 4)
                     }
                     .buttonStyle(.plain)
                 }
 
-                // Dashboard cards (Reminders-style 2x2 grid)
+                // Today summary card
                 Section {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        SidebarCard(
-                            icon: "exclamationmark.triangle.fill",
-                            label: "Overdue",
-                            value: "\(overdueCount)",
-                            tint: theme.overdue,
-                            destination: .overdue,
-                            selection: $selection
-                        )
-                        SidebarCard(
-                            icon: "sun.max.fill",
-                            label: "Today",
-                            value: "\(dueTodayCount)",
-                            tint: theme.dueToday,
-                            destination: .dueToday,
-                            selection: $selection
-                        )
-                        SidebarCard(
-                            icon: "timer",
-                            label: "Running",
-                            value: "\(timersRunning)",
-                            tint: theme.running,
-                            destination: .running,
-                            selection: $selection
-                        )
-                        SidebarCard(
-                            icon: "dollarsign.circle.fill",
-                            label: "This Week",
-                            value: weekAmount.shortCurrency,
-                            tint: theme.revenue,
-                            destination: .thisWeek,
-                            selection: $selection
-                        )
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "sun.max.fill")
+                                .foregroundStyle(theme.overdue)
+                            Text("TODAY")
+                                .font(.subheadline.weight(.bold))
+                                .foregroundStyle(theme.overdue)
+                        }
+
+                        SidebarStatRow(icon: "calendar", tint: theme.dueToday, value: "\(dueTodayCount)", label: "Due Today")
+                        SidebarStatRow(icon: "timer", tint: theme.running, value: "\(timersRunning)", label: "Running")
+                        SidebarStatRow(icon: "dollarsign.circle.fill", tint: theme.revenue, value: potentialRevenue.shortCurrency, label: "Potential Revenue")
                     }
+                    .padding(12)
+                    .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray6)))
                     .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                 }
 
-                // Clients
+                // Navigation
                 Section {
+                    NavigationLink(value: SidebarDestination.profile) {
+                        Label("Profile", systemImage: "person.crop.circle")
+                    }
                     NavigationLink(value: SidebarDestination.allClients) {
-                        Label("All Clients", systemImage: "person.2")
+                        Label("Clients", systemImage: "person.2")
                     }
-
-                    ForEach(topClients, id: \.persistentModelID) { client in
-                        NavigationLink(value: SidebarDestination.client(client.persistentModelID)) {
-                            HStack(spacing: 8) {
-                                Circle()
-                                    .fill(client.accentColor)
-                                    .frame(width: 10, height: 10)
-                                Text(client.name)
-                                Spacer()
-                                let count = client.entriesList.filter { $0.status != .done }.count
-                                if count > 0 {
-                                    Text("\(count)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // Tools
-                Section("Tools") {
                     NavigationLink(value: SidebarDestination.stats) {
-                        Label("Stats", systemImage: "chart.bar.fill")
+                        Label("Stats", systemImage: "chart.bar.xaxis")
                     }
                     NavigationLink(value: SidebarDestination.log) {
                         Label("Log", systemImage: "doc.text")
@@ -191,20 +248,14 @@ private struct iPadRootView: View {
                     NavigationLink(value: SidebarDestination.export) {
                         Label("Export", systemImage: "square.and.arrow.up")
                     }
-                }
-
-                // Profile & Settings
-                Section {
-                    NavigationLink(value: SidebarDestination.profile) {
-                        Label("Profile", systemImage: "person.crop.circle")
-                    }
                     NavigationLink(value: SidebarDestination.settings) {
                         Label("Settings", systemImage: "gear")
                     }
                 }
             }
             .listStyle(.sidebar)
-            .navigationTitle("BrickDot")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -213,8 +264,12 @@ private struct iPadRootView: View {
                     } label: {
                         Image(systemName: "house")
                             .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
+                            .foregroundStyle(Color(.darkGray))
                     }
+                }
+                ToolbarItem(placement: .principal) {
+                    Text(profile?.companyName.isEmpty == false ? profile!.companyName : "BrickDot")
+                        .font(.headline)
                 }
             }
         } detail: {
@@ -348,14 +403,8 @@ private struct iPadRootView: View {
         allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }
     }
 
-    private var topClients: [Client] {
-        Array(allClients
-            .sorted { a, b in
-                let aOpen = a.entriesList.filter { $0.status != .done }.count
-                let bOpen = b.entriesList.filter { $0.status != .done }.count
-                return aOpen > bOpen
-            }
-            .prefix(5))
+    private var potentialRevenue: Double {
+        openEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
     }
 
     private var weekAmount: Double {
@@ -375,6 +424,31 @@ private struct iPadRootView: View {
         }
     }
 
+}
+
+// MARK: - Sidebar Stat Row
+
+private struct SidebarStatRow: View {
+    let icon: String
+    let tint: Color
+    let value: String
+    let label: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.body)
+                .foregroundStyle(tint)
+                .frame(width: 24)
+            Text(value)
+                .font(.title2.weight(.bold))
+                .monospacedDigit()
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            Spacer()
+        }
+    }
 }
 
 // MARK: - Sidebar Card (Reminders-style)
@@ -411,7 +485,7 @@ private struct SidebarCard: View {
             .padding(12)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? tint : tint.opacity(0.12))
+                    .fill(isSelected ? tint : Color(.systemGray6))
             )
         }
         .buttonStyle(.plain)

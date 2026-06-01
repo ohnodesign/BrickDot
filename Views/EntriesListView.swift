@@ -170,6 +170,7 @@ struct EntriesListView: View, Identifiable {
 
 private struct LoggedTodayEntryRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
 
     private var todayHours: Double {
         entry.timeLogsList.filter { Calendar.current.isDateInToday($0.addedAt) }
@@ -177,29 +178,37 @@ private struct LoggedTodayEntryRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                SharedStatusMark(
-                    color: statusColor(entry.status),
-                    isImportant: entry.isImportant,
-                    pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
-                )
-                Text(entry.clientName).font(.headline)
-                Spacer()
+        HStack(spacing: 10) {
+            SharedStatusMark(
+                color: statusColor(entry.status),
+                isImportant: entry.isImportant,
+                pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
+            )
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
                 let amount = todayHours * entry.rate
                 Text(amount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                     .font(.subheadline)
+                Text("Today: \(todayHours, specifier: "%.1f")h")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
             }
-            if !entry.detail.isEmpty {
-                Text(entry.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-            }
-            HStack(spacing: 8) {
-                Text(entry.service); Text("•")
-                Text(entry.serviceDate, format: .dateTime.year().month().day())
-                Spacer()
-                Text("Today: \(todayHours, specifier: "%.2f")h")
-            }
-            .font(.caption).foregroundStyle(.secondary)
         }
+        .padding(.vertical, 2)
     }
 }

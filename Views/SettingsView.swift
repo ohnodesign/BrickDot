@@ -29,6 +29,7 @@ enum AppPrefsKey {
     static let colorScheme          = "appearance.colorScheme"    // "system"|"light"|"dark"
     static let largeControls        = "appearance.largeControls"
     static let increasedContrast    = "appearance.increasedContrast"
+    static let showDailyPhrase      = "appearance.showDailyPhrase"
 
     // Data & Backup
     static let autoBackupICloud     = "backup.autoIcloud"
@@ -81,6 +82,7 @@ struct SettingsView: View {
     @AppStorage(AppPrefsKey.colorScheme)        private var appearanceRaw = "system"
     @AppStorage(AppPrefsKey.largeControls)      private var largeControls = false
     @AppStorage(AppPrefsKey.increasedContrast)  private var increasedContrast = false
+    @AppStorage(AppPrefsKey.showDailyPhrase)   private var showDailyPhrase = true
     @AppStorage("appearance.theme")             private var themeRaw = "professional"
 
     // Data & Backup
@@ -150,17 +152,18 @@ struct SettingsView: View {
 
             // Appearance
             Section("Appearance") {
-                Picker("Accent color", selection: $accentRaw) {
-                    accentRow("blue"); accentRow("indigo"); accentRow("brick"); accentRow("green"); accentRow("orange")
-                }
-                Picker("Theme", selection: $appearanceRaw) {
-                    Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
-                }
-                Picker("Color Scheme", selection: $themeRaw) {
+                Picker("Theme", selection: $themeRaw) {
                     ForEach(ThemeKey.allCases, id: \.rawValue) { key in
                         Text(key.displayName).tag(key.rawValue)
                     }
                 }
+                Picker("Accent color", selection: $accentRaw) {
+                    accentRow("blue"); accentRow("indigo"); accentRow("brick"); accentRow("green"); accentRow("orange")
+                }
+                Picker("Mode", selection: $appearanceRaw) {
+                    Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
+                }
+                Toggle("Daily inspiration phrase", isOn: $showDailyPhrase)
                 Toggle("Large controls", isOn: $largeControls)
                 Toggle("Increased contrast", isOn: $increasedContrast)
             }
@@ -185,9 +188,6 @@ struct SettingsView: View {
             // About
             Section("About") {
                 HStack { Text("Version"); Spacer(); Text(versionString()).foregroundStyle(.secondary) }
-                Link("Support", destination: URL(string: "https://ohnodesign.com/support")!)
-                Link("Privacy", destination: URL(string: "https://ohnodesign.com/privacy")!)
-                Link("Website", destination: URL(string: "https://ohnodesign.com")!)
             }
         }
         .navigationTitle("Settings")

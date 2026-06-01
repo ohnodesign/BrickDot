@@ -110,35 +110,36 @@ private struct LogEntryRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                // ⭐️ or colored dot before client name (same color as status)
-                StatusMark(color: color(for: entry.status), starred: entry.isImportant)
-
-                Text(entry.clientName).font(.headline)
-                Spacer()
+        HStack(spacing: 10) {
+            StatusMark(color: color(for: entry.status), starred: entry.isImportant)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(entry.hours * entry.rate,
                      format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                     .font(.subheadline)
+                if entry.hours > 0 {
+                    Text("\(entry.hours, specifier: "%.1f")h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
             }
-
-            if !entry.detail.isEmpty {
-                Text(entry.detail)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            HStack(spacing: 8) {
-                Text(entry.service)
-                Text("•")
-                Text(entry.serviceDate, format: .dateTime.year().month().day())
-                Spacer()
-                Text("\(entry.hours, specifier: "%.2f")h")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
         }
+        .padding(.vertical, 2)
     }
 }
 

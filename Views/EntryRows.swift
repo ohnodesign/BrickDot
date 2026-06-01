@@ -29,21 +29,29 @@ struct SharedStatusMark: View {
 
 struct SharedTodoRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                SharedStatusMark(color: .orange, isImportant: entry.isImportant)
-                Text(entry.clientName)
-                    .font(.subheadline).fontWeight(.semibold)
-                Spacer()
-                Text(entry.service)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        HStack(spacing: 10) {
+            SharedStatusMark(color: theme.dueToday, isImportant: entry.isImportant)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            Text(entry.detail.isEmpty ? "No description" : entry.detail)
-                .font(.footnote)
+            Spacer()
+            Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
         }
         .padding(.vertical, 2)
     }
@@ -51,36 +59,44 @@ struct SharedTodoRow: View {
 
 struct SharedInProgressRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
     @State private var tick = Date()
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                SharedStatusMark(
-                    color: Color(red: 0.72, green: 0.19, blue: 0.15),
-                    isImportant: entry.isImportant,
-                    pulsing: entry.timerStartedAt != nil
-                )
-                Text(entry.clientName)
-                    .font(.subheadline).fontWeight(.semibold)
-                Spacer()
-                if entry.timerStartedAt != nil {
-                    Text(entry.runningElapsedHoursOrZero.hoursMinutesString)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                } else {
-                    Text(entry.service)
-                        .font(.subheadline)
+        HStack(spacing: 10) {
+            SharedStatusMark(
+                color: theme.running,
+                isImportant: entry.isImportant,
+                pulsing: entry.timerStartedAt != nil
+            )
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
-            if !entry.detail.isEmpty {
-                Text(entry.detail)
-                    .font(.footnote)
+            Spacer()
+            if entry.timerStartedAt != nil {
+                Text(entry.runningElapsedHoursOrZero.hoursMinutesString)
+                    .font(.caption.weight(.medium))
+                    .monospacedDigit()
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(theme.running.opacity(0.15)))
+                    .foregroundStyle(theme.running)
+            } else {
+                Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
         }
         .padding(.vertical, 2)
@@ -90,22 +106,30 @@ struct SharedInProgressRow: View {
 
 struct SharedDoneRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                SharedStatusMark(color: .green, isImportant: entry.isImportant)
-                Text(entry.clientName)
-                    .font(.subheadline).fontWeight(.semibold)
-                Spacer()
-                Text(entry.service)
+        HStack(spacing: 10) {
+            SharedStatusMark(color: theme.success, isImportant: entry.isImportant)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            if let completed = entry.completedAt {
+                Text(completed, format: .dateTime.month(.abbreviated).day())
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-            }
-            if !entry.detail.isEmpty {
-                Text(entry.detail)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
         }
         .padding(.vertical, 2)
@@ -114,30 +138,43 @@ struct SharedDoneRow: View {
 
 struct SharedEntryRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                SharedStatusMark(
-                    color: statusColor(entry.status),
-                    isImportant: entry.isImportant,
-                    pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
-                )
-                Text(entry.clientName).font(.headline)
-                Spacer()
+        HStack(spacing: 10) {
+            SharedStatusMark(
+                color: statusColor(entry.status),
+                isImportant: entry.isImportant,
+                pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
+            )
+            VStack(alignment: .leading, spacing: 3) {
+                Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.service.uppercased())
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(theme.accent)
+                    Text("·").foregroundStyle(.secondary)
+                    Text(entry.clientName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
                 Text(entry.hours * entry.rate,
                      format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                .font(.subheadline)
+                    .font(.subheadline)
+                if entry.hours > 0 {
+                    Text("\(entry.hours, specifier: "%.1f")h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
             }
-            if !entry.detail.isEmpty {
-                Text(entry.detail).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
-            }
-            HStack(spacing: 8) {
-                Text(entry.service); Text("•")
-                Text(entry.serviceDate, format: .dateTime.year().month().day())
-                Spacer()
-                Text("\(entry.hours, specifier: "%.2f")h")
-            }
-            .font(.caption).foregroundStyle(.secondary)
         }
+        .padding(.vertical, 2)
     }
 }
+

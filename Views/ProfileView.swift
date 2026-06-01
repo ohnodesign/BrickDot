@@ -1,16 +1,68 @@
 import SwiftUI
+import SwiftData
 
 struct ProfileView: View {
-    @AppStorage("user.displayName") private var displayName = ""
+    @Environment(\.modelContext) private var ctx
+    @State private var profile: UserProfile?
 
     var body: some View {
-        List {
-            Section("Your Name") {
-                TextField("Enter your name", text: $displayName)
-            }
+        Form {
+            if let profile {
+                Section("Your Name") {
+                    TextField("Full name", text: Binding(
+                        get: { profile.displayName },
+                        set: { profile.displayName = $0 }
+                    ))
+                }
 
-            Section("Account") {
-                NavigationLink("Settings") { SettingsView() }
+                Section("Business") {
+                    TextField("Company name", text: Binding(
+                        get: { profile.companyName },
+                        set: { profile.companyName = $0 }
+                    ))
+                    TextField("Email", text: Binding(
+                        get: { profile.email },
+                        set: { profile.email = $0 }
+                    ))
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .autocapitalization(.none)
+                    TextField("Phone", text: Binding(
+                        get: { profile.phone },
+                        set: { profile.phone = $0 }
+                    ))
+                    .keyboardType(.phonePad)
+                    .textContentType(.telephoneNumber)
+                }
+
+                Section("Address") {
+                    TextField("Street", text: Binding(
+                        get: { profile.addressLine1 },
+                        set: { profile.addressLine1 = $0 }
+                    ))
+                    .textContentType(.streetAddressLine1)
+                    TextField("Suite / Unit", text: Binding(
+                        get: { profile.addressLine2 },
+                        set: { profile.addressLine2 = $0 }
+                    ))
+                    .textContentType(.streetAddressLine2)
+                    TextField("City", text: Binding(
+                        get: { profile.city },
+                        set: { profile.city = $0 }
+                    ))
+                    .textContentType(.addressCity)
+                    TextField("State", text: Binding(
+                        get: { profile.state },
+                        set: { profile.state = $0 }
+                    ))
+                    .textContentType(.addressState)
+                    TextField("ZIP", text: Binding(
+                        get: { profile.zip },
+                        set: { profile.zip = $0 }
+                    ))
+                    .keyboardType(.numberPad)
+                    .textContentType(.postalCode)
+                }
             }
 
             Section("About") {
@@ -18,6 +70,11 @@ struct ProfileView: View {
             }
         }
         .navigationTitle("Profile")
+        .onAppear {
+            if profile == nil {
+                profile = UserProfile.fetchOrCreate(in: ctx)
+            }
+        }
     }
 }
 

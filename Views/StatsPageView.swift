@@ -107,17 +107,6 @@ struct StatsPageView: View {
             }
             .navigationTitle("Stats")
             .toolbar {
-                // ⬅︎ Profile (push)
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        ProfileView()
-                    } label: {
-                        Image(systemName: "person.crop.circle")
-                            .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
-                            .accessibilityLabel("Profile")
-                    }
-                }
                 // ➝ New Entry
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { showNewEntry = true } label: {

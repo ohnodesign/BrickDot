@@ -123,16 +123,98 @@ extension AppTheme {
     )
 }
 
+// MARK: - Monochrome Theme
+
+extension AppTheme {
+    static let monochrome = AppTheme(
+        background:        Color(hex: "F7F7F7"),
+        cardBackground:    Color(hex: "FFFFFF"),
+        sidebarBackground: Color(hex: "EFEFEF"),
+        divider:           Color(hex: "D9D9D9"),
+
+        primaryText:       Color(hex: "111111"),
+        secondaryText:     Color(hex: "666666"),
+        mutedText:         Color(hex: "999999"),
+
+        accent:            Color(hex: "1A1A1A"),
+        accentHover:       Color(hex: "000000"),
+        accentLight:       Color(hex: "E5E5E5"),
+
+        success:           Color(hex: "333333"),
+        successLight:      Color(hex: "F0F0F0"),
+        dueToday:          Color(hex: "555555"),
+        dueTodayLight:     Color(hex: "EFEFEF"),
+        overdue:           Color(hex: "111111"),
+        overdueLight:      Color(hex: "E5E5E5"),
+        running:           Color(hex: "777777"),
+        runningLight:      Color(hex: "F0F0F0"),
+
+        revenue:           Color(hex: "333333"),
+        revenueLight:      Color(hex: "F0F0F0"),
+
+        selectedClient:    Color(hex: "E5E5E5"),
+        selectedBorder:    Color(hex: "111111"),
+
+        quickCapture:      Color(hex: "111111"),
+        buttonText:        Color(hex: "FFFFFF"),
+
+        priorityTask:      Color(hex: "000000")
+    )
+}
+
+// MARK: - Monochrome Dark Executive Theme
+
+extension AppTheme {
+    static let monochromeDark = AppTheme(
+        background:        Color(hex: "F2F2F2"),
+        cardBackground:    Color(hex: "FFFFFF"),
+        sidebarBackground: Color(hex: "E8E8E8"),
+        divider:           Color(hex: "CCCCCC"),
+
+        primaryText:       Color(hex: "000000"),
+        secondaryText:     Color(hex: "555555"),
+        mutedText:         Color(hex: "888888"),
+
+        accent:            Color(hex: "222222"),
+        accentHover:       Color(hex: "111111"),
+        accentLight:       Color(hex: "E8E8E8"),
+
+        success:           Color(hex: "222222"),
+        successLight:      Color(hex: "E8E8E8"),
+        dueToday:          Color(hex: "444444"),
+        dueTodayLight:     Color(hex: "EFEFEF"),
+        overdue:           Color(hex: "000000"),
+        overdueLight:      Color(hex: "E0E0E0"),
+        running:           Color(hex: "666666"),
+        runningLight:      Color(hex: "F0F0F0"),
+
+        revenue:           Color(hex: "222222"),
+        revenueLight:      Color(hex: "E8E8E8"),
+
+        selectedClient:    Color(hex: "E0E0E0"),
+        selectedBorder:    Color(hex: "000000"),
+
+        quickCapture:      Color(hex: "222222"),
+        buttonText:        Color(hex: "FFFFFF"),
+
+        priorityTask:      Color(hex: "000000")
+    )
+}
+
 // MARK: - Theme Key (for settings)
 
 enum ThemeKey: String, CaseIterable {
     case professional = "professional"
     case minimal = "minimal"
+    case monochrome = "monochrome"
+    case monochromeDark = "monochromeDark"
 
     var displayName: String {
         switch self {
         case .professional: return "Apple Professional"
         case .minimal: return "Minimal"
+        case .monochrome: return "Monochrome"
+        case .monochromeDark: return "Monochrome Executive"
         }
     }
 
@@ -140,6 +222,8 @@ enum ThemeKey: String, CaseIterable {
         switch self {
         case .professional: return .professional
         case .minimal: return .minimal
+        case .monochrome: return .monochrome
+        case .monochromeDark: return .monochromeDark
         }
     }
 }
