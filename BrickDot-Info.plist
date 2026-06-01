@@ -6,5 +6,9 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>BrickDot uses speech recognition for voice entry of tasks.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>BrickDot uses the microphone for voice entry of tasks.</string>
 </dict>
 </plist>
