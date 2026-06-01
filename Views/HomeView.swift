@@ -90,11 +90,11 @@ struct HomeView: View {
                                   icon: "sun.max.fill", title: "Due Today", tint: .orange)
 
                     // Quick Adds
-                    cappedSection(key: "quickadd", entries: quickAddEntries, badge: .none,
+                    cappedSection(key: "quickadd", entries: quickAddEntries, badge: ActionRowBadge.none,
                                   icon: "bolt.circle.fill", title: "Quick Adds", tint: .purple)
 
                     // In Progress (with timers)
-                    cappedSection(key: "inprogress", entries: inProgressEntries, badge: .none,
+                    cappedSection(key: "inprogress", entries: inProgressEntries, badge: ActionRowBadge.none,
                                   icon: "bolt.fill", title: "In Progress", tint: Color.brick)
 
                     // Up Next
@@ -102,7 +102,7 @@ struct HomeView: View {
                                   icon: "arrow.right.circle.fill", title: "Up Next", tint: .accent)
 
                     // Backlog
-                    cappedSection(key: "backlog", entries: backlogEntries, badge: .none,
+                    cappedSection(key: "backlog", entries: backlogEntries, badge: ActionRowBadge.none,
                                   icon: "tray.fill", title: "Backlog", tint: .secondary)
                 }
 
