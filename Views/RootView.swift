@@ -94,19 +94,20 @@ private struct iPadRootView: View {
 
     @State private var selection: SidebarDestination? = .home
     @State private var showNewEntry = false
+    @State private var showFullNewEntry = false
     @State private var detailPath = NavigationPath()
     @State private var showSearch = false
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                // New Entry
+                // New Entry (split button)
                 Section {
-                    Button { showNewEntry = true } label: {
-                        Label("New Entry", systemImage: "plus.circle.fill")
-                            .fontWeight(.semibold)
-                    }
-                    .tint(Color.brick)
+                    SidebarSplitButton(
+                        onQuickAdd: { showNewEntry = true },
+                        onFullEntry: { showFullNewEntry = true }
+                    )
+                    .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
                 }
 
                 // Dashboard cards (Reminders-style 2x2 grid)
@@ -236,6 +237,16 @@ private struct iPadRootView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showFullNewEntry) {
+            NavigationStack {
+                NewEntryView(onSaved: {
+                    showFullNewEntry = false
+                    selection = .home
+                })
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: - Detail View
@@ -351,7 +362,52 @@ private struct iPadRootView: View {
 
 }
 
-// MARK: - Helpers
+// MARK: - Sidebar Split Button
+
+private struct SidebarSplitButton: View {
+    let onQuickAdd: () -> Void
+    let onFullEntry: () -> Void
+
+    private let darkYellow = Color(red: 0.75, green: 0.60, blue: 0.0)
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // Quick Add (primary)
+            Button(action: onQuickAdd) {
+                HStack(spacing: 8) {
+                    Image(systemName: "hare.fill")
+                        .font(.title3)
+                    Text("Quick Add")
+                        .font(.subheadline.weight(.bold))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .foregroundStyle(.white)
+                .background(darkYellow)
+            }
+            .buttonStyle(.plain)
+
+            // Divider
+            Rectangle()
+                .fill(Color.white.opacity(0.3))
+                .frame(width: 1)
+                .padding(.vertical, 8)
+                .background(darkYellow)
+
+            // Full Entry
+            Button(action: onFullEntry) {
+                Image(systemName: "plus")
+                    .font(.title3.weight(.semibold))
+                    .frame(width: 50)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(.white)
+                    .background(darkYellow.opacity(0.85))
+            }
+            .buttonStyle(.plain)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
 
 // MARK: - Sidebar Card (Reminders-style)
 
