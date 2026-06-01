@@ -101,12 +101,24 @@ private struct iPadRootView: View {
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                // New Entry (split button)
+                // Quick Add
                 Section {
-                    SidebarSplitButton(
-                        onQuickAdd: { showNewEntry = true },
-                        onFullEntry: { showFullNewEntry = true }
-                    )
+                    Button { showNewEntry = true } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "hare.fill")
+                                .font(.title3)
+                            Text("Quick Add")
+                                .font(.subheadline.weight(.bold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .foregroundStyle(.white)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 0.75, green: 0.60, blue: 0.0))
+                        )
+                    }
+                    .buttonStyle(.plain)
                     .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
                 }
 
@@ -214,6 +226,12 @@ private struct iPadRootView: View {
             detailView
                 .environment(\.modelContext, ctx)
                 .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showFullNewEntry = true } label: {
+                            Image(systemName: "plus.circle")
+                                .imageScale(.large)
+                        }
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showSearch = true } label: {
                             Image(systemName: "magnifyingglass")
@@ -360,53 +378,6 @@ private struct iPadRootView: View {
         }
     }
 
-}
-
-// MARK: - Sidebar Split Button
-
-private struct SidebarSplitButton: View {
-    let onQuickAdd: () -> Void
-    let onFullEntry: () -> Void
-
-    private let darkYellow = Color(red: 0.75, green: 0.60, blue: 0.0)
-
-    var body: some View {
-        HStack(spacing: 0) {
-            // Quick Add (primary)
-            Button(action: onQuickAdd) {
-                HStack(spacing: 8) {
-                    Image(systemName: "hare.fill")
-                        .font(.title3)
-                    Text("Quick Add")
-                        .font(.subheadline.weight(.bold))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .foregroundStyle(.white)
-                .background(darkYellow)
-            }
-            .buttonStyle(.plain)
-
-            // Divider
-            Rectangle()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 1)
-                .padding(.vertical, 8)
-                .background(darkYellow)
-
-            // Full Entry
-            Button(action: onFullEntry) {
-                Image(systemName: "plus")
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 50)
-                    .padding(.vertical, 14)
-                    .foregroundStyle(.white)
-                    .background(darkYellow.opacity(0.85))
-            }
-            .buttonStyle(.plain)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 12))
-    }
 }
 
 // MARK: - Sidebar Card (Reminders-style)
