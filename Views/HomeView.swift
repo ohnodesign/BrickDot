@@ -154,6 +154,7 @@ struct HomeView: View {
                         } label: {
                             Image(systemName: "person.crop.circle")
                                 .imageScale(.large)
+                                .foregroundStyle(Color(.darkGray))
                                 .accessibilityLabel("Profile")
                         }
                     }
@@ -161,6 +162,7 @@ struct HomeView: View {
                         Button { showNewEntry = true } label: {
                             Image(systemName: "plus.circle")
                                 .imageScale(.large)
+                                .foregroundStyle(Color(.darkGray))
                                 .accessibilityLabel("New Entry")
                         }
                     }

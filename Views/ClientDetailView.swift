@@ -405,6 +405,7 @@ struct ClientDetailView: View {
                 } label: {
                     Image(systemName: "plus.circle")
                         .imageScale(.large)
+                                .foregroundStyle(Color(.darkGray))
                         .accessibilityLabel("New Entry")
                 }
             }

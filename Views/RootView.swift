@@ -219,6 +219,7 @@ private struct iPadRootView: View {
                     } label: {
                         Image(systemName: "house")
                             .imageScale(.large)
+                                .foregroundStyle(Color(.darkGray))
                     }
                 }
             }
@@ -230,12 +231,14 @@ private struct iPadRootView: View {
                         Button { showFullNewEntry = true } label: {
                             Image(systemName: "plus.circle")
                                 .imageScale(.large)
+                                .foregroundStyle(Color(.darkGray))
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showSearch = true } label: {
                             Image(systemName: "magnifyingglass")
                                 .imageScale(.large)
+                                .foregroundStyle(Color(.darkGray))
                         }
                     }
                 }

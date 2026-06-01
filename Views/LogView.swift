@@ -46,6 +46,7 @@ struct LogView: View {
                     Button { showNewEntry = true } label: {
                         Image(systemName: "plus.circle")
                             .imageScale(.large)
+                                .foregroundStyle(Color(.darkGray))
                             .accessibilityLabel("New Entry")
                     }
                 }

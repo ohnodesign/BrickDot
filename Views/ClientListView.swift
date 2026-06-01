@@ -44,7 +44,10 @@ struct ClientListView: View {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     showNewClient = true
-                } label: { Image(systemName: "person.crop.circle.badge.plus") }
+                } label: {
+                    Image(systemName: "person.crop.circle.badge.plus")
+                        .foregroundStyle(Color(.darkGray))
+                }
                 .accessibilityLabel("New Client")
             }
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -52,6 +55,7 @@ struct ClientListView: View {
                     showNewEntry = true
                 } label: {
                     Image(systemName: "plus.circle")
+                        .foregroundStyle(Color(.darkGray))
                 }
                 .accessibilityLabel("New Entry")
             }
