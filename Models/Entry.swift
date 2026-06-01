@@ -14,6 +14,7 @@ final class Entry {
     var statusRaw: String = "To Do"
     var timerStartedAt: Date?
     var isImportant: Bool = false
+    var isQuickAdd: Bool = false
     var dueDate: Date? = nil
     var billOnCompletion: Bool = false
 

@@ -294,6 +294,7 @@ struct QuickAddView: View {
             createdAt: Date(),
             isImportant: true
         )
+        entry.isQuickAdd = true
         ctx.insert(entry)
 
         do {

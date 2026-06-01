@@ -11,6 +11,11 @@ struct HomeView: View {
     @AppStorage("home.showDoneSection") private var showDoneSection = false
     @AppStorage("user.displayName") private var displayName = ""
 
+    @State private var expandedSections: Set<String> = []
+
+    private func isExpanded(_ key: String) -> Bool { expandedSections.contains(key) }
+    private func toggleExpanded(_ key: String) { if expandedSections.contains(key) { expandedSections.remove(key) } else { expandedSections.insert(key) } }
+
     var body: some View {
             List {
                 // MARK: - Greeting & Today's Focus
@@ -77,109 +82,28 @@ struct HomeView: View {
                     }
                 } else {
                     // Overdue
-                    if !overdueEntries.isEmpty {
-                        Section {
-                            ForEach(overdueEntries) { entry in
-                                NavigationLink { EditEntryView(entry: entry) } label: {
-                                    ActionRow(entry: entry, badge: .overdue)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    entrySwipeActions(entry)
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    entryLeadingSwipeActions(entry)
-                                }
-                            }
-                        } header: {
-                            Label("Overdue", systemImage: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.red)
-                                .font(.title3.weight(.semibold))
-                        }
-                    }
+                    cappedSection(key: "overdue", entries: overdueEntries, badge: .overdue,
+                                  icon: "exclamationmark.triangle.fill", title: "Overdue", tint: .red)
 
                     // Due Today
-                    if !dueTodayEntries.isEmpty {
-                        Section {
-                            ForEach(dueTodayEntries) { entry in
-                                NavigationLink { EditEntryView(entry: entry) } label: {
-                                    ActionRow(entry: entry, badge: .dueToday)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    entrySwipeActions(entry)
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    entryLeadingSwipeActions(entry)
-                                }
-                            }
-                        } header: {
-                            Label("Due Today", systemImage: "sun.max.fill")
-                                .foregroundStyle(.orange)
-                                .font(.title3.weight(.semibold))
-                        }
-                    }
+                    cappedSection(key: "today", entries: dueTodayEntries, badge: .dueToday,
+                                  icon: "sun.max.fill", title: "Due Today", tint: .orange)
+
+                    // Quick Adds
+                    cappedSection(key: "quickadd", entries: quickAddEntries, badge: .none,
+                                  icon: "bolt.circle.fill", title: "Quick Adds", tint: .purple)
 
                     // In Progress (with timers)
-                    if !inProgressEntries.isEmpty {
-                        Section {
-                            ForEach(inProgressEntries) { entry in
-                                NavigationLink { EditEntryView(entry: entry) } label: {
-                                    ActionRow(entry: entry, badge: entry.dueDate != nil ? .dueSoon : .none)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    entrySwipeActions(entry)
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    entryLeadingSwipeActions(entry)
-                                }
-                            }
-                        } header: {
-                            Label("In Progress", systemImage: "bolt.fill")
-                                .foregroundStyle(Color.brick)
-                                .font(.title3.weight(.semibold))
-                        }
-                    }
+                    cappedSection(key: "inprogress", entries: inProgressEntries, badge: .none,
+                                  icon: "bolt.fill", title: "In Progress", tint: Color.brick)
 
-                    // Up Next (starred + due this week, not already shown above)
-                    if !upNextEntries.isEmpty {
-                        Section {
-                            ForEach(upNextEntries) { entry in
-                                NavigationLink { EditEntryView(entry: entry) } label: {
-                                    ActionRow(entry: entry, badge: dueBadge(for: entry))
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    entrySwipeActions(entry)
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    entryLeadingSwipeActions(entry)
-                                }
-                            }
-                        } header: {
-                            Label("Up Next", systemImage: "arrow.right.circle.fill")
-                                .foregroundStyle(.accent)
-                                .font(.title3.weight(.semibold))
-                        }
-                    }
+                    // Up Next
+                    cappedSection(key: "upnext", entries: upNextEntries, badge: nil,
+                                  icon: "arrow.right.circle.fill", title: "Up Next", tint: .accent)
 
-                    // Backlog (remaining to-do with no deadline or deadline > this week)
-                    if !backlogEntries.isEmpty {
-                        Section {
-                            ForEach(backlogEntries) { entry in
-                                NavigationLink { EditEntryView(entry: entry) } label: {
-                                    ActionRow(entry: entry, badge: .none)
-                                }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                    entrySwipeActions(entry)
-                                }
-                                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                                    entryLeadingSwipeActions(entry)
-                                }
-                            }
-                        } header: {
-                            Label("Backlog", systemImage: "tray.fill")
-                                .foregroundStyle(.secondary)
-                                .font(.title3.weight(.semibold))
-                        }
-                    }
+                    // Backlog
+                    cappedSection(key: "backlog", entries: backlogEntries, badge: .none,
+                                  icon: "tray.fill", title: "Backlog", tint: .secondary)
                 }
 
                 // MARK: - Done (collapsed)
@@ -332,6 +256,49 @@ struct HomeView: View {
         try? ctx.save()
     }
 
+    // MARK: - Capped Section Builder
+
+    @ViewBuilder
+    private func cappedSection(key: String, entries: [Entry], badge: ActionRowBadge?, icon: String, title: String, tint: Color) -> some View {
+        if !entries.isEmpty {
+            let cap = 3
+            let expanded = isExpanded(key)
+            let displayed = expanded ? entries : Array(entries.prefix(cap))
+
+            Section {
+                ForEach(displayed) { entry in
+                    NavigationLink { EditEntryView(entry: entry) } label: {
+                        ActionRow(entry: entry, badge: badge ?? dueBadge(for: entry))
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        entrySwipeActions(entry)
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        entryLeadingSwipeActions(entry)
+                    }
+                }
+                if entries.count > cap {
+                    Button {
+                        withAnimation { toggleExpanded(key) }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text(expanded ? "Show Less" : "Show All (\(entries.count))")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            } header: {
+                Label(title, systemImage: icon)
+                    .foregroundStyle(tint)
+                    .font(.title3.weight(.semibold))
+            }
+        }
+    }
+
     // MARK: - Entry Sorting & Filtering
 
     private var cal: Calendar { Calendar.current }
@@ -384,10 +351,16 @@ struct HomeView: View {
             }
     }
 
+    private var quickAddEntries: [Entry] {
+        openEntries.filter { $0.isQuickAdd && $0.status == .todo }
+            .sorted { $0.createdAt > $1.createdAt }
+    }
+
     private var upNextEntries: [Entry] {
         let shown = Set(overdueEntries.map(\.persistentModelID))
             .union(dueTodayEntries.map(\.persistentModelID))
             .union(inProgressEntries.map(\.persistentModelID))
+            .union(quickAddEntries.map(\.persistentModelID))
 
         return openEntries.filter { e in
             guard !shown.contains(e.persistentModelID) else { return false }
@@ -401,6 +374,7 @@ struct HomeView: View {
         let shown = Set(overdueEntries.map(\.persistentModelID))
             .union(dueTodayEntries.map(\.persistentModelID))
             .union(inProgressEntries.map(\.persistentModelID))
+            .union(quickAddEntries.map(\.persistentModelID))
             .union(upNextEntries.map(\.persistentModelID))
 
         return openEntries.filter { !shown.contains($0.persistentModelID) }
