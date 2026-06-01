@@ -164,6 +164,8 @@ struct ClientDetailView: View {
                             NavigationLink { EditEntryView(entry: e) } label: {
                                 SharedEntryRow(entry: e)
                             }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
+                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
                         }
                     }
                 } label: {
