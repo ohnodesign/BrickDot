@@ -95,21 +95,11 @@ private struct iPadRootView: View {
     @State private var selection: SidebarDestination? = .home
     @State private var showNewEntry = false
     @State private var detailPath = NavigationPath()
+    @State private var showSearch = false
 
     var body: some View {
         NavigationSplitView {
             List(selection: $selection) {
-                // Home
-                Section {
-                    Button {
-                        detailPath = NavigationPath()
-                        selection = .home
-                    } label: {
-                        Label("Home", systemImage: "house")
-                    }
-                    .listItemTint(selection == .home ? .accentColor : nil)
-                }
-
                 // New Entry
                 Section {
                     Button { showNewEntry = true } label: {
@@ -160,7 +150,11 @@ private struct iPadRootView: View {
 
                 // Clients
                 Section {
-                    ForEach(allClients, id: \.persistentModelID) { client in
+                    NavigationLink(value: SidebarDestination.allClients) {
+                        Label("All Clients", systemImage: "person.2")
+                    }
+
+                    ForEach(topClients, id: \.persistentModelID) { client in
                         NavigationLink(value: SidebarDestination.client(client.persistentModelID)) {
                             HStack(spacing: 8) {
                                 Circle()
@@ -204,9 +198,32 @@ private struct iPadRootView: View {
             }
             .listStyle(.sidebar)
             .navigationTitle("BrickDot")
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        detailPath = NavigationPath()
+                        selection = .home
+                    } label: {
+                        Image(systemName: "house")
+                            .imageScale(.large)
+                    }
+                }
+            }
         } detail: {
             detailView
                 .environment(\.modelContext, ctx)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showSearch = true } label: {
+                            Image(systemName: "magnifyingglass")
+                                .imageScale(.large)
+                        }
+                    }
+                }
+                .sheet(isPresented: $showSearch) {
+                    SearchView()
+                        .environment(\.modelContext, ctx)
+                }
         }
         .onChange(of: selection) { _, _ in
             detailPath = NavigationPath()
@@ -305,6 +322,16 @@ private struct iPadRootView: View {
 
     private var runningEntries: [Entry] {
         allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }
+    }
+
+    private var topClients: [Client] {
+        Array(allClients
+            .sorted { a, b in
+                let aOpen = a.entriesList.filter { $0.status != .done }.count
+                let bOpen = b.entriesList.filter { $0.status != .done }.count
+                return aOpen > bOpen
+            }
+            .prefix(5))
     }
 
     private var weekAmount: Double {
