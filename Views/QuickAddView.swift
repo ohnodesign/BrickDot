@@ -13,7 +13,7 @@ struct QuickAddView: View {
     @State private var rawInput: String = ""
     @State private var isSaving = false
     @State private var showFullEntry = false
-    @State private var useShorthand = false
+    @State private var showManualPickers = false
     @State private var parsedPreview: ParsedInput?
 
     @StateObject private var speech = SpeechRecognizer()
@@ -28,46 +28,47 @@ struct QuickAddView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                // Shorthand input
-                Section {
+            VStack(spacing: 16) {
+                // Quick Entry field
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Quick Entry")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .textCase(.uppercase)
+                        .padding(.horizontal, 4)
+
                     HStack {
                         TextField("cs photo 121 Rasho Road", text: $rawInput)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .focused($inputFocused)
                             .onChange(of: rawInput) { _, _ in parseInput() }
-                            .onSubmit { if parsedPreview != nil { save() } }
+                            .onSubmit { if canSave { save() } }
+                            .padding(12)
+                            .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
 
-                        // Voice input button
                         Button {
                             if speech.isRecording {
                                 speech.stopRecording()
                             } else {
                                 Task {
                                     let ok = await speech.requestPermission()
-                                    if ok {
-                                        speech.transcript = ""
-                                        speech.startRecording()
-                                    }
+                                    if ok { speech.transcript = ""; speech.startRecording() }
                                 }
                             }
                         } label: {
                             Image(systemName: speech.isRecording ? "mic.fill" : "mic")
                                 .foregroundStyle(speech.isRecording ? .red : .accent)
                                 .imageScale(.large)
+                                .frame(width: 44, height: 44)
                         }
-                        .buttonStyle(.plain)
                     }
 
                     if speech.isRecording {
                         HStack(spacing: 8) {
-                            Circle()
-                                .fill(.red)
-                                .frame(width: 8, height: 8)
+                            Circle().fill(.red).frame(width: 8, height: 8)
                             Text(speech.transcript.isEmpty ? "Listening…" : speech.transcript)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .font(.caption).foregroundStyle(.secondary)
                             Spacer()
                             Button("Use") {
                                 rawInput = speech.transcript
@@ -82,89 +83,84 @@ struct QuickAddView: View {
                     if let error = speech.error {
                         Text(error).font(.caption).foregroundStyle(.red)
                     }
-                } header: {
-                    Text("Quick Entry")
-                } footer: {
-                    Text("Format: **client service description** — e.g. \"cob photo 121 Rasho Road\"")
                 }
 
-                // Parsed preview / manual fallback
+                // Parsed preview
                 if let parsed = parsedPreview {
-                    Section("Parsed") {
-                        HStack {
-                            Circle().fill(parsed.client.accentColor).frame(width: 10, height: 10)
-                            Text(parsed.client.name).fontWeight(.semibold)
-                            Spacer()
-                            Text(parsed.service)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                    HStack(spacing: 8) {
+                        Circle().fill(parsed.client.accentColor).frame(width: 10, height: 10)
+                        Text(parsed.client.name).font(.subheadline.weight(.semibold))
+                        Text(parsed.service).font(.caption).foregroundStyle(.secondary)
                         if !parsed.description.isEmpty {
-                            Text(parsed.description)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                            Text("·").foregroundStyle(.secondary)
+                            Text(parsed.description).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
+                        Spacer()
                     }
-                } else if !rawInput.isEmpty {
-                    Section {
-                        Text("No match — use the pickers below or try a different prefix")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray6)))
+                } else if !rawInput.isEmpty && rawInput.contains(" ") {
+                    Text("No match — try a different shortcode or use Pick Manually")
+                        .font(.caption).foregroundStyle(.orange)
                 }
 
-                // Manual pickers (fallback or override)
-                Section("Or pick manually") {
-                    Picker("Client", selection: $selectedClient) {
-                        ForEach(clients, id: \.persistentModelID) { c in
-                            Text(c.name).tag(Optional(c))
+                // Buttons row
+                HStack(spacing: 12) {
+                    Button {
+                        showManualPickers = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "slider.horizontal.3")
+                            Text("Pick Manually")
                         }
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
                     }
-
-                    Picker("Service", selection: $service) {
-                        ForEach(Constants.services, id: \.self) { s in
-                            Text(s).tag(s)
-                        }
-                    }
-
-                    TextField("Description", text: $detail)
-                }
-
-                // Actions
-                Section {
-                    Button(action: save) {
-                        if isSaving {
-                            HStack { ProgressView(); Text("Saving…") }
-                        } else {
-                            HStack {
-                                Image(systemName: "bolt.fill")
-                                Text("Quick Save").fontWeight(.semibold)
-                                Spacer()
-                            }
-                        }
-                    }
-                    .disabled(!canSave || isSaving)
+                    .buttonStyle(.plain)
 
                     Button {
                         showFullEntry = true
                     } label: {
                         HStack {
                             Image(systemName: "square.and.pencil")
-                            Text("More Details…")
-                            Spacer()
+                            Text("Full Entry")
                         }
-                        .foregroundStyle(.accent)
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
                     }
+                    .buttonStyle(.plain)
                 }
+
+                // Quick Save button
+                Button(action: save) {
+                    HStack {
+                        Image(systemName: "hare.fill")
+                            .scaleEffect(0.8)
+                        Text(isSaving ? "Saving…" : "Quick Save")
+                            .fontWeight(.semibold)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(canSave ? Color(red: 0.75, green: 0.60, blue: 0.0) : Color(.systemGray4))
+                    )
+                    .foregroundStyle(.white)
+                }
+                .disabled(!canSave || isSaving)
+
+                Spacer()
             }
+            .padding()
             .navigationTitle("Quick Add")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        speech.stopRecording()
-                        dismiss()
-                    }
+                    Button("Cancel") { speech.stopRecording(); dismiss() }
                 }
             }
             .onAppear {
@@ -180,22 +176,27 @@ struct QuickAddView: View {
                 }
                 inputFocused = true
             }
-            .onDisappear {
-                speech.stopRecording()
-            }
+            .onDisappear { speech.stopRecording() }
             .sheet(isPresented: $showFullEntry) {
                 NavigationStack {
                     NewEntryView(
-                        onSaved: {
-                            showFullEntry = false
-                            onSaved?()
-                            dismiss()
-                        },
+                        onSaved: { showFullEntry = false; onSaved?(); dismiss() },
                         prefillClient: effectiveClient,
                         prefillService: effectiveService,
                         prefillDetail: effectiveDetail
                     )
                 }
+            }
+            .sheet(isPresented: $showManualPickers) {
+                ManualPickerSheet(
+                    clients: clients,
+                    selectedClient: $selectedClient,
+                    service: $service,
+                    detail: $detail,
+                    onSave: { save() }
+                )
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
             }
         }
     }
@@ -216,76 +217,37 @@ struct QuickAddView: View {
         let serviceQuery = String(words[1]).lowercased()
         let desc = words.count > 2 ? String(words[2]) : ""
 
-        // Match client: prefix of name, or initials
-        guard let matchedClient = matchClient(clientQuery) else {
-            parsedPreview = nil
-            return
-        }
-
-        // Match service: prefix match (case-insensitive)
-        guard let matchedService = matchService(serviceQuery) else {
-            parsedPreview = nil
-            return
-        }
+        guard let matchedClient = matchClient(clientQuery) else { parsedPreview = nil; return }
+        guard let matchedService = matchService(serviceQuery) else { parsedPreview = nil; return }
 
         parsedPreview = ParsedInput(client: matchedClient, service: matchedService, description: desc)
     }
 
     private func matchClient(_ query: String) -> Client? {
-        // 1. Exact shortcode match
-        if let match = clients.first(where: { !$0.shortcode.isEmpty && $0.shortcode.lowercased() == query }) {
-            return match
-        }
-        // 2. Shortcode prefix
-        if let match = clients.first(where: { !$0.shortcode.isEmpty && $0.shortcode.lowercased().hasPrefix(query) }) {
-            return match
-        }
-        // 3. Name prefix
-        if let match = clients.first(where: { $0.name.lowercased().hasPrefix(query) }) {
-            return match
-        }
-        // 4. Initials (first letter of each word)
+        if let match = clients.first(where: { !$0.shortcode.isEmpty && $0.shortcode.lowercased() == query }) { return match }
+        if let match = clients.first(where: { !$0.shortcode.isEmpty && $0.shortcode.lowercased().hasPrefix(query) }) { return match }
+        if let match = clients.first(where: { $0.name.lowercased().hasPrefix(query) }) { return match }
         if let match = clients.first(where: {
             let initials = $0.name.split(separator: " ").compactMap({ $0.first }).map({ String($0).lowercased() }).joined()
             return initials.hasPrefix(query)
-        }) {
-            return match
-        }
-        // 5. Contains as fallback
-        if let match = clients.first(where: { $0.name.lowercased().contains(query) }) {
-            return match
-        }
+        }) { return match }
+        if let match = clients.first(where: { $0.name.lowercased().contains(query) }) { return match }
         return nil
     }
 
     private func matchService(_ query: String) -> String? {
-        // Exact prefix match
-        if let match = Constants.services.first(where: { $0.lowercased().hasPrefix(query) }) {
-            return match
-        }
-        return nil
+        Constants.services.first(where: { $0.lowercased().hasPrefix(query) })
     }
 
-    // MARK: - Effective values (parsed overrides manual)
+    // MARK: - Effective values
 
-    private var effectiveClient: Client? {
-        parsedPreview?.client ?? selectedClient
-    }
-
-    private var effectiveService: String {
-        parsedPreview?.service ?? service
-    }
-
+    private var effectiveClient: Client? { parsedPreview?.client ?? selectedClient }
+    private var effectiveService: String { parsedPreview?.service ?? service }
     private var effectiveDetail: String {
-        if let parsed = parsedPreview, !parsed.description.isEmpty {
-            return parsed.description
-        }
+        if let parsed = parsedPreview, !parsed.description.isEmpty { return parsed.description }
         return detail
     }
-
-    private var canSave: Bool {
-        effectiveClient != nil
-    }
+    private var canSave: Bool { effectiveClient != nil }
 
     private func save() {
         guard let client = effectiveClient, !isSaving else { return }
@@ -315,6 +277,47 @@ struct QuickAddView: View {
             dismiss()
         } catch {
             isSaving = false
+        }
+    }
+}
+
+// MARK: - Manual Picker Sheet
+
+private struct ManualPickerSheet: View {
+    let clients: [Client]
+    @Binding var selectedClient: Client?
+    @Binding var service: String
+    @Binding var detail: String
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Picker("Client", selection: $selectedClient) {
+                    ForEach(clients, id: \.persistentModelID) { c in
+                        Text(c.name).tag(Optional(c))
+                    }
+                }
+                Picker("Service", selection: $service) {
+                    ForEach(Constants.services, id: \.self) { s in
+                        Text(s).tag(s)
+                    }
+                }
+                TextField("Description", text: $detail)
+            }
+            .navigationTitle("Pick Manually")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Back") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") { dismiss(); onSave() }
+                        .disabled(selectedClient == nil)
+                }
+            }
         }
     }
 }
