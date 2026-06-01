@@ -291,7 +291,8 @@ struct QuickAddView: View {
             rate: client.rate,
             client: client,
             status: .todo,
-            createdAt: Date()
+            createdAt: Date(),
+            isImportant: true
         )
         ctx.insert(entry)
 
