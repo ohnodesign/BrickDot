@@ -5,6 +5,7 @@ final class Client {
     var name: String = ""
     var rate: Double = 0
     var colorIndex: Int = 0
+    var shortcode: String = ""
     @Relationship(deleteRule: .cascade, inverse: \Entry.client)
     var entries: [Entry]? = []
     @Relationship(deleteRule: .cascade, inverse: \EntryTemplate.client)

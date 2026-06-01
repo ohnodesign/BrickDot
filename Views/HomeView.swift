@@ -91,7 +91,7 @@ struct HomeView: View {
 
                     // Quick Adds
                     cappedSection(key: "quickadd", entries: quickAddEntries, badge: ActionRowBadge.none,
-                                  icon: "hare.fill", title: "Quick Adds", tint: .purple)
+                                  icon: "hare.fill", title: "Quick Adds", tint: Color(red: 0.75, green: 0.60, blue: 0.0), iconScale: 0.8)
 
                     // In Progress (with timers)
                     cappedSection(key: "inprogress", entries: inProgressEntries, badge: ActionRowBadge.none,
@@ -259,7 +259,8 @@ struct HomeView: View {
     // MARK: - Capped Section Builder
 
     @ViewBuilder
-    private func cappedSection(key: String, entries: [Entry], badge: ActionRowBadge?, icon: String, title: String, tint: Color) -> some View {
+    @ViewBuilder
+    private func cappedSection(key: String, entries: [Entry], badge: ActionRowBadge?, icon: String, title: String, tint: Color, iconScale: CGFloat = 1.0) -> some View {
         if !entries.isEmpty {
             let cap = 3
             let expanded = isExpanded(key)
@@ -292,7 +293,11 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                 }
             } header: {
-                Label(title, systemImage: icon)
+                HStack(spacing: 6) {
+                    Image(systemName: icon)
+                        .scaleEffect(iconScale)
+                    Text(title)
+                }
                     .foregroundStyle(tint)
                     .font(.title3.weight(.semibold))
             }

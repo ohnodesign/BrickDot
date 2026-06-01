@@ -16,6 +16,7 @@ struct ClientDTO: Codable {
     var name: String
     var rate: Double
     var colorIndex: Int?
+    var shortcode: String?
 }
 
 struct SubtaskDTO: Codable {
@@ -79,7 +80,7 @@ enum Backup {
         // Clients keyed by name; if duplicates exist, keep the first (names should be unique in UI).
         // We still export all as a flat list.
         let clientDTOs: [ClientDTO] = clients.map {
-            ClientDTO(name: $0.name, rate: $0.rate, colorIndex: $0.colorIndex)
+            ClientDTO(name: $0.name, rate: $0.rate, colorIndex: $0.colorIndex, shortcode: $0.shortcode.isEmpty ? nil : $0.shortcode)
         }.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
 
         // in makeJSONData(ctx:)
@@ -171,8 +172,10 @@ enum Backup {
                 match.name = c.name
                 match.rate = c.rate
                 if let ci = c.colorIndex { match.colorIndex = ci }
+                if let sc = c.shortcode, !sc.isEmpty { match.shortcode = sc }
             } else {
                 let model = Client(name: c.name, rate: c.rate, colorIndex: c.colorIndex ?? 0)
+                model.shortcode = c.shortcode ?? ""
                 ctx.insert(model)
                 clientIndex[key] = model
                 existingClients.append(model)
@@ -245,8 +248,10 @@ enum Backup {
                 match.name = c.name       // keep canonical casing from backup
                 match.rate = c.rate
                 if let ci = c.colorIndex { match.colorIndex = ci }
+                if let sc = c.shortcode, !sc.isEmpty { match.shortcode = sc }
             } else {
                 let model = Client(name: c.name, rate: c.rate, colorIndex: c.colorIndex ?? 0)
+                model.shortcode = c.shortcode ?? ""
                 ctx.insert(model)
                 clientIndex[key] = model
                 existingClients.append(model)

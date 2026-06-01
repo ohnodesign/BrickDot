@@ -754,6 +754,7 @@ private struct ClientInlineEditor: View {
     @State private var name: String
     @State private var rate: Double
     @State private var colorIndex: Int
+    @State private var shortcode: String
 
     init(client: Client, onClose: @escaping (Bool) -> Void) {
         self._client = Bindable(wrappedValue: client)
@@ -761,6 +762,7 @@ private struct ClientInlineEditor: View {
         _name = State(initialValue: client.name)
         _rate = State(initialValue: client.rate)
         _colorIndex = State(initialValue: client.colorIndex)
+        _shortcode = State(initialValue: client.shortcode)
     }
 
     var body: some View {
@@ -775,6 +777,11 @@ private struct ClientInlineEditor: View {
                         .frame(maxWidth: 140)
                 }
             }
+            Section("Quick Add Shortcode") {
+                TextField("e.g. cs, sve, dlw", text: $shortcode)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+            }
             Section("Color") {
                 ClientColorPicker(selectedIndex: $colorIndex)
             }
@@ -783,6 +790,7 @@ private struct ClientInlineEditor: View {
                     client.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
                     client.rate = rate
                     client.colorIndex = colorIndex
+                    client.shortcode = shortcode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
                     onClose(true)
                 } label: {
                     Label("Save", systemImage: "tray.and.arrow.down.fill")

@@ -10,6 +10,7 @@ struct NewClientView: View {
     @State private var name: String = ""
     @State private var rate: Double = 0
     @State private var colorIndex: Int = 0
+    @State private var shortcode: String = ""
     @State private var isSaving = false
 
     @FocusState private var focused: Field?
@@ -31,6 +32,15 @@ struct NewClientView: View {
                         .frame(maxWidth: 140)
                         .focused($focused, equals: .rate)
                 }
+            }
+
+            SwiftUI.Section("Quick Add Shortcode") {
+                TextField("e.g. cs, sve, dlw", text: $shortcode)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Text("Used for shorthand entry: \"cs photo 121 Rasho\"")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             SwiftUI.Section("Color") {
@@ -78,6 +88,7 @@ struct NewClientView: View {
 
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let client = Client(name: trimmed, rate: rate, colorIndex: colorIndex)
+        client.shortcode = shortcode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         ctx.insert(client)
 
         do {

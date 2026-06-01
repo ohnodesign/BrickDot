@@ -232,18 +232,26 @@ struct QuickAddView: View {
     }
 
     private func matchClient(_ query: String) -> Client? {
-        // 1. Exact prefix of client name
+        // 1. Exact shortcode match
+        if let match = clients.first(where: { !$0.shortcode.isEmpty && $0.shortcode.lowercased() == query }) {
+            return match
+        }
+        // 2. Shortcode prefix
+        if let match = clients.first(where: { !$0.shortcode.isEmpty && $0.shortcode.lowercased().hasPrefix(query) }) {
+            return match
+        }
+        // 3. Name prefix
         if let match = clients.first(where: { $0.name.lowercased().hasPrefix(query) }) {
             return match
         }
-        // 2. Match initials (first letter of each word)
+        // 4. Initials (first letter of each word)
         if let match = clients.first(where: {
             let initials = $0.name.split(separator: " ").compactMap({ $0.first }).map({ String($0).lowercased() }).joined()
             return initials.hasPrefix(query)
         }) {
             return match
         }
-        // 3. Contains match as fallback
+        // 5. Contains as fallback
         if let match = clients.first(where: { $0.name.lowercased().contains(query) }) {
             return match
         }
