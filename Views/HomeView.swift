@@ -91,7 +91,7 @@ struct HomeView: View {
 
                     // Quick Adds
                     cappedSection(key: "quickadd", entries: quickAddEntries, badge: ActionRowBadge.none,
-                                  icon: "bolt.circle.fill", title: "Quick Adds", tint: .purple)
+                                  icon: "hare.fill", title: "Quick Adds", tint: .purple)
 
                     // In Progress (with timers)
                     cappedSection(key: "inprogress", entries: inProgressEntries, badge: ActionRowBadge.none,
