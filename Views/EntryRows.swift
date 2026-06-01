@@ -118,7 +118,7 @@ struct SharedEntryRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 SharedStatusMark(
-                    color: entry.status.color,
+                    color: statusColor(entry.status),
                     isImportant: entry.isImportant,
                     pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
                 )

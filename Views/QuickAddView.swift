@@ -4,6 +4,7 @@ import SwiftData
 struct QuickAddView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
 
     @Query(sort: \Client.name) private var clients: [Client]
 
@@ -58,7 +59,7 @@ struct QuickAddView: View {
                             }
                         } label: {
                             Image(systemName: speech.isRecording ? "mic.fill" : "mic")
-                                .foregroundStyle(speech.isRecording ? .red : .accent)
+                                .foregroundStyle(speech.isRecording ? theme.overdue : theme.accent)
                                 .imageScale(.large)
                                 .frame(width: 44, height: 44)
                         }
@@ -98,7 +99,7 @@ struct QuickAddView: View {
                         Spacer()
                     }
                     .padding(10)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray6)))
+                    .background(RoundedRectangle(cornerRadius: 8).fill(theme.accentLight.opacity(0.35)))
                 } else if !rawInput.isEmpty && rawInput.contains(" ") {
                     Text("No match — try a different shortcode or use Pick Manually")
                         .font(.caption).foregroundStyle(.orange)
@@ -116,7 +117,7 @@ struct QuickAddView: View {
                         .font(.subheadline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
+                        .background(RoundedRectangle(cornerRadius: 10).fill(theme.sidebarBackground))
                     }
                     .buttonStyle(.plain)
 
@@ -130,7 +131,7 @@ struct QuickAddView: View {
                         .font(.subheadline)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray6)))
+                        .background(RoundedRectangle(cornerRadius: 10).fill(theme.sidebarBackground))
                     }
                     .buttonStyle(.plain)
                 }
@@ -147,9 +148,9 @@ struct QuickAddView: View {
                     .padding(.vertical, 14)
                     .background(
                         RoundedRectangle(cornerRadius: 12)
-                            .fill(canSave ? Color(red: 0.75, green: 0.60, blue: 0.0) : Color(.systemGray4))
+                            .fill(canSave ? theme.quickCapture : Color(.systemGray4))
                     )
-                    .foregroundStyle(.white)
+                    .foregroundStyle(theme.buttonText)
                 }
                 .disabled(!canSave || isSaving)
 

@@ -3,6 +3,7 @@ import SwiftData
 
 struct StatsPageView: View {
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @State private var selectedStat: StatsPageSelectedStat? = nil
     @State private var selectedDueList: StatsPageSelectedStat? = nil
@@ -19,7 +20,7 @@ struct StatsPageView: View {
                             selectedDueList = StatsPageSelectedStat(title: "Due Today", entries: dueToday)
                         } label: {
                             HStack {
-                                Image(systemName: "sun.max.fill").foregroundStyle(.orange)
+                                Image(systemName: "sun.max.fill").foregroundStyle(theme.dueToday)
                                 Text("Today")
                                 Spacer()
                                 Text("\(dueToday.count)").foregroundStyle(.secondary)
@@ -45,7 +46,7 @@ struct StatsPageView: View {
                             selectedDueList = StatsPageSelectedStat(title: "Overdue", entries: overdue)
                         } label: {
                             HStack {
-                                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
+                                Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(theme.overdue)
                                 Text("Overdue")
                                 Spacer()
                                 Text("\(overdue.count)")
@@ -60,13 +61,13 @@ struct StatsPageView: View {
                         Button {
                             selectedStat = StatsPageSelectedStat(title: "To Do", entries: todoEntries)
                         } label: {
-                            StatusCountPill(icon: "circle", label: "To Do", count: todoCount, tint: .orange)
+                            StatusCountPill(icon: "circle", label: "To Do", count: todoCount, tint: theme.dueToday)
                         }.buttonStyle(.plain)
                         Divider().frame(height: 36)
                         Button {
                             selectedStat = StatsPageSelectedStat(title: "In Progress", entries: inProgressEntriesList)
                         } label: {
-                            StatusCountPill(icon: "bolt.fill", label: "In Progress", count: inProgressCount, tint: Color.brick)
+                            StatusCountPill(icon: "bolt.fill", label: "In Progress", count: inProgressCount, tint: theme.running)
                         }.buttonStyle(.plain)
                         Divider().frame(height: 36)
                         Button {

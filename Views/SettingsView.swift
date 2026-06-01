@@ -81,6 +81,7 @@ struct SettingsView: View {
     @AppStorage(AppPrefsKey.colorScheme)        private var appearanceRaw = "system"
     @AppStorage(AppPrefsKey.largeControls)      private var largeControls = false
     @AppStorage(AppPrefsKey.increasedContrast)  private var increasedContrast = false
+    @AppStorage("appearance.theme")             private var themeRaw = "professional"
 
     // Data & Backup
     @AppStorage(AppPrefsKey.autoBackupICloud)   private var autoBackupIcloud = false
@@ -154,6 +155,11 @@ struct SettingsView: View {
                 }
                 Picker("Theme", selection: $appearanceRaw) {
                     Text("System").tag("system"); Text("Light").tag("light"); Text("Dark").tag("dark")
+                }
+                Picker("Color Scheme", selection: $themeRaw) {
+                    ForEach(ThemeKey.allCases, id: \.rawValue) { key in
+                        Text(key.displayName).tag(key.rawValue)
+                    }
                 }
                 Toggle("Large controls", isOn: $largeControls)
                 Toggle("Increased contrast", isOn: $increasedContrast)

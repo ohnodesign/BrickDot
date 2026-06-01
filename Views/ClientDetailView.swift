@@ -4,6 +4,7 @@ import SwiftData
 
 struct ClientDetailView: View {
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
     @Bindable var client: Client
 
     // Collapsible sections (To Do / In Progress start collapsed)
@@ -220,7 +221,7 @@ struct ClientDetailView: View {
                     }
                 } label: {
                     HStack(spacing: 8) {
-                        StatusDot(color: .brick) // solid red in header
+                        StatusDot(color: theme.running) // solid red in header replaced with theme.running
                         Text("In Progress (\(clientInProgressSorted.count))")
                     }
                 }
@@ -492,14 +493,14 @@ struct ClientDetailView: View {
         if e.status == .inProgress && e.timerStartedAt != nil {
             Button { quickPauseAndAdd(e) } label: {
                 Label("Pause & Add", systemImage: "pause.circle")
-            }.tint(.orange)
+            }.tint(theme.dueToday)
         } else if e.status != .done {
             Button { quickStart(e) } label: {
                 Label("Start", systemImage: "play.circle")
-            }.tint(.green)
+            }.tint(theme.success)
         }
-        Button { quickBump(e, 0.25) } label: { Text("+15m") }.tint(.blue)
-        Button { quickBump(e, 0.5) }  label: { Text("+30m") }.tint(.indigo)
+        Button { quickBump(e, 0.25) } label: { Text("+15m") }.tint(theme.accent)
+        Button { quickBump(e, 0.5) }  label: { Text("+30m") }.tint(theme.accentHover)
     }
 
     @ViewBuilder
@@ -515,17 +516,17 @@ struct ClientDetailView: View {
         if e.status != .todo {
             Button { e.status = .todo; e.timerStartedAt = nil; try? ctx.save() } label: {
                 Label("To Do", systemImage: "circle")
-            }.tint(.orange)
+            }.tint(theme.dueToday)
         }
         if e.status != .inProgress {
             Button { e.status = .inProgress; if e.timerStartedAt == nil { e.timerStartedAt = Date() }; try? ctx.save() } label: {
                 Label("In Progress", systemImage: "bolt.fill")
-            }.tint(Color.brick)
+            }.tint(theme.running)
         }
         if e.status != .done {
             Button { markDone(e) } label: {
                 Label("Done", systemImage: "checkmark.circle.fill")
-            }.tint(.green)
+            }.tint(theme.success)
         }
     }
 }
@@ -544,11 +545,12 @@ private struct StatusDot: View {
 
 // Pulsing red dot used in In Progress rows
 private struct BrickDot: View {
+    @Environment(\.appTheme) private var theme
     let pulsing: Bool
     @State private var animate = false
     var body: some View {
         Circle()
-            .fill(Color.brick)
+            .fill(theme.running)
             .frame(width: 8, height: 8)
             .scaleEffect(pulsing && animate ? 1.35 : 1.0)
             .opacity(pulsing && animate ? 0.45 : 1.0)
@@ -567,15 +569,16 @@ private struct BrickDot: View {
 
 /// Star-or-dot in the correct color, like HomeView (slightly larger star).
 private struct StatusIconOrDot: View {
+    @Environment(\.appTheme) private var theme
     let status: EntryStatus
     let isImportant: Bool
     let pulsing: Bool   // only for in-progress when using dot
 
     private var color: Color {
         switch status {
-        case .todo:       return .orange
-        case .inProgress: return .brick
-        case .done:       return .green
+        case .todo:       return theme.dueToday
+        case .inProgress: return theme.running
+        case .done:       return theme.success
         }
     }
 

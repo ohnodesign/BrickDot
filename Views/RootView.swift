@@ -89,6 +89,7 @@ private enum SidebarDestination: Hashable {
 
 private struct iPadRootView: View {
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @Query(sort: \Client.name) private var allClients: [Client]
 
@@ -110,7 +111,7 @@ private struct iPadRootView: View {
                             Text("Quick Add")
                                 .font(.headline.weight(.bold))
                         }
-                        .foregroundStyle(Color(red: 0.75, green: 0.60, blue: 0.0))
+                        .foregroundStyle(theme.quickCapture)
                     }
                     .buttonStyle(.plain)
                 }
@@ -122,7 +123,7 @@ private struct iPadRootView: View {
                             icon: "exclamationmark.triangle.fill",
                             label: "Overdue",
                             value: "\(overdueCount)",
-                            tint: .red,
+                            tint: theme.overdue,
                             destination: .overdue,
                             selection: $selection
                         )
@@ -130,7 +131,7 @@ private struct iPadRootView: View {
                             icon: "sun.max.fill",
                             label: "Today",
                             value: "\(dueTodayCount)",
-                            tint: .orange,
+                            tint: theme.dueToday,
                             destination: .dueToday,
                             selection: $selection
                         )
@@ -138,7 +139,7 @@ private struct iPadRootView: View {
                             icon: "timer",
                             label: "Running",
                             value: "\(timersRunning)",
-                            tint: Color.brick,
+                            tint: theme.running,
                             destination: .running,
                             selection: $selection
                         )
@@ -146,7 +147,7 @@ private struct iPadRootView: View {
                             icon: "dollarsign.circle.fill",
                             label: "This Week",
                             value: weekAmount.shortCurrency,
-                            tint: .green,
+                            tint: theme.revenue,
                             destination: .thisWeek,
                             selection: $selection
                         )
@@ -427,3 +428,4 @@ private extension Double {
         return nf.string(from: NSNumber(value: self)) ?? "$\(Int(self))"
     }
 }
+

@@ -4,6 +4,7 @@ import SwiftData
 struct SearchView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @Query(sort: \Client.name) private var allClients: [Client]
 
@@ -159,3 +160,4 @@ struct SearchView: View {
         }
     }
 }
+

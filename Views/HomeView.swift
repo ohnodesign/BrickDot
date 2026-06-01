@@ -4,6 +4,7 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
     @State private var showNewEntry = false
@@ -15,6 +16,14 @@ struct HomeView: View {
 
     private func isExpanded(_ key: String) -> Bool { expandedSections.contains(key) }
     private func toggleExpanded(_ key: String) { if expandedSections.contains(key) { expandedSections.remove(key) } else { expandedSections.insert(key) } }
+
+    private func statusColor(_ status: EntryStatus) -> Color {
+        switch status {
+        case .todo:       return theme.dueToday
+        case .inProgress: return theme.running
+        case .done:       return theme.success
+        }
+    }
 
     var body: some View {
             List {
@@ -70,7 +79,7 @@ struct HomeView: View {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.seal.fill")
                                 .font(.largeTitle)
-                                .foregroundStyle(.green)
+                                .foregroundStyle(theme.success)
                             Text("All caught up!")
                                 .font(.headline)
                             Text("No open entries right now.")
@@ -83,27 +92,27 @@ struct HomeView: View {
                 } else {
                     // Overdue
                     cappedSection(key: "overdue", entries: overdueEntries, badge: .overdue,
-                                  icon: "exclamationmark.triangle.fill", title: "Overdue", tint: .red)
+                                  icon: "exclamationmark.triangle.fill", title: "Overdue", tint: theme.overdue)
 
                     // Due Today
                     cappedSection(key: "today", entries: dueTodayEntries, badge: .dueToday,
-                                  icon: "sun.max.fill", title: "Due Today", tint: .orange)
+                                  icon: "sun.max.fill", title: "Due Today", tint: theme.dueToday)
 
                     // Quick Adds
                     cappedSection(key: "quickadd", entries: quickAddEntries, badge: ActionRowBadge.none,
-                                  icon: "hare.fill", title: "Quick Adds", tint: Color(red: 0.75, green: 0.60, blue: 0.0), iconScale: 0.8)
+                                  icon: "hare.fill", title: "Quick Adds", tint: theme.quickCapture, iconScale: 0.8)
 
                     // In Progress (with timers)
                     cappedSection(key: "inprogress", entries: inProgressEntries, badge: ActionRowBadge.none,
-                                  icon: "bolt.fill", title: "In Progress", tint: Color.brick)
+                                  icon: "bolt.fill", title: "In Progress", tint: theme.running)
 
                     // Up Next
                     cappedSection(key: "upnext", entries: upNextEntries, badge: nil,
-                                  icon: "arrow.right.circle.fill", title: "Up Next", tint: .accent)
+                                  icon: "arrow.right.circle.fill", title: "Up Next", tint: theme.accent)
 
                     // Backlog
                     cappedSection(key: "backlog", entries: backlogEntries, badge: ActionRowBadge.none,
-                                  icon: "tray.fill", title: "Backlog", tint: .secondary)
+                                  icon: "tray.fill", title: "Backlog", tint: theme.mutedText)
                 }
 
                 // MARK: - Done (collapsed)
@@ -176,14 +185,14 @@ struct HomeView: View {
         if entry.status == .inProgress && entry.timerStartedAt != nil {
             Button { quickPauseAndAdd(entry) } label: {
                 Label("Pause & Add", systemImage: "pause.circle")
-            }.tint(.orange)
+            }.tint(theme.dueToday)
         } else if entry.status != .done {
             Button { quickStart(entry) } label: {
                 Label("Start", systemImage: "play.circle")
-            }.tint(.green)
+            }.tint(theme.success)
         }
-        Button { quickBump(entry, 0.25) } label: { Text("+15m") }.tint(.blue)
-        Button { quickBump(entry, 0.5) }  label: { Text("+30m") }.tint(.indigo)
+        Button { quickBump(entry, 0.25) } label: { Text("+15m") }.tint(theme.accent)
+        Button { quickBump(entry, 0.5) }  label: { Text("+30m") }.tint(theme.accentHover)
     }
 
     @ViewBuilder
@@ -207,7 +216,7 @@ struct HomeView: View {
             } label: {
                 Label("To Do", systemImage: "circle")
             }
-            .tint(.orange)
+            .tint(theme.dueToday)
         }
         if entry.status != .inProgress {
             Button {
@@ -217,7 +226,7 @@ struct HomeView: View {
             } label: {
                 Label("In Progress", systemImage: "bolt.fill")
             }
-            .tint(Color.brick)
+            .tint(theme.running)
         }
         if entry.status != .done {
             Button {
@@ -228,7 +237,7 @@ struct HomeView: View {
             } label: {
                 Label("Done", systemImage: "checkmark.circle.fill")
             }
-            .tint(.green)
+            .tint(theme.success)
         }
     }
 
@@ -472,33 +481,34 @@ private struct DashboardRow: View {
     let dueTodayCount: Int
     let timersRunning: Int
     let weekAmount: Double
+    @Environment(\.appTheme) private var theme
 
     var body: some View {
         HStack(spacing: 0) {
             DashboardPill(
                 icon: "exclamationmark.triangle.fill",
-                tint: .red,
+                tint: theme.overdue,
                 value: "\(overdueCount)",
                 label: "Overdue"
             )
             Divider().frame(height: 36)
             DashboardPill(
                 icon: "sun.max.fill",
-                tint: .orange,
+                tint: theme.dueToday,
                 value: "\(dueTodayCount)",
                 label: "Today"
             )
             Divider().frame(height: 36)
             DashboardPill(
                 icon: "timer",
-                tint: .brick,
+                tint: theme.running,
                 value: "\(timersRunning)",
                 label: "Running"
             )
             Divider().frame(height: 36)
             DashboardPill(
                 icon: "dollarsign.circle.fill",
-                tint: .green,
+                tint: theme.revenue,
                 value: weekAmount.shortCurrency,
                 label: "This Week"
             )
@@ -540,6 +550,8 @@ private struct ActionRow: View {
     let entry: Entry
     let badge: ActionRowBadge
 
+    @Environment(\.appTheme) private var theme
+
     @State private var tick = Date()
 
     private var hasRunningTimer: Bool {
@@ -562,7 +574,7 @@ private struct ActionRow: View {
                 // Top line: status dot, client, star, timer/amount
                 HStack(spacing: 6) {
                     SharedStatusMark(
-                        color: entry.status.color,
+                        color: statusColor(entry.status),
                         isImportant: entry.isImportant,
                         pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
                     )
@@ -582,8 +594,8 @@ private struct ActionRow: View {
                         .monospacedDigit()
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .background(Capsule().fill(Color.brick.opacity(0.15)))
-                        .foregroundStyle(Color.brick)
+                        .background(Capsule().fill(theme.running.opacity(0.15)))
+                        .foregroundStyle(theme.running)
                 } else if entry.hours > 0 {
                     Text("\(entry.hours, specifier: "%.1f")h")
                         .font(.caption)
@@ -635,11 +647,11 @@ private struct ActionRow: View {
     private func dueBadgeView(due: Date) -> some View {
         switch badge {
         case .overdue:
-            badgePill("Overdue", color: .red)
+            badgePill("Overdue", color: theme.overdue)
         case .dueToday:
-            badgePill("Today", color: .orange)
+            badgePill("Today", color: theme.dueToday)
         case .dueSoon:
-            badgePill(due.formatted(.dateTime.month(.abbreviated).day()), color: .blue)
+            badgePill(due.formatted(.dateTime.month(.abbreviated).day()), color: theme.accent)
         case .none:
             EmptyView()
         }

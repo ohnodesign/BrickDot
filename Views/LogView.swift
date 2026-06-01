@@ -3,6 +3,7 @@ import SwiftData
 
 struct LogView: View {
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
     @State private var searchText: String = ""
@@ -98,12 +99,13 @@ struct LogView: View {
 
 private struct LogEntryRow: View {
     let entry: Entry
+    @Environment(\.appTheme) private var theme
 
     private func color(for status: EntryStatus) -> Color {
         switch status {
-        case .todo:       return .orange
-        case .inProgress: return .brick
-        case .done:       return .green
+        case .todo:       return theme.dueToday
+        case .inProgress: return theme.running
+        case .done:       return theme.success
         }
     }
 
@@ -166,6 +168,7 @@ private struct StatusMark: View {
 
 private struct StatusFilterBar: View {
     @Binding var selection: EntryStatus?
+    @Environment(\.appTheme) private var theme
 
     private struct Chip: Identifiable {
         let id = UUID()
@@ -176,10 +179,10 @@ private struct StatusFilterBar: View {
 
     private var chips: [Chip] {
         [
-            Chip(label: "All",         color: nil,       value: nil),
-            Chip(label: "To Do",       color: .orange,   value: .todo),
-            Chip(label: "In Progress", color: .brick,    value: .inProgress),
-            Chip(label: "Done",        color: .green,    value: .done)
+            Chip(label: "All",         color: nil,          value: nil),
+            Chip(label: "To Do",       color: theme.dueToday,   value: .todo),
+            Chip(label: "In Progress", color: theme.running,    value: .inProgress),
+            Chip(label: "Done",        color: theme.success,    value: .done)
         ]
     }
 
@@ -220,3 +223,4 @@ private struct StatusFilterBar: View {
         }
     }
 }
+

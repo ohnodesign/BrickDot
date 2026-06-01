@@ -5,6 +5,7 @@ import UIKit
 struct EditEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
 
     @Bindable var entry: Entry
     @Query(sort: \Client.name) private var clients: [Client]

@@ -6,6 +6,11 @@ import Foundation
 struct BrickDotApp: App {
     @AppStorage(AppPrefsKey.colorScheme)  private var appearanceRaw: String = "system"
     @AppStorage(AppPrefsKey.accentPreset) private var accentRaw: String = "indigo"
+    @AppStorage("appearance.theme") private var themeRaw: String = "professional"
+
+    private var currentTheme: AppTheme {
+        (ThemeKey(rawValue: themeRaw) ?? .professional).theme
+    }
 
     let container: ModelContainer = {
         let schema = Schema([
@@ -45,8 +50,9 @@ struct BrickDotApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(\.appTheme, currentTheme)
                 .preferredColorScheme(colorScheme(from: appearanceRaw))
-                .tint(accentColor(from: accentRaw))
+                .tint(currentTheme.accent)
                 .onAppear {
                     if UserDefaults.standard.bool(forKey: "cloudkit.fallbackToLocal") {
                         UserDefaults.standard.set(false, forKey: "cloudkit.fallbackToLocal")

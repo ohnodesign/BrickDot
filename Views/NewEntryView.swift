@@ -5,6 +5,7 @@ import UIKit
 struct NewEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
 
     @Query(sort: \Client.name) private var clients: [Client]
 

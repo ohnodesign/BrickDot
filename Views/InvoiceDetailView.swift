@@ -3,6 +3,7 @@ import SwiftUI
 import SwiftData
 
 struct InvoiceDetailView: View {
+    @Environment(\.appTheme) private var theme
     @Bindable var invoice: Invoice
 
     // Sorted entries on this invoice
@@ -143,3 +144,4 @@ fileprivate struct InvoiceItemRow: View {
         }
     }
 }
+

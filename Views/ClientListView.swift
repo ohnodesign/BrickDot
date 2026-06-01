@@ -3,6 +3,7 @@ import SwiftData
 
 struct ClientListView: View {
     @Environment(\.modelContext) private var ctx
+    @Environment(\.appTheme) private var theme
     @Query(sort: \Client.name) private var clients: [Client]
 
     @State private var searchText: String = ""
@@ -87,3 +88,4 @@ struct ClientListView: View {
         try? ctx.save()
     }
 }
+

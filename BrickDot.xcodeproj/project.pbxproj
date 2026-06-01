@@ -36,6 +36,7 @@
 		EEABCEB32E4E47A20029A98C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB22E4E47A20029A98C /* HomeView.swift */; };
 		EEABCEB52E4E5E3F0029A98C /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB42E4E5E3F0029A98C /* DateExtensions.swift */; };
 		EEABCEB72E4E845E0029A98C /* AutoBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB62E4E845E0029A98C /* AutoBackup.swift */; };
+		EEAE23672FCDF1320018364B /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAE23662FCDF1320018364B /* Theme.swift */; };
 		EEB9C9742E4FC7FA009D95B9 /* Backup.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB9C9732E4FC7FA009D95B9 /* Backup.swift */; };
 		EEB9C9822E4FC907009D95B9 /* ClientListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB9C9812E4FC907009D95B9 /* ClientListView.swift */; };
 		EEC3778E2E9218E90066C54E /* Entry+RunningElapsed.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC3778D2E9218E90066C54E /* Entry+RunningElapsed.swift */; };
@@ -47,6 +48,10 @@
 		EEC744BB2E5D0F5100E9D21A /* Invoice.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC744BA2E5D0F5100E9D21A /* Invoice.swift */; };
 		EEC744BD2E5D10D500E9D21A /* InvoiceDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC744BC2E5D10D500E9D21A /* InvoiceDetailView.swift */; };
 		EEC744BF2E71F07700E9D21A /* AgendaExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC744BE2E71F07700E9D21A /* AgendaExporter.swift */; };
+		EECB80BA2FCDC488007252D5 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECB80B92FCDC488007252D5 /* SearchView.swift */; };
+		EECB80BC2FCDC9ED007252D5 /* QuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECB80BB2FCDC9ED007252D5 /* QuickAddView.swift */; };
+		EECB80BE2FCDCBEB007252D5 /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECB80BD2FCDCBEB007252D5 /* SpeechRecognizer.swift */; };
+		EECB80C02FCDE69E007252D5 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EECB80BF2FCDE69E007252D5 /* AppTheme.swift */; };
 		EEDCD67E2E4D7C2000C792C4 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EEDCD67D2E4D7C2000C792C4 /* Assets.xcassets */; };
 		EEDCD6842E4D7CB900C792C4 /* LogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6802E4D7CB900C792C4 /* LogView.swift */; };
 		EEDCD6852E4D7CB900C792C4 /* NewEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6812E4D7CB900C792C4 /* NewEntryView.swift */; };
@@ -88,6 +93,7 @@
 		EEABCEB22E4E47A20029A98C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		EEABCEB42E4E5E3F0029A98C /* DateExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtensions.swift; sourceTree = "<group>"; };
 		EEABCEB62E4E845E0029A98C /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
+		EEAE23662FCDF1320018364B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		EEB9C9732E4FC7FA009D95B9 /* Backup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backup.swift; sourceTree = "<group>"; };
 		EEB9C9812E4FC907009D95B9 /* ClientListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientListView.swift; sourceTree = "<group>"; };
 		EEC3778D2E9218E90066C54E /* Entry+RunningElapsed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Entry+RunningElapsed.swift"; sourceTree = "<group>"; };
@@ -99,6 +105,10 @@
 		EEC744BA2E5D0F5100E9D21A /* Invoice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Invoice.swift; sourceTree = "<group>"; };
 		EEC744BC2E5D10D500E9D21A /* InvoiceDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoiceDetailView.swift; sourceTree = "<group>"; };
 		EEC744BE2E71F07700E9D21A /* AgendaExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AgendaExporter.swift; sourceTree = "<group>"; };
+		EECB80B92FCDC488007252D5 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		EECB80BB2FCDC9ED007252D5 /* QuickAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddView.swift; sourceTree = "<group>"; };
+		EECB80BD2FCDCBEB007252D5 /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
+		EECB80BF2FCDE69E007252D5 /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		EEDA2F642E4F78A6007CA39B /* BrickDot.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BrickDot.entitlements; sourceTree = "<group>"; };
 		EEDCD67D2E4D7C2000C792C4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		EEDCD6802E4D7CB900C792C4 /* LogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogView.swift; sourceTree = "<group>"; };
@@ -170,6 +180,8 @@
 		EEDCD67A2E4D79A500C792C4 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				EECB80BB2FCDC9ED007252D5 /* QuickAddView.swift */,
+				EECB80B92FCDC488007252D5 /* SearchView.swift */,
 				EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */,
 				EEB9C9812E4FC907009D95B9 /* ClientListView.swift */,
 				EE854AC92E58257000C776C6 /* ClientFormView.swift */,
@@ -200,6 +212,7 @@
 				EE0E537C2EA9CED600C07E2E /* Date+Bounds 2.swift */,
 				EE0E537E2EA9CEDB00C07E2E /* EntriesListView.swift */,
 				EE192F532EA9DD68002F38A0 /* CalendarMonthView.swift */,
+				EEAE23662FCDF1320018364B /* Theme.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -207,6 +220,8 @@
 		EEDCD67B2E4D79D100C792C4 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				EECB80BF2FCDE69E007252D5 /* AppTheme.swift */,
+				EECB80BD2FCDCBEB007252D5 /* SpeechRecognizer.swift */,
 				EEDCD68F2E4D7CCF00C792C4 /* CSVExporter.swift */,
 				EEDCD6902E4D7CCF00C792C4 /* ShareSheet.swift */,
 				EE02CC6F2E4E373900173CC4 /* DocumentPicker.swift */,
@@ -320,6 +335,7 @@
 				EE854AD12E58C1A000C776C6 /* EntryStatus.swift in Sources */,
 				EE02CC692E4DB0D600173CC4 /* ExportView.swift in Sources */,
 				EEABCEB52E4E5E3F0029A98C /* DateExtensions.swift in Sources */,
+				EECB80BE2FCDCBEB007252D5 /* SpeechRecognizer.swift in Sources */,
 				EE205D8E2F1BE1F800E2B088 /* SubtasksSectionView.swift in Sources */,
 				EEC377962E921DCB0066C54E /* TimeFormatting.swift in Sources */,
 				EEE835CF2E9C973300317915 /* SettingsView.swift in Sources */,
@@ -328,8 +344,10 @@
 				EEDCD6B02E4D830C00C792C4 /* Constants.swift in Sources */,
 				EE0E537D2EA9CED600C07E2E /* Date+Bounds 2.swift in Sources */,
 				EE192F542EA9DD68002F38A0 /* CalendarMonthView.swift in Sources */,
+				EECB80C02FCDE69E007252D5 /* AppTheme.swift in Sources */,
 				EEABCEB32E4E47A20029A98C /* HomeView.swift in Sources */,
 				EE0E537F2EA9CEDB00C07E2E /* EntriesListView.swift in Sources */,
+				EECB80BC2FCDC9ED007252D5 /* QuickAddView.swift in Sources */,
 				EE5DFE7F2E4FAE8100D7D747 /* BrickDotApp.swift in Sources */,
 				EE0E53772EA9CB4100C07E2E /* StatsSectionView.swift in Sources */,
 				EE854ACA2E58257000C776C6 /* ClientFormView.swift in Sources */,
@@ -338,8 +356,10 @@
 				EEA142542E942FCF00ACB8DD /* Date+Bounds.swift in Sources */,
 				EEC744BD2E5D10D500E9D21A /* InvoiceDetailView.swift in Sources */,
 				EEC377902E921A860066C54E /* StatPill.swift in Sources */,
+				EECB80BA2FCDC488007252D5 /* SearchView.swift in Sources */,
 				EEC744BB2E5D0F5100E9D21A /* Invoice.swift in Sources */,
 				EE150DFA2E920DA7005C4321 /* TimeLog.swift in Sources */,
+				EEAE23672FCDF1320018364B /* Theme.swift in Sources */,
 				EE0E53792EA9CC0C00C07E2E /* StatsComponents.swift in Sources */,
 				EE984E962E58DA08004A272F /* NewClientView.swift in Sources */,
 				EEB9C9822E4FC907009D95B9 /* ClientListView.swift in Sources */,
