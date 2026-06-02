@@ -51,15 +51,6 @@ struct ClientListView: View {
                 }
                 .accessibilityLabel("New Client")
             }
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    showNewEntry = true
-                } label: {
-                    Image(systemName: "plus.circle")
-                        .foregroundStyle(Color(.darkGray))
-                }
-                .accessibilityLabel("New Entry")
-            }
         }
         .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
         .sheet(isPresented: $showNewClient) {

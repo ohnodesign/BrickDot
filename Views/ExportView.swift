@@ -105,7 +105,6 @@ struct ExportView: View {
 
     @State private var showFolderPicker = false
 
-    @State private var showNewEntry = false
 
     private var headers: ExportHeaders { useQuickBooksHeaders ? .quickBooks : ExportHeaders() }
 
@@ -414,22 +413,6 @@ struct ExportView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(backupFeedbackMessage ?? "Backup completed.")
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showNewEntry = true } label: {
-                        Image(systemName: "plus.circle")
-                            .imageScale(.large)
-                            .accessibilityLabel("New Entry")
-                    }
-                }
-            }
-            .sheet(isPresented: $showNewEntry) {
-                NavigationStack {
-                    NewEntryView(onSaved: { showNewEntry = false })
-                }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
             }
         }
     }

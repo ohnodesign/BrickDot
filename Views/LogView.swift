@@ -8,7 +8,6 @@ struct LogView: View {
 
     @State private var searchText: String = ""
     @State private var statusFilter: EntryStatus? = nil   // nil = All
-    @State private var showNewEntry = false
 
     var body: some View {
         NavigationStack {
@@ -42,23 +41,6 @@ struct LogView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Log")
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showNewEntry = true } label: {
-                        Image(systemName: "plus.circle")
-                            .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
-                            .accessibilityLabel("New Entry")
-                    }
-                }
-            }
-            .sheet(isPresented: $showNewEntry) {
-                NavigationStack {
-                    NewEntryView(onSaved: { showNewEntry = false })
-                }
-                .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-            }
         }
     }
 

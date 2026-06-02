@@ -118,9 +118,9 @@ struct HomeView: View {
                     cappedSection(key: "inprogress", entries: inProgressEntries, badge: ActionRowBadge.none,
                                   icon: "bolt.fill", title: "In Progress", tint: theme.running)
 
-                    // Up Next
-                    cappedSection(key: "upnext", entries: upNextEntries, badge: nil,
-                                  icon: "arrow.right.circle.fill", title: "Up Next", tint: theme.accent)
+                    // Upcoming
+                    cappedSection(key: "upcoming", entries: upcomingEntries, badge: nil,
+                                  icon: "calendar.badge.clock", title: "Upcoming", tint: theme.accent)
 
                     // Backlog
                     cappedSection(key: "backlog", entries: backlogEntries, badge: ActionRowBadge.none,
@@ -178,10 +178,15 @@ struct HomeView: View {
                                     .accessibilityLabel("Search")
                             }
                             Button { showNewEntry = true } label: {
-                                Image(systemName: "plus.circle")
-                                    .imageScale(.large)
-                                    .foregroundStyle(Color(.darkGray))
-                                    .accessibilityLabel("New Entry")
+                                ZStack {
+                                    Circle()
+                                        .fill(theme.quickCapture)
+                                        .frame(width: 28, height: 28)
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 14, weight: .bold))
+                                        .foregroundStyle(.white)
+                                }
+                                .accessibilityLabel("New Entry")
                             }
                         }
                     }
@@ -384,7 +389,7 @@ struct HomeView: View {
             .sorted { $0.createdAt > $1.createdAt }
     }
 
-    private var upNextEntries: [Entry] {
+    private var upcomingEntries: [Entry] {
         let shown = Set(overdueEntries.map(\.persistentModelID))
             .union(dueTodayEntries.map(\.persistentModelID))
             .union(inProgressEntries.map(\.persistentModelID))
@@ -392,10 +397,9 @@ struct HomeView: View {
 
         return openEntries.filter { e in
             guard !shown.contains(e.persistentModelID) else { return false }
-            if e.isImportant { return true }
-            if let due = e.dueDate, due > todayEnd && due <= weekEnd { return true }
-            return false
-        }.sorted(by: prioritySort)
+            guard let due = e.dueDate else { return false }
+            return due > todayEnd
+        }.sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
     }
 
     private var backlogEntries: [Entry] {
@@ -403,7 +407,7 @@ struct HomeView: View {
             .union(dueTodayEntries.map(\.persistentModelID))
             .union(inProgressEntries.map(\.persistentModelID))
             .union(quickAddEntries.map(\.persistentModelID))
-            .union(upNextEntries.map(\.persistentModelID))
+            .union(upcomingEntries.map(\.persistentModelID))
 
         return openEntries.filter { !shown.contains($0.persistentModelID) }
             .sorted(by: prioritySort)
@@ -435,9 +439,12 @@ struct HomeView: View {
             focus.append(e)
         }
 
-        // Starred
-        let starred = allOpen.filter { $0.isImportant }
-            .sorted(by: prioritySort)
+        // Starred (only if due today, overdue, or no due date — not future)
+        let starred = allOpen.filter { e in
+            guard e.isImportant else { return false }
+            if let due = e.dueDate { return due <= todayEnd }
+            return true
+        }.sorted(by: prioritySort)
         for e in starred where !focus.contains(where: { $0.persistentModelID == e.persistentModelID }) {
             focus.append(e)
         }

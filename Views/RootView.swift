@@ -26,6 +26,7 @@ private struct iPhoneRootView: View {
     @Environment(\.modelContext) private var ctx
     @State private var selectedTab: RootTab = .profile
     @State private var showingHome = true
+    @State private var showQuickCapture = false
 
     var body: some View {
         ZStack {
@@ -51,7 +52,11 @@ private struct iPhoneRootView: View {
                         .toolbar { homeButton }
                 }
                 .environment(\.modelContext, ctx)
-                .tabItem { Label("Stats", systemImage: "chart.bar.xaxis") }
+                .tabItem {
+                    Image(systemName: "chart.bar")
+                        .symbolRenderingMode(.hierarchical)
+                    Text("Stats")
+                }
                 .tag(RootTab.stats)
 
                 NavigationStack {
@@ -99,8 +104,14 @@ private struct iPhoneRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .goHome)) { _ in
             withAnimation { showingHome = true }
         }
+        .sheet(isPresented: $showQuickCapture) {
+            QuickAddView(onSaved: { showQuickCapture = false })
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+        }
     }
 
+    @ToolbarContentBuilder
     private var homeButton: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
             Button {
@@ -112,13 +123,26 @@ private struct iPhoneRootView: View {
                     .accessibilityLabel("Home")
             }
         }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button { showQuickCapture = true } label: {
+                ZStack {
+                    Circle()
+                        .fill(Color(red: 0.79, green: 0.25, blue: 0.25))
+                        .frame(width: 28, height: 28)
+                    Image(systemName: "plus")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .accessibilityLabel("Quick Capture")
+            }
+        }
     }
 
     private var tabBarMirror: some View {
         HStack {
             tabButton("Profile", icon: "person.crop.circle", tab: .profile)
             tabButton("Clients", icon: "person.2", tab: .clients)
-            tabButton("Stats", icon: "chart.bar.xaxis", tab: .stats)
+            tabButton("Stats", icon: "chart.bar", tab: .stats)
             tabButton("Settings", icon: "gear", tab: .settings)
             tabButton("More", icon: "ellipsis", tab: nil)
         }
@@ -240,7 +264,7 @@ private struct iPadRootView: View {
                         Label("Clients", systemImage: "person.2")
                     }
                     NavigationLink(value: SidebarDestination.stats) {
-                        Label("Stats", systemImage: "chart.bar.xaxis")
+                        Label("Stats", systemImage: "chart.bar")
                     }
                     NavigationLink(value: SidebarDestination.log) {
                         Label("Log", systemImage: "doc.text")
@@ -404,7 +428,7 @@ private struct iPadRootView: View {
     }
 
     private var potentialRevenue: Double {
-        openEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
+        dueTodayEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
     }
 
     private var weekAmount: Double {

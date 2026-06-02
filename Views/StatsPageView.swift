@@ -8,7 +8,6 @@ struct StatsPageView: View {
     @State private var selectedStat: StatsPageSelectedStat? = nil
     @State private var selectedDueList: StatsPageSelectedStat? = nil
     @State private var calendarMonthAnchor: Date = Date()
-    @State private var showNewEntry = false
 
     var body: some View {
         NavigationStack {
@@ -106,27 +105,11 @@ struct StatsPageView: View {
                 }
             }
             .navigationTitle("Stats")
-            .toolbar {
-                // ➝ New Entry
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { showNewEntry = true } label: {
-                        Image(systemName: "plus.circle")
-                            .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
-                            .accessibilityLabel("New Entry")
-                    }
-                }
-            }
             .sheet(item: $selectedStat) { stat in
                 EntriesListView(title: stat.title, entries: stat.entries)
             }
             .sheet(item: $selectedDueList) { stat in
                 EntriesListView(title: stat.title, entries: stat.entries)
-            }
-            .sheet(isPresented: $showNewEntry) {
-                QuickAddView(onSaved: { showNewEntry = false })
-                    .presentationDetents([.medium])
-                    .presentationDragIndicator(.visible)
             }
         }
     }
