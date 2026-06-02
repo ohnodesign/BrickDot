@@ -8,6 +8,7 @@ struct ClientDetailView: View {
     @Bindable var client: Client
 
     // Collapsible sections (To Do / In Progress start collapsed)
+    @AppStorage("client.showDetails") private var showDetails = false
     @AppStorage("client.showStarred") private var showStarred = true
     @AppStorage("client.showTodo") private var showTodo = false
     @AppStorage("client.showInProgress") private var showInProgress = false
@@ -152,6 +153,33 @@ struct ClientDetailView: View {
                 }
                 HStack { Text("Entries"); Spacer(); Text("\(clientEntries.count)").foregroundStyle(.secondary) }
                 HStack { Text("Invoices"); Spacer(); Text("\(clientInvoices.count)").foregroundStyle(.secondary) }
+            }
+
+            // Details (collapsed by default)
+            Section {
+                DisclosureGroup(isExpanded: $showDetails) {
+                    EditableDetailRow(label: "Main Contact", text: $client.contactName)
+                        .textInputAutocapitalization(.words)
+                    EditableDetailRow(label: "Email", text: $client.email)
+                        .textInputAutocapitalization(.never)
+                        .keyboardType(.emailAddress)
+                    EditableDetailRow(label: "Phone", text: $client.phone)
+                        .keyboardType(.phonePad)
+                    EditableDetailRow(label: "Business Phone", text: $client.businessPhone)
+                        .keyboardType(.phonePad)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Address").font(.caption).foregroundStyle(.secondary)
+                        TextField("Address", text: $client.address, axis: .vertical)
+                            .lineLimit(2...4)
+                            .onChange(of: client.address) { _, _ in try? ctx.save() }
+                    }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "person.text.rectangle")
+                            .foregroundStyle(.accent)
+                        Text("Details")
+                    }
+                }
             }
 
             // Starred
@@ -404,10 +432,15 @@ struct ClientDetailView: View {
                         }
                     }
                 } label: {
-                    Image(systemName: "plus.circle")
-                        .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
-                        .accessibilityLabel("New Entry")
+                    ZStack {
+                        Circle()
+                            .fill(Color(red: 0.79, green: 0.25, blue: 0.25))
+                            .frame(width: 28, height: 28)
+                        Image(systemName: "plus")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                    .accessibilityLabel("New Entry")
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -667,7 +700,7 @@ private struct ClientInProgressRow: View {
             }
         }
         .padding(.vertical, 2)
-        .onReceive(timer) { now in _ = now; tick = now }
+        .onReceive(timer) { tick = $0 }
     }
 }
 
@@ -778,7 +811,24 @@ private struct InvoiceRow: View {
     }
 }
 
-// MARK: - Minimal inline editor (unchanged)
+private struct EditableDetailRow: View {
+    let label: String
+    @Binding var text: String
+    @Environment(\.modelContext) private var ctx
+
+    var body: some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField(label, text: $text)
+                .multilineTextAlignment(.trailing)
+                .foregroundStyle(.primary)
+                .onChange(of: text) { _, _ in try? ctx.save() }
+        }
+    }
+}
+
+// MARK: - Minimal inline editor
 private struct ClientInlineEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Bindable var client: Client
@@ -788,6 +838,11 @@ private struct ClientInlineEditor: View {
     @State private var rate: Double
     @State private var colorIndex: Int
     @State private var shortcode: String
+    @State private var contactName: String
+    @State private var address: String
+    @State private var phone: String
+    @State private var businessPhone: String
+    @State private var email: String
 
     init(client: Client, onClose: @escaping (Bool) -> Void) {
         self._client = Bindable(wrappedValue: client)
@@ -796,6 +851,11 @@ private struct ClientInlineEditor: View {
         _rate = State(initialValue: client.rate)
         _colorIndex = State(initialValue: client.colorIndex)
         _shortcode = State(initialValue: client.shortcode)
+        _contactName = State(initialValue: client.contactName)
+        _address = State(initialValue: client.address)
+        _phone = State(initialValue: client.phone)
+        _businessPhone = State(initialValue: client.businessPhone)
+        _email = State(initialValue: client.email)
     }
 
     var body: some View {
@@ -815,6 +875,20 @@ private struct ClientInlineEditor: View {
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
+            Section("Contact Details") {
+                TextField("Main Contact Name", text: $contactName)
+                    .textInputAutocapitalization(.words)
+                TextField("Email", text: $email)
+                    .textInputAutocapitalization(.never)
+                    .keyboardType(.emailAddress)
+                    .autocorrectionDisabled()
+                TextField("Phone", text: $phone)
+                    .keyboardType(.phonePad)
+                TextField("Business Phone", text: $businessPhone)
+                    .keyboardType(.phonePad)
+                TextField("Address", text: $address, axis: .vertical)
+                    .lineLimit(2...4)
+            }
             Section("Color") {
                 ClientColorPicker(selectedIndex: $colorIndex)
             }
@@ -824,6 +898,11 @@ private struct ClientInlineEditor: View {
                     client.rate = rate
                     client.colorIndex = colorIndex
                     client.shortcode = shortcode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+                    client.contactName = contactName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    client.address = address.trimmingCharacters(in: .whitespacesAndNewlines)
+                    client.phone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
+                    client.businessPhone = businessPhone.trimmingCharacters(in: .whitespacesAndNewlines)
+                    client.email = email.trimmingCharacters(in: .whitespacesAndNewlines)
                     onClose(true)
                 } label: {
                     Label("Save", systemImage: "tray.and.arrow.down.fill")

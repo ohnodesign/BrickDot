@@ -300,7 +300,8 @@ enum Backup {
     // MARK: - Files (Documents directory + auto-backup helpers)
 
     static func documentsDirectory() -> URL {
-        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
     }
 
     static func defaultBackupName() -> String {

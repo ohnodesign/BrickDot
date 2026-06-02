@@ -100,7 +100,7 @@ struct SharedInProgressRow: View {
             }
         }
         .padding(.vertical, 2)
-        .onReceive(timer) { now in _ = now; tick = now }
+        .onReceive(timer) { tick = $0 }
     }
 }
 

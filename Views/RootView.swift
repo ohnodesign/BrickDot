@@ -215,7 +215,7 @@ private struct iPadRootView: View {
                         HStack(spacing: 12) {
                             ZStack {
                                 Circle()
-                                    .fill(theme.quickCapture)
+                                    .fill(Color(red: 0.79, green: 0.25, blue: 0.25))
                                     .frame(width: 36, height: 36)
                                 Image(systemName: "plus")
                                     .font(.system(size: 16, weight: .bold))
@@ -257,24 +257,15 @@ private struct iPadRootView: View {
 
                 // Navigation
                 Section {
-                    NavigationLink(value: SidebarDestination.profile) {
-                        Label("Profile", systemImage: "person.crop.circle")
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
+                        sidebarNavTile("Profile", icon: "person.crop.circle", dest: .profile)
+                        sidebarNavTile("Clients", icon: "person.2", dest: .allClients)
+                        sidebarNavTile("Stats", icon: "chart.bar", dest: .stats)
+                        sidebarNavTile("Log", icon: "doc.text", dest: .log)
+                        sidebarNavTile("Export", icon: "square.and.arrow.up", dest: .export)
+                        sidebarNavTile("Settings", icon: "gear", dest: .settings)
                     }
-                    NavigationLink(value: SidebarDestination.allClients) {
-                        Label("Clients", systemImage: "person.2")
-                    }
-                    NavigationLink(value: SidebarDestination.stats) {
-                        Label("Stats", systemImage: "chart.bar")
-                    }
-                    NavigationLink(value: SidebarDestination.log) {
-                        Label("Log", systemImage: "doc.text")
-                    }
-                    NavigationLink(value: SidebarDestination.export) {
-                        Label("Export", systemImage: "square.and.arrow.up")
-                    }
-                    NavigationLink(value: SidebarDestination.settings) {
-                        Label("Settings", systemImage: "gear")
-                    }
+                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                 }
             }
             .listStyle(.sidebar)
@@ -292,7 +283,7 @@ private struct iPadRootView: View {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    Text(profile?.companyName.isEmpty == false ? profile!.companyName : "BrickDot")
+                    Text(profile.flatMap { $0.companyName.isEmpty ? nil : $0.companyName } ?? "BrickDot")
                         .font(.headline)
                 }
             }
@@ -302,9 +293,14 @@ private struct iPadRootView: View {
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showFullNewEntry = true } label: {
-                            Image(systemName: "plus.circle")
-                                .imageScale(.large)
-                                .foregroundStyle(Color(.darkGray))
+                            ZStack {
+                                Circle()
+                                    .fill(Color(red: 0.79, green: 0.25, blue: 0.25))
+                                    .frame(width: 28, height: 28)
+                                Image(systemName: "plus")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundStyle(.white)
+                            }
                         }
                     }
                     ToolbarItem(placement: .topBarTrailing) {
@@ -379,6 +375,31 @@ private struct iPadRootView: View {
         case .settings:
             SettingsView()
         }
+    }
+
+    // MARK: - Sidebar Nav Tile
+
+    private func sidebarNavTile(_ label: String, icon: String, dest: SidebarDestination) -> some View {
+        Button {
+            selection = dest
+        } label: {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.title2)
+                    .frame(height: 28)
+                Text(label)
+                    .font(.caption2.weight(.medium))
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(selection == dest ? theme.accent.opacity(0.15) : Color(.systemGray6))
+            )
+            .foregroundStyle(selection == dest ? theme.accent : .primary)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Sidebar Data
@@ -475,48 +496,7 @@ private struct SidebarStatRow: View {
     }
 }
 
-// MARK: - Sidebar Card (Reminders-style)
-
-private struct SidebarCard: View {
-    let icon: String
-    let label: String
-    let value: String
-    let tint: Color
-    let destination: SidebarDestination
-    @Binding var selection: SidebarDestination?
-
-    private var isSelected: Bool { selection == destination }
-
-    var body: some View {
-        Button {
-            selection = destination
-        } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: icon)
-                        .font(.title2)
-                        .foregroundStyle(isSelected ? .white : tint)
-                    Spacer()
-                    Text(value)
-                        .font(.title.weight(.bold))
-                        .monospacedDigit()
-                        .foregroundStyle(isSelected ? .white : .primary)
-                }
-                Text(label)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(isSelected ? .white.opacity(0.85) : .secondary)
-            }
-            .padding(12)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? tint : Color(.systemGray6))
-            )
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-private extension Double {
+extension Double {
     var shortCurrency: String {
         let code = Locale.current.currency?.identifier ?? "USD"
         let nf = NumberFormatter()

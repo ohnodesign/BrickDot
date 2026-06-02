@@ -161,7 +161,7 @@ struct HomeView: View {
                             .accessibilityLabel("Home")
                     }
                     ToolbarItem(placement: .principal) {
-                        Text(profile?.companyName.isEmpty == false ? profile!.companyName : "BrickDot")
+                        Text(profile.flatMap { $0.companyName.isEmpty ? nil : $0.companyName } ?? "BrickDot")
                             .font(.headline)
                     }
                     ToolbarItem(placement: .topBarTrailing) {
@@ -180,7 +180,7 @@ struct HomeView: View {
                             Button { showNewEntry = true } label: {
                                 ZStack {
                                     Circle()
-                                        .fill(theme.quickCapture)
+                                        .fill(Color(red: 0.79, green: 0.25, blue: 0.25))
                                         .frame(width: 28, height: 28)
                                     Image(systemName: "plus")
                                         .font(.system(size: 14, weight: .bold))
@@ -771,26 +771,5 @@ private struct FocusRow: View {
     }
 }
 
-// MARK: - Helpers
 
-private extension View {
-    @ViewBuilder
-    func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
-        if condition {
-            transform(self)
-        } else {
-            self
-        }
-    }
-}
 
-private extension Double {
-    var shortCurrency: String {
-        let code = Locale.current.currency?.identifier ?? "USD"
-        let nf = NumberFormatter()
-        nf.numberStyle = .currency
-        nf.currencyCode = code
-        nf.maximumFractionDigits = 0
-        return nf.string(from: NSNumber(value: self)) ?? "$\(Int(self))"
-    }
-}

@@ -104,6 +104,7 @@ struct ExportView: View {
     @State private var showImportInfo = false
 
     @State private var showFolderPicker = false
+    @State private var backupObserver: NSObjectProtocol? = nil
 
 
     private var headers: ExportHeaders { useQuickBooksHeaders ? .quickBooks : ExportHeaders() }
@@ -325,7 +326,7 @@ struct ExportView: View {
                     await resolveBackupFolderIfNeededAsync()
                 }
 
-                NotificationCenter.default.addObserver(forName: .autoBackupDidFinish, object: nil, queue: .main) { note in
+                backupObserver = NotificationCenter.default.addObserver(forName: .autoBackupDidFinish, object: nil, queue: .main) { note in
                     if let info = note.userInfo,
                        let msg = info["message"] as? String {
                         self.backupFeedbackMessage = msg
@@ -334,7 +335,10 @@ struct ExportView: View {
                 }
             }
             .onDisappear {
-                NotificationCenter.default.removeObserver(self, name: .autoBackupDidFinish, object: nil)
+                if let observer = backupObserver {
+                    NotificationCenter.default.removeObserver(observer)
+                    backupObserver = nil
+                }
             }
             .sheet(item: $sharePayload) { payload in
                 ShareSheet(activityItems: payload.items).ignoresSafeArea()
@@ -751,8 +755,7 @@ struct ExportView: View {
             switch e.status {
             case .done: break
             case .inProgress: inProg.append(e)
-            case .todo: fallthrough
-            @unknown default: todos.append(e)
+            case .todo: todos.append(e)
             }
         }
 

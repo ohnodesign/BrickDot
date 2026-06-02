@@ -5,63 +5,52 @@ struct ProfileView: View {
     @Environment(\.modelContext) private var ctx
     @State private var profile: UserProfile?
 
+    private func saveBinding<T>(_ keyPath: ReferenceWritableKeyPath<UserProfile, T>) -> Binding<T>? {
+        guard let profile else { return nil }
+        return Binding(
+            get: { profile[keyPath: keyPath] },
+            set: { profile[keyPath: keyPath] = $0; try? ctx.save() }
+        )
+    }
+
     var body: some View {
         Form {
-            if let profile {
+            if let displayName = saveBinding(\.displayName),
+               let companyName = saveBinding(\.companyName),
+               let email = saveBinding(\.email),
+               let phone = saveBinding(\.phone),
+               let addressLine1 = saveBinding(\.addressLine1),
+               let addressLine2 = saveBinding(\.addressLine2),
+               let city = saveBinding(\.city),
+               let state = saveBinding(\.state),
+               let zip = saveBinding(\.zip) {
                 Section("Your Name") {
-                    TextField("Full name", text: Binding(
-                        get: { profile.displayName },
-                        set: { profile.displayName = $0 }
-                    ))
+                    TextField("Full name", text: displayName)
                 }
 
                 Section("Business") {
-                    TextField("Company name", text: Binding(
-                        get: { profile.companyName },
-                        set: { profile.companyName = $0 }
-                    ))
-                    TextField("Email", text: Binding(
-                        get: { profile.email },
-                        set: { profile.email = $0 }
-                    ))
-                    .keyboardType(.emailAddress)
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-                    TextField("Phone", text: Binding(
-                        get: { profile.phone },
-                        set: { profile.phone = $0 }
-                    ))
-                    .keyboardType(.phonePad)
-                    .textContentType(.telephoneNumber)
+                    TextField("Company name", text: companyName)
+                    TextField("Email", text: email)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .autocapitalization(.none)
+                    TextField("Phone", text: phone)
+                        .keyboardType(.phonePad)
+                        .textContentType(.telephoneNumber)
                 }
 
                 Section("Address") {
-                    TextField("Street", text: Binding(
-                        get: { profile.addressLine1 },
-                        set: { profile.addressLine1 = $0 }
-                    ))
-                    .textContentType(.streetAddressLine1)
-                    TextField("Suite / Unit", text: Binding(
-                        get: { profile.addressLine2 },
-                        set: { profile.addressLine2 = $0 }
-                    ))
-                    .textContentType(.streetAddressLine2)
-                    TextField("City", text: Binding(
-                        get: { profile.city },
-                        set: { profile.city = $0 }
-                    ))
-                    .textContentType(.addressCity)
-                    TextField("State", text: Binding(
-                        get: { profile.state },
-                        set: { profile.state = $0 }
-                    ))
-                    .textContentType(.addressState)
-                    TextField("ZIP", text: Binding(
-                        get: { profile.zip },
-                        set: { profile.zip = $0 }
-                    ))
-                    .keyboardType(.numberPad)
-                    .textContentType(.postalCode)
+                    TextField("Street", text: addressLine1)
+                        .textContentType(.streetAddressLine1)
+                    TextField("Suite / Unit", text: addressLine2)
+                        .textContentType(.streetAddressLine2)
+                    TextField("City", text: city)
+                        .textContentType(.addressCity)
+                    TextField("State", text: state)
+                        .textContentType(.addressState)
+                    TextField("ZIP", text: zip)
+                        .keyboardType(.numberPad)
+                        .textContentType(.postalCode)
                 }
             }
 

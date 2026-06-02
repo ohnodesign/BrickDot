@@ -82,8 +82,6 @@ extension EntryStatus {
             return .brick
         case .done:
             return .green
-        @unknown default:
-            return .gray
         }
     }
 }

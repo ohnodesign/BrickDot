@@ -1,4 +1,3 @@
-import Foundation
 import SwiftUI
 
 public enum EntryStatus: String, Codable, CaseIterable {

@@ -11,12 +11,10 @@
 		EE02CC692E4DB0D600173CC4 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC662E4DB0D600173CC4 /* ExportView.swift */; };
 		EE02CC6C2E4E31F000173CC4 /* EditEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC6B2E4E31F000173CC4 /* EditEntryView.swift */; };
 		EE02CC702E4E373900173CC4 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC6F2E4E373900173CC4 /* DocumentPicker.swift */; };
-		EE08B4522E4D9E3C00724105 /* Date+MonthBounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE08B4512E4D9E3C00724105 /* Date+MonthBounds.swift */; };
 		EE0C627E2E4F601C0008DDE4 /* ClientDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */; };
 		EE0E53772EA9CB4100C07E2E /* StatsSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */; };
 		EE0E53792EA9CC0C00C07E2E /* StatsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */; };
 		EE0E537B2EA9CDE300C07E2E /* StatsPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E537A2EA9CDE300C07E2E /* StatsPageView.swift */; };
-		EE0E537D2EA9CED600C07E2E /* Date+Bounds 2.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E537C2EA9CED600C07E2E /* Date+Bounds 2.swift */; };
 		EE0E537F2EA9CEDB00C07E2E /* EntriesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E537E2EA9CEDB00C07E2E /* EntriesListView.swift */; };
 		EE150DFA2E920DA7005C4321 /* TimeLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE150DF92E920DA7005C4321 /* TimeLog.swift */; };
 		EE192F542EA9DD68002F38A0 /* CalendarMonthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE192F532EA9DD68002F38A0 /* CalendarMonthView.swift */; };
@@ -27,7 +25,6 @@
 		EE854AC72E581BDA00C776C6 /* Entry.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6982E4D7CE200C792C4 /* Entry.swift */; };
 		641EAE95C9BAC6DA7C66E2BC /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4ACCA611E51643F69DDAC54 /* UserProfile.swift */; };
 		EE854AC82E581BE000C776C6 /* Client.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEDCD6972E4D7CE200C792C4 /* Client.swift */; };
-		EE854ACA2E58257000C776C6 /* ClientFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE854AC92E58257000C776C6 /* ClientFormView.swift */; };
 		EE854ACF2E58BC9000C776C6 /* EntryFormSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE854ACE2E58BC9000C776C6 /* EntryFormSection.swift */; };
 		EE854AD12E58C1A000C776C6 /* EntryStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE854AD02E58C1A000C776C6 /* EntryStatus.swift */; };
 		EE8CDECE2E78B9D20011B686 /* Subtask.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8CDECD2E78B9D20011B686 /* Subtask.swift */; };
@@ -37,7 +34,6 @@
 		EEABCEB32E4E47A20029A98C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB22E4E47A20029A98C /* HomeView.swift */; };
 		EEABCEB52E4E5E3F0029A98C /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB42E4E5E3F0029A98C /* DateExtensions.swift */; };
 		EEABCEB72E4E845E0029A98C /* AutoBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB62E4E845E0029A98C /* AutoBackup.swift */; };
-		EEAE23672FCDF1320018364B /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAE23662FCDF1320018364B /* Theme.swift */; };
 		EEB9C9742E4FC7FA009D95B9 /* Backup.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB9C9732E4FC7FA009D95B9 /* Backup.swift */; };
 		EEB9C9822E4FC907009D95B9 /* ClientListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEB9C9812E4FC907009D95B9 /* ClientListView.swift */; };
 		EEC3778E2E9218E90066C54E /* Entry+RunningElapsed.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEC3778D2E9218E90066C54E /* Entry+RunningElapsed.swift */; };
@@ -69,12 +65,10 @@
 		EE02CC672E4DB0D600173CC4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		EE02CC6B2E4E31F000173CC4 /* EditEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditEntryView.swift; sourceTree = "<group>"; };
 		EE02CC6F2E4E373900173CC4 /* DocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
-		EE08B4512E4D9E3C00724105 /* Date+MonthBounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+MonthBounds.swift"; sourceTree = "<group>"; };
 		EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientDetailView.swift; sourceTree = "<group>"; };
 		EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsSectionView.swift; sourceTree = "<group>"; };
 		EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsComponents.swift; sourceTree = "<group>"; };
 		EE0E537A2EA9CDE300C07E2E /* StatsPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsPageView.swift; sourceTree = "<group>"; };
-		EE0E537C2EA9CED600C07E2E /* Date+Bounds 2.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Bounds 2.swift"; sourceTree = "<group>"; };
 		EE0E537E2EA9CEDB00C07E2E /* EntriesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntriesListView.swift; sourceTree = "<group>"; };
 		EE150DF92E920DA7005C4321 /* TimeLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeLog.swift; sourceTree = "<group>"; };
 		EE192F532EA9DD68002F38A0 /* CalendarMonthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarMonthView.swift; sourceTree = "<group>"; };
@@ -82,9 +76,6 @@
 		EE205D8B2F1BDF1600E2B088 /* EntryTemplateEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryTemplateEditorView.swift; sourceTree = "<group>"; };
 		EE205D8D2F1BE1F800E2B088 /* SubtasksSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SubtasksSectionView.swift; sourceTree = "<group>"; };
 		EE2B90972E59589E00DB8809 /* BrickDot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BrickDot.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		EE78B4E62E4F98C40061790A /* RootViewDIAG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootViewDIAG.swift; sourceTree = "<group>"; };
-		EE854AC92E58257000C776C6 /* ClientFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientFormView.swift; sourceTree = "<group>"; };
-		EE854ACB2E582C6200C776C6 /* ClientDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientDebugView.swift; sourceTree = "<group>"; };
 		EE854ACE2E58BC9000C776C6 /* EntryFormSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryFormSection.swift; sourceTree = "<group>"; };
 		EE854AD02E58C1A000C776C6 /* EntryStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryStatus.swift; sourceTree = "<group>"; };
 		EE8CDECD2E78B9D20011B686 /* Subtask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subtask.swift; sourceTree = "<group>"; };
@@ -94,7 +85,6 @@
 		EEABCEB22E4E47A20029A98C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		EEABCEB42E4E5E3F0029A98C /* DateExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtensions.swift; sourceTree = "<group>"; };
 		EEABCEB62E4E845E0029A98C /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
-		EEAE23662FCDF1320018364B /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		EEB9C9732E4FC7FA009D95B9 /* Backup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backup.swift; sourceTree = "<group>"; };
 		EEB9C9812E4FC907009D95B9 /* ClientListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientListView.swift; sourceTree = "<group>"; };
 		EEC3778D2E9218E90066C54E /* Entry+RunningElapsed.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Entry+RunningElapsed.swift"; sourceTree = "<group>"; };
@@ -187,8 +177,6 @@
 				EECB80B92FCDC488007252D5 /* SearchView.swift */,
 				EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */,
 				EEB9C9812E4FC907009D95B9 /* ClientListView.swift */,
-				EE854AC92E58257000C776C6 /* ClientFormView.swift */,
-				EE854ACB2E582C6200C776C6 /* ClientDebugView.swift */,
 				EEC377932E921DC80066C54E /* Colors.swift */,
 				EEA142532E942FCF00ACB8DD /* Date+Bounds.swift */,
 				EEA142552E9437B300ACB8DD /* DateBoundsTests.swift */,
@@ -205,17 +193,14 @@
 				EEDCD6812E4D7CB900C792C4 /* NewEntryView.swift */,
 				EEE835D02E9C994F00317915 /* ProfileView.swift */,
 				EE02CC672E4DB0D600173CC4 /* RootView.swift */,
-				EE78B4E62E4F98C40061790A /* RootViewDIAG.swift */,
 				EEC3778F2E921A860066C54E /* StatPill.swift */,
 				EEE835CE2E9C973300317915 /* SettingsView.swift */,
 				EEC377952E921DCB0066C54E /* TimeFormatting.swift */,
 				EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */,
 				EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */,
 				EE0E537A2EA9CDE300C07E2E /* StatsPageView.swift */,
-				EE0E537C2EA9CED600C07E2E /* Date+Bounds 2.swift */,
 				EE0E537E2EA9CEDB00C07E2E /* EntriesListView.swift */,
 				EE192F532EA9DD68002F38A0 /* CalendarMonthView.swift */,
-				EEAE23662FCDF1320018364B /* Theme.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -241,7 +226,6 @@
 			isa = PBXGroup;
 			children = (
 				EEDCD69F2E4D7CFB00C792C4 /* DateFormatter+ISO.swift */,
-				EE08B4512E4D9E3C00724105 /* Date+MonthBounds.swift */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -346,7 +330,6 @@
 				EE854AC82E581BE000C776C6 /* Client.swift in Sources */,
 				EEDCD6842E4D7CB900C792C4 /* LogView.swift in Sources */,
 				EEDCD6B02E4D830C00C792C4 /* Constants.swift in Sources */,
-				EE0E537D2EA9CED600C07E2E /* Date+Bounds 2.swift in Sources */,
 				EE192F542EA9DD68002F38A0 /* CalendarMonthView.swift in Sources */,
 				EECB80C02FCDE69E007252D5 /* AppTheme.swift in Sources */,
 				EEABCEB32E4E47A20029A98C /* HomeView.swift in Sources */,
@@ -354,7 +337,6 @@
 				EECB80BC2FCDC9ED007252D5 /* QuickAddView.swift in Sources */,
 				EE5DFE7F2E4FAE8100D7D747 /* BrickDotApp.swift in Sources */,
 				EE0E53772EA9CB4100C07E2E /* StatsSectionView.swift in Sources */,
-				EE854ACA2E58257000C776C6 /* ClientFormView.swift in Sources */,
 				EEB9C9742E4FC7FA009D95B9 /* Backup.swift in Sources */,
 				EE0C627E2E4F601C0008DDE4 /* ClientDetailView.swift in Sources */,
 				EEA142542E942FCF00ACB8DD /* Date+Bounds.swift in Sources */,
@@ -363,11 +345,9 @@
 				EECB80BA2FCDC488007252D5 /* SearchView.swift in Sources */,
 				EEC744BB2E5D0F5100E9D21A /* Invoice.swift in Sources */,
 				EE150DFA2E920DA7005C4321 /* TimeLog.swift in Sources */,
-				EEAE23672FCDF1320018364B /* Theme.swift in Sources */,
 				EE0E53792EA9CC0C00C07E2E /* StatsComponents.swift in Sources */,
 				EE984E962E58DA08004A272F /* NewClientView.swift in Sources */,
 				EEB9C9822E4FC907009D95B9 /* ClientListView.swift in Sources */,
-				EE08B4522E4D9E3C00724105 /* Date+MonthBounds.swift in Sources */,
 				EEDCD6A02E4D7CFB00C792C4 /* DateFormatter+ISO.swift in Sources */,
 				EE02CC6C2E4E31F000173CC4 /* EditEntryView.swift in Sources */,
 				EEC3778E2E9218E90066C54E /* Entry+RunningElapsed.swift in Sources */,
@@ -520,7 +500,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -554,7 +534,7 @@
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

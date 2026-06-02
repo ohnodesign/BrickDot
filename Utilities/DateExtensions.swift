@@ -4,13 +4,12 @@ extension Date {
     var startOfMonth: Date {
         let cal = Calendar.current
         let comps = cal.dateComponents([.year, .month], from: self)
-        return cal.date(from: comps)!
+        return cal.date(from: comps) ?? self
     }
 
     var endOfMonth: Date {
         let cal = Calendar.current
-        // start of next month minus 1 second
-        let startNext = cal.date(byAdding: DateComponents(month: 1), to: startOfMonth)!
+        guard let startNext = cal.date(byAdding: DateComponents(month: 1), to: startOfMonth) else { return self }
         return cal.date(byAdding: .second, value: -1, to: startNext) ?? self
     }
 
