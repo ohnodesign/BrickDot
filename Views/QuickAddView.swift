@@ -39,7 +39,7 @@ struct QuickAddView: View {
                         .padding(.horizontal, 4)
 
                     HStack {
-                        TextField("cs photo 121 Rasho Road", text: $rawInput)
+                        TextField("cs photo fix drain 15m done", text: $rawInput)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .focused($inputFocused)
@@ -68,16 +68,8 @@ struct QuickAddView: View {
                     if speech.isRecording {
                         HStack(spacing: 8) {
                             Circle().fill(.red).frame(width: 8, height: 8)
-                            Text(speech.transcript.isEmpty ? "Listening…" : speech.transcript)
+                            Text("Listening…")
                                 .font(.caption).foregroundStyle(.secondary)
-                            Spacer()
-                            Button("Use") {
-                                rawInput = speech.transcript
-                                speech.stopRecording()
-                                parseInput()
-                            }
-                            .font(.caption.weight(.semibold))
-                            .disabled(speech.transcript.isEmpty)
                         }
                     }
 
@@ -98,6 +90,13 @@ struct QuickAddView: View {
                             Text("·").foregroundStyle(.secondary)
                             Text(parsed.description).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         }
+                        if parsed.hours > 0 {
+                            Text("·").foregroundStyle(.secondary)
+                            Text(formatHours(parsed.hours)).font(.caption.weight(.medium)).foregroundStyle(theme.accent)
+                        }
+                        if parsed.isDone {
+                            Image(systemName: "checkmark.circle.fill").foregroundStyle(.green).imageScale(.small)
+                        }
                         Spacer()
                     }
                     .padding(10)
@@ -105,6 +104,16 @@ struct QuickAddView: View {
                 } else if rawInput.count >= 2 {
                     Text("No match — try a different shortcode or use Pick Manually")
                         .font(.caption).foregroundStyle(.orange)
+                }
+
+                if clients.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                        Text("Add a client first from the Clients tab, or use Full Entry to create one inline.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray6)))
                 }
 
                 // Quick Save button
@@ -184,6 +193,9 @@ struct QuickAddView: View {
                 }
                 inputFocused = true
             }
+            .onChange(of: speech.transcript) { _, newValue in
+                if speech.isRecording { rawInput = newValue }
+            }
             .onDisappear { speech.stopRecording() }
             .sheet(isPresented: $showFullEntry) {
                 NavigationStack {
@@ -215,23 +227,118 @@ struct QuickAddView: View {
         let client: Client
         let service: String
         let description: String
+        let hours: Double
+        let isDone: Bool
     }
 
     private func parseInput() {
-        let words = rawInput.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
+        let cleaned = rawInput.replacingOccurrences(of: #"[.,!?;:]"#, with: "", options: .regularExpression)
+        let words = cleaned.split(separator: " ", maxSplits: 2, omittingEmptySubsequences: true)
         guard !words.isEmpty else { parsedPreview = nil; return }
 
         let clientQuery = String(words[0]).lowercased()
         guard let matchedClient = matchClient(clientQuery) else { parsedPreview = nil; return }
 
+        var matchedService = ""
+        var rawDesc = ""
+
         if words.count >= 2 {
             let serviceQuery = String(words[1]).lowercased()
-            let desc = words.count > 2 ? String(words[2]) : ""
-            let matchedService = matchService(serviceQuery) ?? ""
-            parsedPreview = ParsedInput(client: matchedClient, service: matchedService, description: desc)
-        } else {
-            parsedPreview = ParsedInput(client: matchedClient, service: "", description: "")
+            rawDesc = words.count > 2 ? String(words[2]) : ""
+
+            // Try combining service word with start of description for multi-word service names
+            // e.g. "web update" → "webupdate" matches "WEBUP" better than just "web"
+            if !rawDesc.isEmpty {
+                let descWords = rawDesc.split(separator: " ")
+                let combined = serviceQuery + descWords[0].lowercased()
+                if let match = matchService(combined) {
+                    matchedService = match
+                    rawDesc = descWords.dropFirst().joined(separator: " ")
+                } else {
+                    matchedService = matchService(serviceQuery) ?? ""
+                }
+            } else {
+                matchedService = matchService(serviceQuery) ?? ""
+            }
         }
+
+        let (desc, hours, isDone) = extractTimeAndStatus(from: rawDesc)
+        parsedPreview = ParsedInput(client: matchedClient, service: matchedService, description: desc, hours: hours, isDone: isDone)
+    }
+
+    private static let wordNumbers: [String: Double] = [
+        "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+        "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+        "eleven": 11, "twelve": 12
+    ]
+
+    private func extractTimeAndStatus(from text: String) -> (description: String, hours: Double, isDone: Bool) {
+        var remaining = text
+        var hours: Double = 0
+
+        let naturalPatterns: [(pattern: String, hours: Double)] = [
+            (#"\b(three\s+quarters?\s+of\s+an?\s+hour|three\s+quarter\s+hours?)\b"#, 0.75),
+            (#"\b(quarter\s+of\s+an?\s+hour|quarter\s+hour)\b"#, 0.25),
+            (#"\bhalf\s+an?\s+hour\b"#, 0.5),
+            (#"\ban?\s+hour\s+and\s+a\s+half\b"#, 1.5),
+        ]
+
+        for (pattern, value) in naturalPatterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
+                let range = NSRange(remaining.startIndex..., in: remaining)
+                if let match = regex.firstMatch(in: remaining, range: range) {
+                    hours = value
+                    remaining = remaining.replacingCharacters(in: Range(match.range, in: remaining)!, with: "")
+                    break
+                }
+            }
+        }
+
+        // "one hour", "two hours", "three minutes", etc.
+        if hours == 0 {
+            let wordNumPattern = #"\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\s+(hours?|hrs?|minutes?|mins?)\b"#
+            if let regex = try? NSRegularExpression(pattern: wordNumPattern, options: .caseInsensitive) {
+                let range = NSRange(remaining.startIndex..., in: remaining)
+                if let match = regex.firstMatch(in: remaining, range: range),
+                   let numRange = Range(match.range(at: 1), in: remaining),
+                   let unitRange = Range(match.range(at: 2), in: remaining),
+                   let value = Self.wordNumbers[remaining[numRange].lowercased()] {
+                    let unit = remaining[unitRange].lowercased()
+                    hours = unit.hasPrefix("h") ? value : value / 60.0
+                    remaining = remaining.replacingCharacters(in: Range(match.range, in: remaining)!, with: "")
+                }
+            }
+        }
+
+        // Numeric: 15 minutes, 1.5 hours, 2h, 30m, .5 hr, 90min
+        if hours == 0 {
+            let durationPattern = #"(\d+\.?\d*|\.\d+)\s*(hours?|hrs?|h|minutes?|mins?|m)\b"#
+            if let regex = try? NSRegularExpression(pattern: durationPattern, options: .caseInsensitive) {
+                let range = NSRange(remaining.startIndex..., in: remaining)
+                if let match = regex.firstMatch(in: remaining, range: range),
+                   let numRange = Range(match.range(at: 1), in: remaining),
+                   let unitRange = Range(match.range(at: 2), in: remaining),
+                   let value = Double(remaining[numRange]) {
+                    let unit = remaining[unitRange].lowercased()
+                    hours = unit.hasPrefix("h") ? value : value / 60.0
+                    remaining = remaining.replacingCharacters(in: Range(match.range, in: remaining)!, with: "")
+                }
+            }
+        }
+
+        var isDone = false
+        let donePattern = #"\b(done|complete|completed|finished)\b"#
+        if let regex = try? NSRegularExpression(pattern: donePattern, options: .caseInsensitive) {
+            let range = NSRange(remaining.startIndex..., in: remaining)
+            if let match = regex.firstMatch(in: remaining, range: range) {
+                isDone = true
+                remaining = remaining.replacingCharacters(in: Range(match.range, in: remaining)!, with: "")
+            }
+        }
+
+        remaining = remaining.split(separator: " ").joined(separator: " ")
+
+        return (remaining, hours, isDone)
     }
 
     private func matchClient(_ query: String) -> Client? {
@@ -247,7 +354,10 @@ struct QuickAddView: View {
     }
 
     private func matchService(_ query: String) -> String? {
-        Constants.services.first(where: { $0.lowercased().hasPrefix(query) })
+        if let exact = Constants.services.first(where: { $0.lowercased() == query }) { return exact }
+        let matches = Constants.services.filter { $0.lowercased().hasPrefix(query) }
+        if matches.count == 1 { return matches[0] }
+        return matches.min(by: { $0.count < $1.count })
     }
 
     // MARK: - Effective values
@@ -258,25 +368,45 @@ struct QuickAddView: View {
         if let parsed = parsedPreview, !parsed.description.isEmpty { return parsed.description }
         return detail
     }
+    private var effectiveHours: Double { parsedPreview?.hours ?? 0 }
+    private var effectiveStatus: EntryStatus { parsedPreview?.isDone == true ? .done : .todo }
     private var canSave: Bool { effectiveClient != nil }
+
+    private func formatHours(_ h: Double) -> String {
+        let totalMinutes = Int(round(h * 60))
+        if totalMinutes < 60 {
+            return "\(totalMinutes)m"
+        } else if totalMinutes % 60 == 0 {
+            return "\(totalMinutes / 60)h"
+        } else {
+            return "\(totalMinutes / 60)h \(totalMinutes % 60)m"
+        }
+    }
 
     private func save() {
         guard let client = effectiveClient, !isSaving else { return }
         isSaving = true
 
+        let isDone = effectiveStatus == .done
         let entry = Entry(
             serviceDate: Date(),
             service: effectiveService,
             detail: effectiveDetail.trimmingCharacters(in: .whitespacesAndNewlines),
-            hours: 0,
+            hours: effectiveHours,
             rate: client.rate,
             client: client,
-            status: .todo,
+            status: effectiveStatus,
             createdAt: Date(),
-            isImportant: true
+            completedAt: isDone ? Date() : nil,
+            isImportant: !isDone
         )
         entry.isQuickAdd = true
         ctx.insert(entry)
+
+        if effectiveHours > 0 {
+            let log = TimeLog(hours: effectiveHours, note: "Quick add", entry: entry)
+            entry.timeLogsList.append(log)
+        }
 
         do {
             try ctx.save()

@@ -85,6 +85,7 @@ struct ExportView: View {
     // ✅ Read/write user prefs (aligned with SettingsView keys/values)
     @AppStorage("export.useQuickBooksHeaders") private var useQuickBooksHeaders = false
     @AppStorage("export.includeNotes")         private var includeNotes = false
+    @AppStorage("export.includeSubtasks")      private var includeSubtasks = false
     @AppStorage("agenda.defaultScope")         private var agendaScopeRaw: String  = "selectedClient" // "selectedClient" | "allClients"
     @AppStorage("agenda.defaultFormat")        private var agendaFormatRaw: String = "plain"          // "plain" | "markdown"
     @AppStorage("backup.folder.bookmark")      private var backupFolderBookmark: Data?
@@ -164,6 +165,8 @@ struct ExportView: View {
                         Text("Plain Text").tag("plain")
                         Text("Markdown").tag("markdown")
                     }
+
+                    Toggle("Include completed subtasks", isOn: $includeSubtasks)
 
                     Button {
                         exportAgenda()
@@ -717,21 +720,37 @@ struct ExportView: View {
     private func bulletLine(for e: Entry) -> String {
         let svc  = e.service.isEmpty ? "—" : e.service
         let desc = e.detail.isEmpty ? "No description" : e.detail.replacingOccurrences(of: "\n", with: " ")
+        var line = "• \(svc) — \(desc)"
         if includeNotes, !e.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let note = e.notes.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
-            return "• \(svc) — \(desc) — \(note)"
+            line += " — \(note)"
         }
-        return "• \(svc) — \(desc)"
+        if includeSubtasks {
+            let completed = e.subtasksList.filter { $0.isDone }
+            if !completed.isEmpty {
+                let bullets = completed.map { "  ✓ \($0.title)" }.joined(separator: "\n")
+                line += "\n" + bullets
+            }
+        }
+        return line
     }
 
     private func markdownLine(for e: Entry) -> String {
         let svc  = e.service.isEmpty ? "—" : e.service
         let desc = e.detail.isEmpty ? "No description" : e.detail.replacingOccurrences(of: "\n", with: " ")
+        var line = "**\(svc)** — \(desc)"
         if includeNotes, !e.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let note = e.notes.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
-            return "**\(svc)** — \(desc) — \(note)"
+            line += " — \(note)"
         }
-        return "**\(svc)** — \(desc)"
+        if includeSubtasks {
+            let completed = e.subtasksList.filter { $0.isDone }
+            if !completed.isEmpty {
+                let bullets = completed.map { "  - ~~\($0.title)~~" }.joined(separator: "\n")
+                line += "\n" + bullets
+            }
+        }
+        return line
     }
 
     /// (To Do, In Progress, Done-last-20). Done respects service filter and ignores date scope.

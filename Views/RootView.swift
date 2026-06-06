@@ -205,6 +205,9 @@ private struct iPadRootView: View {
     @State private var showFullNewEntry = false
     @State private var detailPath = NavigationPath()
     @State private var showSearch = false
+    @State private var isLandscape = UIDevice.current.orientation.isLandscape
+
+    private var sidebarColumns: Int { isLandscape ? 2 : 1 }
 
     var body: some View {
         NavigationSplitView {
@@ -248,7 +251,6 @@ private struct iPadRootView: View {
 
                         SidebarStatRow(icon: "calendar", tint: theme.dueToday, value: "\(dueTodayCount)", label: "Due Today")
                         SidebarStatRow(icon: "timer", tint: theme.running, value: "\(timersRunning)", label: "Running")
-                        SidebarStatRow(icon: "dollarsign.circle.fill", tint: theme.revenue, value: potentialRevenue.shortCurrency, label: "Potential Revenue")
                     }
                     .padding(12)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray6)))
@@ -257,13 +259,13 @@ private struct iPadRootView: View {
 
                 // Navigation
                 Section {
-                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
-                        sidebarNavTile("Profile", icon: "person.crop.circle", dest: .profile)
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: sidebarColumns), spacing: 10) {
                         sidebarNavTile("Clients", icon: "person.2", dest: .allClients)
                         sidebarNavTile("Stats", icon: "chart.bar", dest: .stats)
                         sidebarNavTile("Log", icon: "doc.text", dest: .log)
                         sidebarNavTile("Export", icon: "square.and.arrow.up", dest: .export)
                         sidebarNavTile("Settings", icon: "gear", dest: .settings)
+                        sidebarNavTile("Profile", icon: "person.crop.circle", dest: .profile)
                     }
                     .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                 }
@@ -318,6 +320,12 @@ private struct iPadRootView: View {
         }
         .onChange(of: selection) { _, _ in
             detailPath = NavigationPath()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            let orientation = UIDevice.current.orientation
+            if orientation.isValidInterfaceOrientation {
+                isLandscape = orientation.isLandscape
+            }
         }
         .sheet(isPresented: $showNewEntry) {
             QuickAddView(onSaved: {
@@ -385,17 +393,17 @@ private struct iPadRootView: View {
         } label: {
             VStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.title2)
-                    .frame(height: 28)
+                    .font(.title)
+                    .frame(height: 34)
                 Text(label)
-                    .font(.caption2.weight(.medium))
+                    .font(.caption.weight(.medium))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 10)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(selection == dest ? theme.accent.opacity(0.15) : Color(.systemGray6))
+                    .fill(selection == dest ? theme.accent.opacity(0.15) : .clear)
             )
             .foregroundStyle(selection == dest ? theme.accent : .primary)
         }
