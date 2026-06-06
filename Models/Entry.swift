@@ -18,6 +18,18 @@ final class Entry {
     var dueDate: Date? = nil
     var billOnCompletion: Bool = false
 
+    var expenseAmount: Double = 0
+    var expenseMarkup: Double = 0
+    var expenseMarkupIsPercent: Bool = true
+
+    var expenseTotal: Double {
+        if expenseMarkupIsPercent {
+            return expenseAmount * (1 + expenseMarkup / 100)
+        } else {
+            return expenseAmount + expenseMarkup
+        }
+    }
+
     var createdAt: Date = Date()
     var completedAt: Date? = nil
 

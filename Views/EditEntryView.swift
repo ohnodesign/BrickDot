@@ -12,10 +12,24 @@ struct EditEntryView: View {
 
     @State private var selectedClient: Client?
     @State private var showDeleteAlert = false
+    @State private var showUnsavedAlert = false
     @AppStorage("time.roundingIncrement") private var roundingRaw = "min15"
 
     // Focus newly-added subtask title
     @FocusState private var focusedSubtaskID: PersistentIdentifier?
+
+    // Snapshot for change detection
+    @State private var initialService = ""
+    @State private var initialDetail = ""
+    @State private var initialHours: Double = 0
+    @State private var initialRate: Double = 0
+    @State private var initialStatusRaw = ""
+    @State private var initialNotes = ""
+    @State private var initialIsImportant = false
+    @State private var initialDueDate: Date? = nil
+    @State private var initialBillOnCompletion = false
+    @State private var initialServiceDate = Date()
+    @State private var initialClient: Client? = nil
 
     var body: some View {
         Form {
@@ -96,20 +110,9 @@ struct EditEntryView: View {
                 }
             }
 
-            // MARK: Billing
-            Section("Billing") {
-                Toggle("Bill on Completion", isOn: $entry.billOnCompletion)
-                if entry.billOnCompletion {
-                    Text("Invoice date will use the completion date instead of the service date.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // MARK: Notes (NEW)
+            // MARK: Notes
             Section("Notes") {
                 ZStack(alignment: .topLeading) {
-                    // Placeholder
                     if entry.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         Text("Add any context, decisions, or client requests…")
                             .foregroundStyle(.secondary)
@@ -125,6 +128,60 @@ struct EditEntryView: View {
                     Spacer()
                     Text("\(entry.notes.count) chars")
                         .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // MARK: Billing
+            Section("Billing") {
+                HStack {
+                    Text("Rate")
+                    Spacer()
+                    TextField("Rate", value: $entry.rate, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 140)
+                }
+                Toggle("Bill on Completion", isOn: $entry.billOnCompletion)
+                if entry.billOnCompletion {
+                    Text("Invoice date will use the completion date instead of the service date.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // MARK: Expenses
+            Section("Expenses") {
+                HStack {
+                    Text("Amount")
+                    Spacer()
+                    TextField("0.00", value: $entry.expenseAmount, format: .number.precision(.fractionLength(2)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 140)
+                        .onChange(of: entry.expenseAmount) { _, _ in try? ctx.save() }
+                }
+                HStack {
+                    Text("Markup")
+                    Spacer()
+                    TextField("0", value: $entry.expenseMarkup, format: .number.precision(.fractionLength(2)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 100)
+                        .onChange(of: entry.expenseMarkup) { _, _ in try? ctx.save() }
+                    Picker("", selection: $entry.expenseMarkupIsPercent) {
+                        Text("%").tag(true)
+                        Text("$").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 80)
+                    .onChange(of: entry.expenseMarkupIsPercent) { _, _ in try? ctx.save() }
+                }
+                HStack {
+                    Text("Expense Total")
+                    Spacer()
+                    Text(entry.expenseTotal, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -319,6 +376,7 @@ struct EditEntryView: View {
             Section {
                 Button {
                     try? ctx.save()
+                    snapshotInitialState()
                     dismiss()
                 } label: {
                     Label("Save Changes", systemImage: "tray.and.arrow.down.fill")
@@ -342,7 +400,23 @@ struct EditEntryView: View {
         } message: {
             Text("This will remove the entry for \(entry.clientName) on \(DateFormatter.iso8601Day.string(from: entry.serviceDate)). This action can’t be undone.")
         }
+        .navigationBarBackButtonHidden(true)
+        .interactiveDismissDisabled(hasUnsavedChanges)
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    if hasUnsavedChanges {
+                        showUnsavedAlert = true
+                    } else {
+                        dismiss()
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                }
+            }
             // Keyboard accessory
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -351,13 +425,38 @@ struct EditEntryView: View {
                                                     to: nil, from: nil, for: nil)
                 }
             }
-            // Enable Edit mode for drag-delete UI if you want
             ToolbarItem(placement: .navigationBarTrailing) {
                 EditButton()
             }
         }
+        .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
+            Button("Save & Leave") {
+                try? ctx.save()
+                snapshotInitialState()
+                dismiss()
+            }
+            Button("Discard", role: .destructive) {
+                entry.service = initialService
+                entry.detail = initialDetail
+                entry.hours = initialHours
+                entry.rate = initialRate
+                entry.statusRaw = initialStatusRaw
+                entry.notes = initialNotes
+                entry.isImportant = initialIsImportant
+                entry.dueDate = initialDueDate
+                entry.billOnCompletion = initialBillOnCompletion
+                entry.serviceDate = initialServiceDate
+                entry.client = initialClient
+                try? ctx.save()
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You have unsaved changes. Would you like to save before leaving?")
+        }
         .onAppear {
             if selectedClient == nil { selectedClient = entry.client }
+            snapshotInitialState()
         }
         .onChange(of: entry.statusRaw) { _, _ in
             if entry.status == .done && entry.completedAt == nil {
@@ -377,6 +476,34 @@ struct EditEntryView: View {
         let minutes = hours * 60.0
         let roundedMinutes = (minutes / incrementMinutes).rounded() * incrementMinutes
         return max(0.0, min(24.0, roundedMinutes / 60.0))
+    }
+
+    private var hasUnsavedChanges: Bool {
+        entry.service != initialService ||
+        entry.detail != initialDetail ||
+        entry.hours != initialHours ||
+        entry.rate != initialRate ||
+        entry.statusRaw != initialStatusRaw ||
+        entry.notes != initialNotes ||
+        entry.isImportant != initialIsImportant ||
+        entry.dueDate != initialDueDate ||
+        entry.billOnCompletion != initialBillOnCompletion ||
+        entry.serviceDate != initialServiceDate ||
+        entry.client != initialClient
+    }
+
+    private func snapshotInitialState() {
+        initialService = entry.service
+        initialDetail = entry.detail
+        initialHours = entry.hours
+        initialRate = entry.rate
+        initialStatusRaw = entry.statusRaw
+        initialNotes = entry.notes
+        initialIsImportant = entry.isImportant
+        initialDueDate = entry.dueDate
+        initialBillOnCompletion = entry.billOnCompletion
+        initialServiceDate = entry.serviceDate
+        initialClient = entry.client
     }
 
     // MARK: - Helpers

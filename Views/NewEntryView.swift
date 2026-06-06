@@ -25,6 +25,9 @@ struct NewEntryView: View {
 
     // New: notes and pending subtasks for brand new entries
     @State private var notes: String = ""
+    @State private var expenseAmount: Double = 0
+    @State private var expenseMarkup: Double = 0
+    @State private var expenseMarkupIsPercent: Bool = true
     @State private var pendingSubtasks: [PendingSubtask] = []
 
     private struct PendingLog: Identifiable, Hashable {
@@ -37,6 +40,7 @@ struct NewEntryView: View {
 
     // Prevent duplicate taps
     @State private var isSaving = false
+    @State private var showUnsavedAlert = false
 
     // Force a full form rebuild when we reset (clears focus/child state)
     @State private var formResetKey = UUID()
@@ -72,8 +76,37 @@ struct NewEntryView: View {
                 isImportant: $isImportant         // ✅ pass down
             )
 
-            // Due date & billing
+            // Notes section
+            Section("Notes") {
+                ZStack(alignment: .topLeading) {
+                    if notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Add any context, decisions, or client requests…")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
+                    }
+                    TextEditor(text: $notes)
+                        .frame(minHeight: 120)
+                        .accessibilityLabel("Notes")
+                }
+                HStack {
+                    Spacer()
+                    Text("\(notes.count) chars")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // Deadline & Billing
             Section("Deadline & Billing") {
+                HStack {
+                    Text("Rate")
+                    Spacer()
+                    TextField("Rate", value: $rate, format: .number)
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 140)
+                }
                 Toggle("Set Due Date", isOn: Binding(
                     get: { showDueDatePicker },
                     set: { on in
@@ -100,23 +133,35 @@ struct NewEntryView: View {
                 }
             }
 
-            // Notes section (visible when creating a new entry)
-            Section("Notes") {
-                ZStack(alignment: .topLeading) {
-                    if notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Add any context, decisions, or client requests…")
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 8)
-                            .padding(.leading, 5)
-                    }
-                    TextEditor(text: $notes)
-                        .frame(minHeight: 120)
-                        .accessibilityLabel("Notes")
+            // Expenses
+            Section("Expenses") {
+                HStack {
+                    Text("Amount")
+                    Spacer()
+                    TextField("0.00", value: $expenseAmount, format: .number.precision(.fractionLength(2)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 140)
                 }
                 HStack {
+                    Text("Markup")
                     Spacer()
-                    Text("\(notes.count) chars")
-                        .font(.caption)
+                    TextField("0", value: $expenseMarkup, format: .number.precision(.fractionLength(2)))
+                        .keyboardType(.decimalPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(maxWidth: 100)
+                    Picker("", selection: $expenseMarkupIsPercent) {
+                        Text("%").tag(true)
+                        Text("$").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .frame(maxWidth: 80)
+                }
+                HStack {
+                    Text("Expense Total")
+                    Spacer()
+                    Text(computedExpenseTotal, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
             }
@@ -293,6 +338,15 @@ struct NewEntryView: View {
         }
         .id(formResetKey) // rebuilds the Form when we reset
         .navigationTitle("New Entry")
+        .interactiveDismissDisabled(hasUnsavedChanges)
+        .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
+            Button("Save Entry") { save() }
+                .disabled(!canSave)
+            Button("Discard", role: .destructive) { dismiss() }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("You have unsaved changes. Would you like to save before leaving?")
+        }
         .toolbar {
             // Single shared keyboard accessory in the parent
             ToolbarItemGroup(placement: .keyboard) {
@@ -303,7 +357,13 @@ struct NewEntryView: View {
                 }
             }
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Cancel") { dismiss() }
+                Button("Cancel") {
+                    if hasUnsavedChanges {
+                        showUnsavedAlert = true
+                    } else {
+                        dismiss()
+                    }
+                }
             }
         }
         .onAppear {
@@ -337,6 +397,28 @@ struct NewEntryView: View {
 
     // MARK: - Helpers
 
+    private var hasUnsavedChanges: Bool {
+        !detail.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        hours > 0 ||
+        !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ||
+        !pendingSubtasks.isEmpty ||
+        !pendingLogs.isEmpty ||
+        isImportant ||
+        dueDate != nil ||
+        billOnCompletion ||
+        expenseAmount > 0 ||
+        timerStartedAt != nil ||
+        status != .todo
+    }
+
+    private var computedExpenseTotal: Double {
+        if expenseMarkupIsPercent {
+            return expenseAmount * (1 + expenseMarkup / 100)
+        } else {
+            return expenseAmount + expenseMarkup
+        }
+    }
+
     private var canSave: Bool {
         selectedClient != nil &&
         !service.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -361,6 +443,9 @@ struct NewEntryView: View {
             billOnCompletion: billOnCompletion
         )
         entry.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        entry.expenseAmount = expenseAmount
+        entry.expenseMarkup = expenseMarkup
+        entry.expenseMarkupIsPercent = expenseMarkupIsPercent
 
         ctx.insert(entry)
 
@@ -409,6 +494,9 @@ struct NewEntryView: View {
         showDueDatePicker = false
         billOnCompletion = false
         notes = ""
+        expenseAmount = 0
+        expenseMarkup = 0
+        expenseMarkupIsPercent = true
         pendingSubtasks = []
         pendingLogs = []
 

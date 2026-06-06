@@ -109,12 +109,19 @@ private struct CoreDetailsSection: View {
     @Binding var hours: Double
     @Binding var rate: Double
 
+    @Environment(\.modelContext) private var ctx
+
     // Focus & expand handling
-    @FocusState private var focusedField: Field?
     @State private var descExpanded = false
     @FocusState private var descFocused: Bool
+    @State private var showNewClient = false
+    @State private var newClientName = ""
+    @State private var pickerClient: PickerClient = .existing(nil)
 
-    private enum Field { case rate }
+    private enum PickerClient: Hashable {
+        case existing(Client?)
+        case newClient
+    }
 
     private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
     private var hoursText: String { String(format: "%.2f", hours) }
@@ -133,13 +140,49 @@ private struct CoreDetailsSection: View {
     var body: some View {
         Section {
             // Client
-            Picker("Client", selection: $selectedClient) {
+            Picker("Client", selection: $pickerClient) {
+                Text("＋ New Client…").tag(PickerClient.newClient)
                 ForEach(clients, id: \.persistentModelID) { c in
-                    Text(c.name).tag(Optional(c))
+                    Text(c.name).tag(PickerClient.existing(c))
                 }
             }
-            .onChange(of: selectedClient) { _, c in
-                if let c { rate = c.rate }
+            .onChange(of: pickerClient) { _, newValue in
+                switch newValue {
+                case .newClient:
+                    newClientName = ""
+                    showNewClient = true
+                case .existing(let c):
+                    selectedClient = c
+                    if let c { rate = c.rate }
+                }
+            }
+            .onAppear { pickerClient = .existing(selectedClient) }
+            .onChange(of: selectedClient) { _, c in pickerClient = .existing(c) }
+            .alert("New Client", isPresented: $showNewClient) {
+                TextField("Company name", text: $newClientName)
+                    .textInputAutocapitalization(.words)
+                Button("Add") {
+                    let trimmed = newClientName.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !trimmed.isEmpty else { return }
+                    if clients.contains(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+                        if let existing = clients.first(where: { $0.name.caseInsensitiveCompare(trimmed) == .orderedSame }) {
+                            selectedClient = existing
+                        }
+                        return
+                    }
+                    let newClient = Client(name: trimmed, rate: rate)
+                    ctx.insert(newClient)
+                    try? ctx.save()
+                    selectedClient = newClient
+                }
+                Button("Cancel", role: .cancel) { }
+            } message: {
+                Text("Enter the company name. It will be added to your clients list.")
+            }
+            .onChange(of: showNewClient) { _, showing in
+                if !showing && pickerClient == .newClient {
+                    pickerClient = .existing(selectedClient)
+                }
             }
 
             // Service
@@ -205,16 +248,6 @@ private struct CoreDetailsSection: View {
             .animation(.easeInOut(duration: 0.2), value: descExpanded)
             .animation(.easeInOut(duration: 0.2), value: descFocused)
 
-            // Rate
-            HStack {
-                Text("Rate")
-                Spacer()
-                TextField("Rate", value: $rate, format: .number)
-                    .keyboardType(.decimalPad)
-                    .multilineTextAlignment(.trailing)
-                    .frame(maxWidth: 140)
-                    .focused($focusedField, equals: .rate)
-            }
         }
     }
 }
