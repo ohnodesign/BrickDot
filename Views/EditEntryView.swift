@@ -67,6 +67,28 @@ struct EditEntryView: View {
                 }
             )
 
+            // MARK: Notes
+            Section("Notes") {
+                ZStack(alignment: .topLeading) {
+                    if entry.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Add any context, decisions, or client requests…")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
+                    }
+                    TextEditor(text: $entry.notes)
+                        .frame(minHeight: 120)
+                        .onChange(of: entry.notes) { _, _ in try? ctx.save() }
+                        .accessibilityLabel("Notes")
+                }
+                HStack {
+                    Spacer()
+                    Text("\(entry.notes.count) chars")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             // MARK: Dates
             Section("Dates") {
                 HStack {
@@ -105,28 +127,6 @@ struct EditEntryView: View {
                 }
                 if entry.status != .done {
                     Text("Set status to Done to edit Completed Date")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // MARK: Notes
-            Section("Notes") {
-                ZStack(alignment: .topLeading) {
-                    if entry.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Add any context, decisions, or client requests…")
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 8)
-                            .padding(.leading, 5)
-                    }
-                    TextEditor(text: $entry.notes)
-                        .frame(minHeight: 120)
-                        .onChange(of: entry.notes) { _, _ in try? ctx.save() }
-                        .accessibilityLabel("Notes")
-                }
-                HStack {
-                    Spacer()
-                    Text("\(entry.notes.count) chars")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
