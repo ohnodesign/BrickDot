@@ -95,9 +95,16 @@ private struct LogEntryRow: View {
         HStack(spacing: 10) {
             StatusMark(color: color(for: entry.status), starred: entry.isImportant)
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))

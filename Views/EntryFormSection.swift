@@ -16,6 +16,11 @@ struct EntryFormSection: View {
     @Binding var timerStartedAt: Date?
     @Binding var isImportant: Bool
 
+    // Communication fields (shown when service == "COMM")
+    @Binding var commChannel: String
+    @Binding var commDirection: String
+    @Binding var commContact: String
+
     // Optional callbacks
     var onProgressStart: (() -> Void)?
     var onProgressPauseAndAdd: ((_ addHours: Double) -> Void?)?
@@ -32,6 +37,15 @@ struct EntryFormSection: View {
                 hours: $hours,
                 rate: $rate
             )
+
+            // Communication Details (only when COMM is selected)
+            if service == "COMM" {
+                CommunicationDetailsSection(
+                    channel: $commChannel,
+                    direction: $commDirection,
+                    contact: $commContact
+                )
+            }
 
             StatusSection(
                 status: $status,
@@ -203,6 +217,57 @@ private struct ProjectSection: View {
                     .focused($descFocused)
             }
             .animation(.easeInOut(duration: 0.2), value: descFocused)
+        }
+    }
+}
+
+// MARK: - Communication Details
+
+private struct CommunicationDetailsSection: View {
+    @Binding var channel: String
+    @Binding var direction: String
+    @Binding var contact: String
+
+    private let channels = ["email", "phone", "text", "chat"]
+    private let channelLabels = ["Email", "Phone", "Text", "Chat"]
+    private let directions = ["needsReply", "awaitingResponse"]
+    private let directionLabels = ["Needs Reply", "Awaiting Response"]
+
+    var body: some View {
+        Section("Communication Details") {
+            // Channel
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Channel")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Picker("Channel", selection: $channel) {
+                    ForEach(Array(zip(channels, channelLabels)), id: \.0) { value, label in
+                        Text(label).tag(value)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            // Direction
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Direction")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Picker("Direction", selection: $direction) {
+                    ForEach(Array(zip(directions, directionLabels)), id: \.0) { value, label in
+                        Text(label).tag(value)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            // Contact
+            HStack {
+                Text("Contact")
+                Spacer()
+                TextField("Name or number…", text: $contact)
+                    .multilineTextAlignment(.trailing)
+            }
         }
     }
 }

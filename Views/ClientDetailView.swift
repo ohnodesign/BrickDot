@@ -639,9 +639,16 @@ private struct ClientTodoRow: View {
         HStack(spacing: 10) {
             StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))
@@ -671,9 +678,16 @@ private struct ClientInProgressRow: View {
         HStack(spacing: 10) {
             StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.timerStartedAt != nil)
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))
@@ -712,9 +726,16 @@ private struct ClientDoneRow: View {
         HStack(spacing: 10) {
             StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))
@@ -746,6 +767,11 @@ private struct RecentEntryRowWithInvoiceDot: View {
             StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.status == .inProgress && entry.timerStartedAt != nil)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
                     Text(entry.detail.isEmpty ? entry.service : entry.detail)
                         .font(.body.weight(.semibold))
                         .lineLimit(1)

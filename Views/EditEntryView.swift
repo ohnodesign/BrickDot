@@ -13,6 +13,11 @@ struct EditEntryView: View {
     @State private var selectedClient: Client?
     @State private var showDeleteAlert = false
     @State private var showUnsavedAlert = false
+
+    // Communication local state (synced from entry)
+    @State private var commChannel: String = "email"
+    @State private var commDirection: String = "needsReply"
+    @State private var commContact: String = ""
     @AppStorage("time.roundingIncrement") private var roundingRaw = "min15"
 
     // Focus newly-added subtask title
@@ -57,13 +62,16 @@ struct EditEntryView: View {
                 ),
                 timerStartedAt: $entry.timerStartedAt,
                 isImportant: $entry.isImportant,
+                commChannel: $commChannel,
+                commDirection: $commDirection,
+                commContact: $commContact,
                 onProgressStart: { try? ctx.save() },
                 onProgressPauseAndAdd: { _ in try? ctx.save() },
-                onProgressMarkDone: { 
-                    if entry.completedAt == nil { 
-                        entry.completedAt = Date() 
+                onProgressMarkDone: {
+                    if entry.completedAt == nil {
+                        entry.completedAt = Date()
                     }
-                    try? ctx.save() 
+                    try? ctx.save()
                 }
             )
 
@@ -375,6 +383,7 @@ struct EditEntryView: View {
             // MARK: Save / Delete
             Section {
                 Button {
+                    syncCommFieldsToEntry()
                     try? ctx.save()
                     snapshotInitialState()
                     dismiss()
@@ -431,6 +440,7 @@ struct EditEntryView: View {
         }
         .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
             Button("Save & Leave") {
+                syncCommFieldsToEntry()
                 try? ctx.save()
                 snapshotInitialState()
                 dismiss()
@@ -456,6 +466,10 @@ struct EditEntryView: View {
         }
         .onAppear {
             if selectedClient == nil { selectedClient = entry.client }
+            // Load comm fields from entry
+            commChannel = entry.commChannel ?? "email"
+            commDirection = entry.commDirection ?? "needsReply"
+            commContact = entry.commContact ?? ""
             snapshotInitialState()
         }
         .onChange(of: entry.statusRaw) { _, _ in
@@ -507,6 +521,19 @@ struct EditEntryView: View {
     }
 
     // MARK: - Helpers
+
+    private func syncCommFieldsToEntry() {
+        if entry.service == "COMM" {
+            entry.commChannel = commChannel
+            entry.commDirection = commDirection
+            entry.commContact = commContact.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            entry.commChannel = nil
+            entry.commDirection = nil
+            entry.commContact = nil
+        }
+    }
+
     private func deleteSubtask(_ st: Subtask) {
         if let idx = entry.subtasksList.firstIndex(where: { $0.id == st.id }) {
             let doomed = entry.subtasksList[idx]

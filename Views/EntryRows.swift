@@ -1,5 +1,17 @@
 import SwiftUI
 
+// MARK: - Communication Channel Icon Helper
+
+func commChannelIcon(for channel: String?) -> String? {
+    switch channel {
+    case "phone": return "phone.fill"
+    case "email": return "envelope.fill"
+    case "text":  return "message.fill"
+    case "chat":  return "bubble.left.fill"
+    default:      return nil
+    }
+}
+
 struct SharedStatusMark: View {
     let color: Color
     let isImportant: Bool
@@ -35,9 +47,16 @@ struct SharedTodoRow: View {
         HStack(spacing: 10) {
             SharedStatusMark(color: theme.dueToday, isImportant: entry.isImportant)
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))
@@ -71,9 +90,16 @@ struct SharedInProgressRow: View {
                 pulsing: entry.timerStartedAt != nil
             )
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))
@@ -112,9 +138,16 @@ struct SharedDoneRow: View {
         HStack(spacing: 10) {
             SharedStatusMark(color: theme.success, isImportant: entry.isImportant)
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))
@@ -148,9 +181,16 @@ struct SharedEntryRow: View {
                 pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
             )
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))

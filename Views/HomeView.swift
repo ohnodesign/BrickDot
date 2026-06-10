@@ -592,6 +592,11 @@ private struct ActionRow: View {
 
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
                     Text(entry.detail.isEmpty ? entry.service : entry.detail)
                         .font(.body.weight(.semibold))
                         .lineLimit(1)
@@ -719,10 +724,18 @@ private struct GreetingText: View {
         return Self.dailyPhrases[day % Self.dailyPhrases.count]
     }
 
+    private var greetingSize: CGFloat {
+        #if targetEnvironment(macCatalyst)
+        return 26
+        #else
+        return 34
+        #endif
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("\(greeting)\(firstName.isEmpty ? "" : " \(firstName)")")
-                .font(.system(size: 34, weight: .bold, design: .serif))
+                .font(.system(size: greetingSize, weight: .bold, design: .serif))
             if showDailyPhrase {
                 Text(dailyPhrase)
                     .font(.subheadline)
@@ -747,9 +760,16 @@ private struct FocusRow: View {
                 .background(Circle().strokeBorder(Color(.systemGray4), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                    .font(.body.weight(.semibold))
-                    .lineLimit(1)
+                HStack(spacing: 5) {
+                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                        Image(systemName: icon)
+                            .font(.caption)
+                            .foregroundStyle(theme.accent)
+                    }
+                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                        .font(.body.weight(.semibold))
+                        .lineLimit(1)
+                }
                 HStack(spacing: 6) {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))

@@ -30,6 +30,11 @@ struct NewEntryView: View {
     @State private var expenseMarkupIsPercent: Bool = true
     @State private var pendingSubtasks: [PendingSubtask] = []
 
+    // Communication fields (COMM service type)
+    @State private var commChannel: String = "email"
+    @State private var commDirection: String = "needsReply"
+    @State private var commContact: String = ""
+
     // Expenses collapsed by default (#8)
     @State private var expensesExpanded: Bool = false
 
@@ -66,7 +71,7 @@ struct NewEntryView: View {
 
     var body: some View {
         Form {
-            // ── Project → Status (via EntryFormSection) ──
+            // ── Project → Communication Details → Status (via EntryFormSection) ──
             EntryFormSection(
                 clients: clients,
                 selectedClient: $selectedClient,
@@ -77,7 +82,10 @@ struct NewEntryView: View {
                 rate: $rate,
                 status: $status,
                 timerStartedAt: $timerStartedAt,
-                isImportant: $isImportant
+                isImportant: $isImportant,
+                commChannel: $commChannel,
+                commDirection: $commDirection,
+                commContact: $commContact
             )
 
             // ── Deadline & Billing ──
@@ -424,6 +432,12 @@ struct NewEntryView: View {
         .onChange(of: selectedClient) { _, c in
             if let c { rate = c.rate }
         }
+        .onChange(of: service) { _, newService in
+            // Auto-set important for COMM entries (#6)
+            if newService == "COMM" {
+                isImportant = true
+            }
+        }
     }
 
     // MARK: - Helpers
@@ -478,6 +492,13 @@ struct NewEntryView: View {
         entry.expenseMarkup = expenseMarkup
         entry.expenseMarkupIsPercent = expenseMarkupIsPercent
 
+        // Communication fields
+        if service == "COMM" {
+            entry.commChannel = commChannel
+            entry.commDirection = commDirection
+            entry.commContact = commContact.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
         ctx.insert(entry)
 
         // Create TimeLog models from pending logs
@@ -531,6 +552,9 @@ struct NewEntryView: View {
         pendingSubtasks = []
         pendingLogs = []
         expensesExpanded = false
+        commChannel = "email"
+        commDirection = "needsReply"
+        commContact = ""
 
         // Force full view refresh to drop any lingering focus/validation state
         formResetKey = UUID()

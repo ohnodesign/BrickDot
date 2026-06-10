@@ -22,6 +22,11 @@ final class Entry {
     var expenseMarkup: Double = 0
     var expenseMarkupIsPercent: Bool = true
 
+    // Communication fields (only used when service == "COMM")
+    var commChannel: String? = nil      // "email", "phone", "text", "chat"
+    var commDirection: String? = nil    // "needsReply", "awaitingResponse"
+    var commContact: String? = nil      // contact name or number
+
     var expenseTotal: Double {
         if expenseMarkupIsPercent {
             return expenseAmount * (1 + expenseMarkup / 100)
