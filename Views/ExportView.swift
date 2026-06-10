@@ -103,7 +103,6 @@ struct ExportView: View {
 
     @State private var showImportPicker = false
     @State private var showCSVImportPicker = false
-    @State private var csvPickedURL: URL? = nil
     @State private var importError: String?
     @State private var showImportError = false
     @State private var importInfo: String?
@@ -402,16 +401,18 @@ struct ExportView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showCSVImportPicker) {
-                CSVDocumentPicker { url in
-                    csvPickedURL = url
-                }
-            }
-            .onChange(of: csvPickedURL) { _, url in
-                guard let url else { return }
-                csvPickedURL = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            .fileImporter(
+                isPresented: $showCSVImportPicker,
+                allowedContentTypes: [.commaSeparatedText, .text, .plainText, .data],
+                allowsMultipleSelection: false
+            ) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
                     runCSVImport(url: url)
+                case .failure(let error):
+                    importError = "Could not open file: \(error.localizedDescription)"
+                    showImportError = true
                 }
             }
             .sheet(isPresented: $showFolderPicker) {
@@ -1058,31 +1059,6 @@ private struct FolderPickerView: UIViewControllerRepresentable {
         }
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             // No-op; dismissal handled by the presenting sheet
-        }
-    }
-}
-
-// MARK: - CSV Document Picker (for importing QuickBooks CSV)
-
-private struct CSVDocumentPicker: UIViewControllerRepresentable {
-    let onPick: (URL) -> Void
-
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.commaSeparatedText, .text, .plainText, .data], asCopy: true)
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
-
-    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
-
-    final class Coordinator: NSObject, UIDocumentPickerDelegate {
-        let onPick: (URL) -> Void
-        init(onPick: @escaping (URL) -> Void) { self.onPick = onPick }
-        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
-            onPick(url)
         }
     }
 }
