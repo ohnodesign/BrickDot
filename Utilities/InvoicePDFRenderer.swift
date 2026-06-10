@@ -79,9 +79,19 @@ enum InvoicePDFRenderer {
             drawText(invTitle, at: CGPoint(x: pageWidth - margin - invTitleSize.width, y: margin), font: invTitleFont, color: .black)
 
             var rightY = margin + 30
+
+            // Compute due date for header
+            let dueDate: Date
+            if terms.lowercased().contains("net 30") {
+                dueDate = Calendar(identifier: .gregorian).date(byAdding: .day, value: 30, to: invoice.createdAt) ?? invoice.createdAt
+            } else {
+                dueDate = invoice.createdAt // "Due on receipt"
+            }
+
             let rightInfoLines: [(String, String)] = [
                 ("Invoice #", invoice.number ?? "—"),
                 ("Date", formatDate(invoice.createdAt)),
+                ("Due Date", formatDate(dueDate)),
                 ("Terms", terms),
             ]
             for (label, value) in rightInfoLines {
@@ -115,8 +125,9 @@ enum InvoicePDFRenderer {
             y += 16
 
             // ── Line Items Table ──
-            let colService: CGFloat = margin
-            let colDesc: CGFloat = margin + 80
+            let colDate: CGFloat = margin
+            let colService: CGFloat = margin + 62
+            let colDesc: CGFloat = margin + 130
             let colQty: CGFloat = pageWidth - margin - 180
             let colRate: CGFloat = pageWidth - margin - 120
             let colAmount: CGFloat = pageWidth - margin - 60
@@ -131,7 +142,8 @@ enum InvoicePDFRenderer {
             UIBezierPath(roundedRect: headerRect, cornerRadius: 3).fill()
 
             let hY = y + 5
-            drawText("Service", at: CGPoint(x: colService + 6, y: hY), font: headerFont, color: headerColor)
+            drawText("Date", at: CGPoint(x: colDate + 6, y: hY), font: headerFont, color: headerColor)
+            drawText("Service", at: CGPoint(x: colService, y: hY), font: headerFont, color: headerColor)
             drawText("Description", at: CGPoint(x: colDesc, y: hY), font: headerFont, color: headerColor)
             drawTextRight("Qty", rightEdge: colRate - 8, y: hY, font: headerFont, color: headerColor)
             drawTextRight("Rate", rightEdge: colAmount - 8, y: hY, font: headerFont, color: headerColor)
@@ -161,7 +173,12 @@ enum InvoicePDFRenderer {
                 }
 
                 let rY = y + 5
-                drawText(e.service, at: CGPoint(x: colService + 6, y: rY), font: rowFont, color: .black)
+
+                // Service date
+                let billingDate = e.billOnCompletion ? (e.completedAt ?? e.serviceDate) : e.serviceDate
+                drawText(formatShortDate(billingDate), at: CGPoint(x: colDate + 6, y: rY), font: rowFont, color: .black)
+
+                drawText(e.service, at: CGPoint(x: colService, y: rY), font: rowFont, color: .black)
 
                 // Truncate description to fit
                 let descMaxW = colQty - colDesc - 8
@@ -172,8 +189,6 @@ enum InvoicePDFRenderer {
                 drawTextRight(qtyStr, rightEdge: colRate - 8, y: rY, font: rowFont, color: .black)
                 drawTextRight(String(format: "%.2f", e.rate), rightEdge: colAmount - 8, y: rY, font: rowFont, color: .black)
                 drawTextRight(String(format: "%.2f", e.hours * e.rate), rightEdge: pageWidth - margin - 6, y: rY, font: rowBoldFont, color: .black)
-
-                // Service date on right in small text
                 y += rowH
             }
 
@@ -245,6 +260,13 @@ enum InvoicePDFRenderer {
     private static func formatDate(_ date: Date) -> String {
         let df = DateFormatter()
         df.dateStyle = .medium
+        return df.string(from: date)
+    }
+
+    /// Compact date for line item rows, e.g. "Jul 2" or "Dec 15"
+    private static func formatShortDate(_ date: Date) -> String {
+        let df = DateFormatter()
+        df.dateFormat = "MMM d"
         return df.string(from: date)
     }
 
