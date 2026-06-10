@@ -103,6 +103,7 @@ struct ExportView: View {
 
     @State private var showImportPicker = false
     @State private var showCSVImportPicker = false
+    @State private var csvPickedURL: URL? = nil
     @State private var importError: String?
     @State private var showImportError = false
     @State private var importInfo: String?
@@ -403,22 +404,14 @@ struct ExportView: View {
             }
             .sheet(isPresented: $showCSVImportPicker) {
                 CSVDocumentPicker { url in
-                    // Delay to let sheet fully dismiss before showing alert
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        do {
-                            let result = try CSVImporter.importQuickBooksCSV(url: url, ctx: ctx)
-                            var msg = "Imported \(result.entriesCreated) entries"
-                            if result.invoicesCreated > 0 { msg += ", \(result.invoicesCreated) invoices" }
-                            if result.clientsCreated > 0 { msg += ", \(result.clientsCreated) new clients" }
-                            if result.skipped > 0 { msg += " (\(result.skipped) skipped)" }
-                            msg += "."
-                            importInfo = msg
-                            showImportInfo = true
-                        } catch {
-                            importError = "Import failed: \(error.localizedDescription)"
-                            showImportError = true
-                        }
-                    }
+                    csvPickedURL = url
+                }
+            }
+            .onChange(of: csvPickedURL) { _, url in
+                guard let url else { return }
+                csvPickedURL = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    runCSVImport(url: url)
                 }
             }
             .sheet(isPresented: $showFolderPicker) {
@@ -482,6 +475,24 @@ struct ExportView: View {
             } message: {
                 Text(backupFeedbackMessage ?? "Backup completed.")
             }
+        }
+    }
+
+    // MARK: - CSV Import
+
+    private func runCSVImport(url: URL) {
+        do {
+            let result = try CSVImporter.importQuickBooksCSV(url: url, ctx: ctx)
+            var msg = "Imported \(result.entriesCreated) entries"
+            if result.invoicesCreated > 0 { msg += ", \(result.invoicesCreated) invoices" }
+            if result.clientsCreated > 0 { msg += ", \(result.clientsCreated) new clients" }
+            if result.skipped > 0 { msg += " (\(result.skipped) skipped)" }
+            msg += "."
+            importInfo = msg
+            showImportInfo = true
+        } catch {
+            importError = "Import failed: \(error.localizedDescription)"
+            showImportError = true
         }
     }
 
