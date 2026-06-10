@@ -18,12 +18,14 @@ struct ClientDetailView: View {
     @AppStorage("client.showInvoices") private var showInvoices = false
     @AppStorage("client.showRecent") private var showRecent = false
     @AppStorage("client.showTemplates") private var showTemplates = false
+    @Environment(\.dismiss) private var dismiss
     @State private var showEdit       = false
     @State private var showNewEntry   = false
     @State private var showNewTemplate = false
     @State private var selectedTemplate: EntryTemplate? = nil
     @State private var showEntryPicker = false
     @State private var templateToEdit: EntryTemplate? = nil
+    @State private var showDeleteConfirm = false
 
     // Broad queries; filter in Swift
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
@@ -391,6 +393,21 @@ struct ClientDetailView: View {
                 } label: { Text("Invoices (\(clientInvoices.count))") }
             }
 
+            // Delete Client
+            Section {
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    HStack {
+                        Spacer()
+                        Label("Delete Client", systemImage: "trash")
+                        Spacer()
+                    }
+                }
+            } footer: {
+                Text("Permanently deletes this client and all \(clientEntries.count) entries, \(clientInvoices.count) invoices, and \(client.templatesList.count) templates.")
+            }
+
             // Recent entries - status icon (star/dot) + keep green invoiced dot
             Section {
                 DisclosureGroup(isExpanded: $showRecent) {
@@ -492,6 +509,16 @@ struct ClientDetailView: View {
                         }
                     }
             }
+        }
+        .alert("Delete \(client.name)?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                ctx.delete(client)
+                try? ctx.save()
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will permanently delete \(client.name) and all associated entries, invoices, and templates. This cannot be undone.")
         }
     }
 

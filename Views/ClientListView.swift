@@ -10,6 +10,8 @@ struct ClientListView: View {
     @State private var showNewClient: Bool = false
     @State private var showNewEntry: Bool = false
     @State private var newEntryPrefillClient: Client? = nil
+    @State private var clientToDelete: Client? = nil
+    @State private var showDeleteConfirm = false
 
     var body: some View {
         List {
@@ -37,7 +39,12 @@ struct ClientListView: View {
                         }
                     }
                 }
-                .onDelete(perform: deleteClients)
+                .onDelete { offsets in
+                    if let idx = offsets.first {
+                        clientToDelete = filteredClients[idx]
+                        showDeleteConfirm = true
+                    }
+                }
             }
         }
         .navigationTitle("Clients")
@@ -64,6 +71,20 @@ struct ClientListView: View {
             .presentationDetents([.medium])
             .presentationDragIndicator(.visible)
         }
+        .alert("Delete \(clientToDelete?.name ?? "Client")?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let c = clientToDelete {
+                    ctx.delete(c)
+                    try? ctx.save()
+                }
+                clientToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { clientToDelete = nil }
+        } message: {
+            if let c = clientToDelete {
+                Text("This will permanently delete \(c.name) and all associated entries, invoices, and templates.")
+            }
+        }
     }
 
     private var filteredClients: [Client] {
@@ -72,11 +93,5 @@ struct ClientListView: View {
         return clients.filter { $0.name.localizedCaseInsensitiveContains(s) }
     }
 
-    private func deleteClients(at offsets: IndexSet) {
-        for index in offsets {
-            ctx.delete(filteredClients[index])
-        }
-        try? ctx.save()
-    }
 }
 

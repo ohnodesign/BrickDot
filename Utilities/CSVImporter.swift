@@ -105,14 +105,20 @@ struct CSVImporter {
             }
             if isDuplicate { skipped += 1; continue }
 
-            // Find or create client
+            // Find or create client (exact match first, then substring match)
             let client: Client
-            if let existing = clientCache[customerName.lowercased()] {
+            let csvNameLower = customerName.lowercased()
+            if let existing = clientCache[csvNameLower] {
                 client = existing
+            } else if let match = clientCache.first(where: { key, _ in
+                csvNameLower.contains(key) || key.contains(csvNameLower)
+            }) {
+                client = match.value
+                clientCache[csvNameLower] = match.value
             } else {
                 let newClient = Client(name: customerName, rate: rate, colorIndex: ClientColors.nextIndex(existingCount: clientCache.count))
                 ctx.insert(newClient)
-                clientCache[customerName.lowercased()] = newClient
+                clientCache[csvNameLower] = newClient
                 client = newClient
                 clientsCreated += 1
             }
