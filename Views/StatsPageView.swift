@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 struct StatsPageView: View {
     @Environment(\.modelContext) private var ctx
@@ -81,6 +82,22 @@ struct StatsPageView: View {
                 Section("Calendar") {
                     CalendarMonthView(anchorMonth: calendarMonthAnchor, entries: allEntries)
                         .frame(minHeight: 280)
+                }
+
+                // Charts
+                Section("Reports") {
+                    RevenueChartView(entries: allEntries)
+                        .padding(.vertical, 8)
+                }
+
+                Section {
+                    ClientProfitabilityChartView(entries: allEntries)
+                        .padding(.vertical, 8)
+                }
+
+                Section {
+                    ServiceHoursChartView(entries: allEntries)
+                        .padding(.vertical, 8)
                 }
 
                 Section {
