@@ -11,6 +11,8 @@ struct InvoiceDetailView: View {
     private var profile: UserProfile? { profiles.first }
 
     @State private var sharePayload: InvoiceSharePayload?
+    @State private var showDocumentExport = false
+    @State private var exportFileURL: URL? = nil
 
     // Sorted entries on this invoice
     private var items: [Entry] {
@@ -41,18 +43,33 @@ struct InvoiceDetailView: View {
                 Divider()
 
                 // Export buttons
-                HStack(spacing: 12) {
-                    Button {
-                        let url = InvoicePDFRenderer.render(
-                            invoice: invoice,
-                            profile: profile,
-                            terms: "Due on receipt"
-                        )
-                        sharePayload = InvoiceSharePayload(items: [url])
-                    } label: {
-                        Label("Export PDF", systemImage: "doc.richtext")
+                VStack(spacing: 8) {
+                    HStack(spacing: 12) {
+                        Button {
+                            let url = InvoicePDFRenderer.render(
+                                invoice: invoice,
+                                profile: profile,
+                                terms: "Due on receipt"
+                            )
+                            sharePayload = InvoiceSharePayload(items: [url])
+                        } label: {
+                            Label("Share PDF", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            let url = InvoicePDFRenderer.render(
+                                invoice: invoice,
+                                profile: profile,
+                                terms: "Due on receipt"
+                            )
+                            exportFileURL = url
+                            showDocumentExport = true
+                        } label: {
+                            Label("Save to Files", systemImage: "folder")
+                        }
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
 
                     if let client = invoice.client {
                         Button {
@@ -111,6 +128,11 @@ struct InvoiceDetailView: View {
         .navigationTitle(invoice.title)
         .sheet(item: $sharePayload) { payload in
             ShareSheet(activityItems: payload.items).ignoresSafeArea()
+        }
+        .sheet(isPresented: $showDocumentExport) {
+            if let url = exportFileURL {
+                DocumentExportPicker(url: url)
+            }
         }
     }
 }

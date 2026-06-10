@@ -110,6 +110,10 @@ struct ExportView: View {
     @State private var showFolderPicker = false
     @State private var backupObserver: NSObjectProtocol? = nil
 
+    // Save-to-Files document export
+    @State private var exportFileURL: URL? = nil
+    @State private var showDocumentExport = false
+
 
     private var headers: ExportHeaders { useQuickBooksHeaders ? .quickBooks : ExportHeaders() }
 
@@ -150,9 +154,16 @@ struct ExportView: View {
                     .disabled(currentEntries.isEmpty || selectedClient == nil)
 
                     Button {
-                        exportPDFInvoice()
+                        exportPDFInvoice(saveToFiles: false)
                     } label: {
-                        Label("Export PDF Invoice", systemImage: "doc.richtext")
+                        Label("Share PDF Invoice", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(currentEntries.isEmpty || selectedClient == nil)
+
+                    Button {
+                        exportPDFInvoice(saveToFiles: true)
+                    } label: {
+                        Label("Save PDF to Files", systemImage: "folder")
                     }
                     .disabled(currentEntries.isEmpty || selectedClient == nil)
                 }
@@ -356,6 +367,11 @@ struct ExportView: View {
             }
             .sheet(item: $sharePayload) { payload in
                 ShareSheet(activityItems: payload.items).ignoresSafeArea()
+            }
+            .sheet(isPresented: $showDocumentExport) {
+                if let url = exportFileURL {
+                    DocumentExportPicker(url: url)
+                }
             }
             .sheet(isPresented: $showImportPicker) {
                 DocumentPicker { url in
@@ -578,7 +594,7 @@ struct ExportView: View {
 
     // MARK: - PDF Invoice Export
 
-    private func exportPDFInvoice() {
+    private func exportPDFInvoice(saveToFiles: Bool) {
         guard let c = selectedClient else { return }
         let entries = currentEntries
         guard !entries.isEmpty else { return }
@@ -609,7 +625,12 @@ struct ExportView: View {
             terms: "Due on receipt"
         )
 
-        sharePayload = SharePayload(items: [pdfURL])
+        if saveToFiles {
+            exportFileURL = pdfURL
+            showDocumentExport = true
+        } else {
+            sharePayload = SharePayload(items: [pdfURL])
+        }
     }
 
     /// Temporarily appends notes to `detail` for export, then restores originals (no save).
@@ -994,5 +1015,21 @@ private struct FolderPickerView: UIViewControllerRepresentable {
             // No-op; dismissal handled by the presenting sheet
         }
     }
+}
+
+// MARK: - Document Export Picker (Save to Files / Desktop)
+
+/// Presents a system "Move to" / "Save to" picker that lets the user choose
+/// where to save a file. On Mac Catalyst this opens a native Save Panel.
+struct DocumentExportPicker: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forExporting: [url], asCopy: true)
+        picker.shouldShowFileExtensions = true
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
 }
 
