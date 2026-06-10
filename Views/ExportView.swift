@@ -102,6 +102,7 @@ struct ExportView: View {
     @State private var showServices = true
 
     @State private var showImportPicker = false
+    @State private var showCSVImportPicker = false
     @State private var importError: String?
     @State private var showImportError = false
     @State private var importInfo: String?
@@ -279,6 +280,19 @@ struct ExportView: View {
                 // Preview (excludes Done)
                 previewSection(entries: currentEntries)
 
+                // Import Historical CSV
+                Section {
+                    Button {
+                        showCSVImportPicker = true
+                    } label: {
+                        Label("Import QuickBooks CSV", systemImage: "arrow.down.doc")
+                    }
+                } header: {
+                    Text("Import")
+                } footer: {
+                    Text("Import historical entries from a QuickBooks-format CSV. Entries are created as Done and linked to invoice records. Duplicates are skipped.")
+                }
+
                 // Backup / Restore
                 Section("Backup / Restore") {
                     Button {
@@ -381,6 +395,22 @@ struct ExportView: View {
                             importInfo = "Imported \(report.importedEntries) entries. Note: This backup was created before starred support; starred items default to not starred."
                             showImportInfo = true
                         }
+                    } catch {
+                        importError = error.localizedDescription
+                        showImportError = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showCSVImportPicker) {
+                CSVDocumentPicker { url in
+                    do {
+                        let result = try CSVImporter.importQuickBooksCSV(url: url, ctx: ctx)
+                        var msg = "Imported \(result.entriesCreated) entries"
+                        if result.invoicesCreated > 0 { msg += ", \(result.invoicesCreated) invoices" }
+                        if result.clientsCreated > 0 { msg += ", \(result.clientsCreated) new clients" }
+                        if result.skipped > 0 { msg += " (\(result.skipped) skipped)" }
+                        importInfo = msg
+                        showImportInfo = true
                     } catch {
                         importError = error.localizedDescription
                         showImportError = true
@@ -1013,6 +1043,31 @@ private struct FolderPickerView: UIViewControllerRepresentable {
         }
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
             // No-op; dismissal handled by the presenting sheet
+        }
+    }
+}
+
+// MARK: - CSV Document Picker (for importing QuickBooks CSV)
+
+private struct CSVDocumentPicker: UIViewControllerRepresentable {
+    let onPick: (URL) -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.commaSeparatedText, .text], asCopy: true)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator { Coordinator(onPick: onPick) }
+
+    final class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onPick: (URL) -> Void
+        init(onPick: @escaping (URL) -> Void) { self.onPick = onPick }
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            onPick(url)
         }
     }
 }
