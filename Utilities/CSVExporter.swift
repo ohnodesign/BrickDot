@@ -78,88 +78,91 @@ struct CSVExporter {
     }
 
     // =========================================================================
-    // MARK: - QUICKBOOKS EXPORTS (bullet-proof format)
+    // MARK: - QUICKBOOKS IMPORT CSV (matches proven format)
     // =========================================================================
 
-    // Required QuickBooks header in the exact order they expect (sample spec)
-    private static var qbHeader: String {
-        [
-            "InvoiceNo","Customer","InvoiceDate","DueDate","Terms","Location","Memo",
-            "Item(Product/Service)","ItemDescription","ItemQuantity","ItemRate","ItemAmount",
-            "Taxable","TaxRate","Shipping address","Ship via","Shipping date","Tracking no",
-            "Shipping Charge","Service Date"
-        ].joined(separator: ",")
-    }
+    // Header matching the user's successful QuickBooks import format (12 columns)
+    private static let qbImportHeader =
+        "*InvoiceNo,*Customer,*InvoiceDate,*DueDate,Terms,Item(Product/Service),ItemDescription,ItemQuantity,ItemRate,*ItemAmount,Taxable,Service Date"
 
-    // US-style date format for QuickBooks Online (change to dd/MM/yyyy if your QBO is set to UK format)
-    private static let qbDFUS: DateFormatter = {
+    // US-style date format for QuickBooks Online
+    private static let qbDF: DateFormatter = {
         let df = DateFormatter()
         df.calendar = Calendar(identifier: .gregorian)
         df.dateFormat = "MM/dd/yyyy"
         return df
     }()
 
-    /// Export a SINGLE QuickBooks invoice CSV for a set of entries (all for the same client).
-    /// Ensures required columns exist and uses InvoiceNumberManager for numbering by default.
+    /// Export a QuickBooks-compatible import CSV matching the proven 12-column format.
+    ///
+    /// Each line item becomes a row. All rows share the same invoice number, customer,
+    /// invoice date, due date, and terms.
     ///
     /// - Parameters:
-    ///   - entries: Items to include on the invoice (line items).
+    ///   - entries: Line items for the invoice.
     ///   - client: Customer name source.
-    ///   - terms: e.g. "Net 30".
-    ///   - invoiceDate: default now.
-    ///   - dueDate: default invoiceDate + 30 if terms == "Net 30".
-    ///   - forceInvoiceNo: set if you want to override the next sequence number.
-    ///   - taxable: "Y/N" behavior. If true for any lines, include a `taxRate` label.
-    ///   - taxRate: e.g. "Sales Tax 6%".
-    ///   - memo: optional memo for the invoice.
-    ///   - fileName: custom file name base (without extension).
-    /// - Returns: URL to the generated CSV (in Temporary directory).
+    ///   - terms: e.g. "Due on receipt", "Net 30".
+    ///   - invoiceDate: Date printed on the invoice.
+    ///   - dueDate: Defaults to invoiceDate when terms is "Due on receipt", or +30 days for "Net 30".
+    ///   - forceInvoiceNo: Override the auto-generated invoice number.
+    ///   - fileName: Custom file name base (without extension).
+    /// - Returns: URL to the generated CSV in the Temporary directory.
     @discardableResult
     static func exportQuickBooksSingleInvoice(
         entries: [Entry],
         client: Client,
-        terms: String = "Net 30",
+        terms: String = "Due on receipt",
         invoiceDate: Date = Date(),
         dueDate: Date? = nil,
         forceInvoiceNo: String? = nil,
-        taxable: Bool = false,
-        taxRate: String? = nil,
-        memo: String? = nil,
         fileName: String? = nil
     ) -> URL {
         let invNo = forceInvoiceNo ?? InvoiceNumberManager.nextAndAdvance()
-        let invDateStr = qbDFUS.string(from: invoiceDate)
-        let computedDue = dueDate ?? Calendar(identifier: .gregorian).date(byAdding: .day, value: 30, to: invoiceDate) ?? invoiceDate
-        let dueStr = qbDFUS.string(from: computedDue)
+        let invDateStr = qbDF.string(from: invoiceDate)
 
-        var rows: [String] = [qbHeader]
+        let computedDue: Date
+        if let explicit = dueDate {
+            computedDue = explicit
+        } else if terms.lowercased().contains("net 30") {
+            computedDue = Calendar(identifier: .gregorian).date(byAdding: .day, value: 30, to: invoiceDate) ?? invoiceDate
+        } else {
+            // "Due on receipt" — due date matches invoice date
+            computedDue = invoiceDate
+        }
+        let dueStr = qbDF.string(from: computedDue)
 
-        for e in entries {
-            let qty = String(format: "%.2f", e.hours)
+        var rows: [String] = [qbImportHeader]
+
+        for e in entries.sorted(by: { $0.serviceDate < $1.serviceDate }) {
+            let qty: String
+            if e.hours == 0 {
+                qty = ""  // Match user's pattern: empty when no hours
+            } else if e.hours == e.hours.rounded() && e.hours >= 1 {
+                qty = String(Int(e.hours))  // "5" not "5.00"
+            } else {
+                // Use minimal decimal precision: "0.3" not "0.30"
+                let formatted = String(format: "%g", e.hours)
+                qty = formatted
+            }
+
             let rate = String(format: "%.2f", e.rate)
             let amount = String(format: "%.2f", e.hours * e.rate)
             let billingDate = e.billOnCompletion ? (e.completedAt ?? e.serviceDate) : e.serviceDate
-            let serviceDate = qbDFUS.string(from: billingDate)
+            let serviceDate = qbDF.string(from: billingDate)
 
             let cols: [String] = [
-                invNo,                                  // InvoiceNo *
-                escapeQB(client.name),                  // Customer *
-                invDateStr,                             // InvoiceDate *
-                dueStr,                                 // DueDate *
-                terms,                                  // Terms
-                "",                                     // Location
-                memo ?? "",                             // Memo
-                escapeQB(e.service),                    // Item(Product/Service)
+                escapeQB(invNo),                          // *InvoiceNo
+                escapeQB(client.name),                    // *Customer
+                invDateStr,                               // *InvoiceDate
+                dueStr,                                   // *DueDate
+                escapeQB(terms),                          // Terms
+                escapeQB(e.service),                      // Item(Product/Service)
                 escapeQB(descriptionWithSubtasks(e)),     // ItemDescription
-                qty,                                    // ItemQuantity
-                rate,                                   // ItemRate
-                amount,                                 // ItemAmount *
-                taxable ? "Y" : "N",                    // Taxable
-                taxable ? (taxRate ?? "") : "",         // TaxRate (required if any "Y")
-                "", "",                                 // Shipping address, Ship via
-                "", "",                                 // Shipping date, Tracking no
-                "",                                     // Shipping Charge
-                serviceDate                              // Service Date
+                qty,                                      // ItemQuantity
+                rate,                                     // ItemRate
+                amount,                                   // *ItemAmount
+                "N",                                      // Taxable
+                serviceDate                               // Service Date
             ]
             rows.append(cols.joined(separator: ","))
         }
@@ -169,17 +172,11 @@ struct CSVExporter {
     }
 
     /// Export MULTIPLE QuickBooks invoices (e.g., one per month or per grouping).
-    /// Each group gets its own auto-incremented invoice number (unless you override).
-    ///
-    /// - Parameter groups: array of (title, client, entries)
-    /// - Returns: URLs to each generated CSV (Temporary directory).
+    /// Each group gets its own auto-incremented invoice number.
     @discardableResult
     static func exportQuickBooksGrouped(
         groups: [(title: String, client: Client, entries: [Entry])],
-        terms: String = "Net 30",
-        taxable: Bool = false,
-        taxRate: String? = nil,
-        memoProvider: ((String, Client) -> String?)? = nil // optional memo per file
+        terms: String = "Due on receipt"
     ) -> [URL] {
         var urls: [URL] = []
         for g in groups {
@@ -189,9 +186,6 @@ struct CSVExporter {
                 client: g.client,
                 terms: terms,
                 forceInvoiceNo: invNo,
-                taxable: taxable,
-                taxRate: taxRate,
-                memo: memoProvider?(g.title, g.client),
                 fileName: "\(g.client.name)_Invoice_\(g.title)"
             )
             urls.append(url)
@@ -219,14 +213,17 @@ struct CSVExporter {
         return v
     }
 
-    /// Escape for QuickBooks CSV cells (quoted by default when non-empty).
+    /// Escape for QuickBooks CSV cells (quoted when contains comma/newline/quote, otherwise bare).
     private static func escapeQB(_ s: String) -> String {
         guard !s.isEmpty else { return "" }
         let q = s.replacingOccurrences(of: "\"", with: "\"\"")
-        return "\"\(q)\""
+        if q.contains(",") || q.contains("\n") || q.contains("\"") {
+            return "\"\(q)\""
+        }
+        return q
     }
 
-    private static func descriptionWithSubtasks(_ entry: Entry) -> String {
+    static func descriptionWithSubtasks(_ entry: Entry) -> String {
         var desc = entry.detail
         if !entry.subtasksList.isEmpty {
             let bullets = entry.subtasksList.map { "• \($0.title)" }.joined(separator: "\n")

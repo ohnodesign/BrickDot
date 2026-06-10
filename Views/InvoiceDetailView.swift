@@ -4,7 +4,13 @@ import SwiftData
 
 struct InvoiceDetailView: View {
     @Environment(\.appTheme) private var theme
+    @Environment(\.modelContext) private var ctx
     @Bindable var invoice: Invoice
+
+    @Query private var profiles: [UserProfile]
+    private var profile: UserProfile? { profiles.first }
+
+    @State private var sharePayload: InvoiceSharePayload?
 
     // Sorted entries on this invoice
     private var items: [Entry] {
@@ -31,6 +37,39 @@ struct InvoiceDetailView: View {
                 }
                 InvoiceKeyValueRow("Date", invoice.createdAt, asDate: true)
                 InvoiceKeyValueRow("Client", invoice.client?.name ?? "Unknown")
+
+                Divider()
+
+                // Export buttons
+                HStack(spacing: 12) {
+                    Button {
+                        let url = InvoicePDFRenderer.render(
+                            invoice: invoice,
+                            profile: profile,
+                            terms: "Due on receipt"
+                        )
+                        sharePayload = InvoiceSharePayload(items: [url])
+                    } label: {
+                        Label("Export PDF", systemImage: "doc.richtext")
+                    }
+                    .buttonStyle(.bordered)
+
+                    if let client = invoice.client {
+                        Button {
+                            let url = CSVExporter.exportQuickBooksSingleInvoice(
+                                entries: items,
+                                client: client,
+                                terms: "Due on receipt",
+                                invoiceDate: invoice.createdAt,
+                                forceInvoiceNo: invoice.number
+                            )
+                            sharePayload = InvoiceSharePayload(items: [url])
+                        } label: {
+                            Label("Export CSV", systemImage: "tablecells")
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
 
                 Divider()
 
@@ -70,7 +109,15 @@ struct InvoiceDetailView: View {
             .padding(.top, 12)
         }
         .navigationTitle(invoice.title)
+        .sheet(item: $sharePayload) { payload in
+            ShareSheet(activityItems: payload.items).ignoresSafeArea()
+        }
     }
+}
+
+private struct InvoiceSharePayload: Identifiable {
+    let id = UUID()
+    let items: [Any]
 }
 
 // MARK: - Subviews (fileprivate to avoid cross-file symbol collisions)
@@ -144,4 +191,3 @@ fileprivate struct InvoiceItemRow: View {
         }
     }
 }
-

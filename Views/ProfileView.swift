@@ -1,9 +1,12 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var ctx
     @State private var profile: UserProfile?
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var showRemoveLogoAlert = false
 
     private func saveBinding<T>(_ keyPath: ReferenceWritableKeyPath<UserProfile, T>) -> Binding<T>? {
         guard let profile else { return nil }
@@ -24,6 +27,51 @@ struct ProfileView: View {
                let city = saveBinding(\.city),
                let state = saveBinding(\.state),
                let zip = saveBinding(\.zip) {
+
+                // Logo upload
+                Section("Company Logo") {
+                    if let logoData = profile?.logoData, let uiImage = UIImage(data: logoData) {
+                        HStack {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxHeight: 80)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                            Spacer()
+
+                            VStack(spacing: 8) {
+                                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                                    Label("Replace", systemImage: "photo")
+                                        .font(.caption)
+                                }
+
+                                Button(role: .destructive) {
+                                    showRemoveLogoAlert = true
+                                } label: {
+                                    Label("Remove", systemImage: "trash")
+                                        .font(.caption)
+                                }
+                            }
+                        }
+                    } else {
+                        PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                            HStack {
+                                Image(systemName: "photo.badge.plus")
+                                    .font(.title2)
+                                    .foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Add Logo")
+                                        .font(.body.weight(.medium))
+                                    Text("Appears on PDF invoices")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
                 Section("Your Name") {
                     TextField("Full name", text: displayName)
                 }
@@ -64,6 +112,39 @@ struct ProfileView: View {
                 profile = UserProfile.fetchOrCreate(in: ctx)
             }
         }
+        .onChange(of: selectedPhoto) { _, item in
+            Task {
+                guard let item else { return }
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    // Resize to a reasonable max for logo (max 600px wide)
+                    if let image = UIImage(data: data), let resized = resizeLogo(image, maxWidth: 600) {
+                        profile?.logoData = resized
+                        try? ctx.save()
+                    }
+                }
+                selectedPhoto = nil
+            }
+        }
+        .alert("Remove Logo?", isPresented: $showRemoveLogoAlert) {
+            Button("Remove", role: .destructive) {
+                profile?.logoData = nil
+                try? ctx.save()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The logo will be removed from your profile and invoices.")
+        }
+    }
+
+    /// Resize image to a max width, preserving aspect ratio, and return PNG data.
+    private func resizeLogo(_ image: UIImage, maxWidth: CGFloat) -> Data? {
+        let scale = min(1.0, maxWidth / image.size.width)
+        let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        let resized = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+        return resized.pngData()
     }
 }
 

@@ -13,6 +13,10 @@ final class UserProfile {
     var state: String = ""
     var zip: String = ""
 
+    /// Company logo stored as PNG data (optional)
+    @Attribute(.externalStorage)
+    var logoData: Data? = nil
+
     init() {}
 
     var firstName: String {

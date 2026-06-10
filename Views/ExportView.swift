@@ -70,6 +70,9 @@ struct ExportView: View {
     @Query(sort: \Entry.serviceDate) private var allEntries: [Entry]
     @Query(sort: \Invoice.createdAt) private var allInvoices: [Invoice]
 
+    @Query private var profiles: [UserProfile]
+    private var profile: UserProfile? { profiles.first }
+
     @State private var selectedClient: Client?
     @State private var mode: ExportMode = .singleMonth
 
@@ -130,9 +133,10 @@ struct ExportView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // CSV Export
-                Section {
-                    Toggle("Use QuickBooks-style headers", isOn: $useQuickBooksHeaders)
+                // Invoice Export
+                Section("Invoice Export") {
+                    Toggle("QuickBooks CSV format", isOn: $useQuickBooksHeaders)
+
                     Button {
                         switch mode {
                         case .singleMonth: exportSingleMonth()
@@ -140,8 +144,15 @@ struct ExportView: View {
                         case .dateRange:   exportRange()
                         }
                     } label: {
-                        Label(useQuickBooksHeaders ? "Export for QuickBooks (CSV)" : "Export CSV",
-                              systemImage: "square.and.arrow.up")
+                        Label(useQuickBooksHeaders ? "Export QuickBooks CSV" : "Export CSV",
+                              systemImage: "tablecells")
+                    }
+                    .disabled(currentEntries.isEmpty || selectedClient == nil)
+
+                    Button {
+                        exportPDFInvoice()
+                    } label: {
+                        Label("Export PDF Invoice", systemImage: "doc.richtext")
                     }
                     .disabled(currentEntries.isEmpty || selectedClient == nil)
                 }
@@ -470,7 +481,7 @@ struct ExportView: View {
 
         withNotesTemporarilyAppended(to: includeNotes ? entries : []) {
             if useQuickBooksHeaders {
-                let url = CSVExporter.exportQuickBooksSingleInvoice(entries: entries, client: c, terms: "Net 30", invoiceDate: Date())
+                let url = CSVExporter.exportQuickBooksSingleInvoice(entries: entries, client: c, terms: "Due on receipt", invoiceDate: Date())
                 sharePayload = SharePayload(items: [url])
 
                 let title = uniqueInvoiceTitle(base: "\(monthStart.yearMonthLabel) Invoice", for: c)
@@ -505,7 +516,7 @@ struct ExportView: View {
                 var urls: [URL] = []
                 for m in months {
                     let monthEntries = (groups[m] ?? []).sorted { $0.serviceDate < $1.serviceDate }
-                    let url = CSVExporter.exportQuickBooksSingleInvoice(entries: monthEntries, client: c, terms: "Net 30", invoiceDate: Date())
+                    let url = CSVExporter.exportQuickBooksSingleInvoice(entries: monthEntries, client: c, terms: "Due on receipt", invoiceDate: Date())
                     urls.append(url)
 
                     let title = uniqueInvoiceTitle(base: "\(m.yearMonthLabel) Invoice", for: c)
@@ -542,7 +553,7 @@ struct ExportView: View {
 
         withNotesTemporarilyAppended(to: includeNotes ? entries : []) {
             if useQuickBooksHeaders {
-                let url = CSVExporter.exportQuickBooksSingleInvoice(entries: entries, client: c, terms: "Net 30", invoiceDate: Date())
+                let url = CSVExporter.exportQuickBooksSingleInvoice(entries: entries, client: c, terms: "Due on receipt", invoiceDate: Date())
                 sharePayload = SharePayload(items: [url])
 
                 let base = "\(min(rangeStart, rangeEnd).yearMonthDay) to \(max(rangeStart, rangeEnd).yearMonthDay) Invoice"
@@ -563,6 +574,42 @@ struct ExportView: View {
                 ctx.insert(inv); try? ctx.save()
             }
         }
+    }
+
+    // MARK: - PDF Invoice Export
+
+    private func exportPDFInvoice() {
+        guard let c = selectedClient else { return }
+        let entries = currentEntries
+        guard !entries.isEmpty else { return }
+
+        // Create an Invoice record
+        let baseName: String
+        switch mode {
+        case .singleMonth: baseName = "\(monthStart.yearMonthLabel) Invoice"
+        case .multiMonth:  baseName = "\(monthStart.yearMonthLabel)-\(monthEnd.yearMonthLabel) Invoice"
+        case .dateRange:
+            let start = min(rangeStart, rangeEnd).yearMonthDay
+            let end   = max(rangeStart, rangeEnd).yearMonthDay
+            baseName = "\(start) to \(end) Invoice"
+        }
+
+        let title = uniqueInvoiceTitle(base: baseName, for: c)
+        let invNo = InvoiceNumberManager.nextAndAdvance()
+
+        let inv = Invoice(title: title, number: invNo, client: c)
+        inv.entriesList.append(contentsOf: entries)
+        ctx.insert(inv)
+        try? ctx.save()
+
+        // Generate PDF
+        let pdfURL = InvoicePDFRenderer.render(
+            invoice: inv,
+            profile: profile,
+            terms: "Due on receipt"
+        )
+
+        sharePayload = SharePayload(items: [pdfURL])
     }
 
     /// Temporarily appends notes to `detail` for export, then restores originals (no save).
