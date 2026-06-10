@@ -30,6 +30,9 @@ struct NewEntryView: View {
     @State private var expenseMarkupIsPercent: Bool = true
     @State private var pendingSubtasks: [PendingSubtask] = []
 
+    // Expenses collapsed by default (#8)
+    @State private var expensesExpanded: Bool = false
+
     private struct PendingLog: Identifiable, Hashable {
         let id = UUID()
         var hours: Double
@@ -63,6 +66,7 @@ struct NewEntryView: View {
 
     var body: some View {
         Form {
+            // ── Project → Status (via EntryFormSection) ──
             EntryFormSection(
                 clients: clients,
                 selectedClient: $selectedClient,
@@ -73,32 +77,12 @@ struct NewEntryView: View {
                 rate: $rate,
                 status: $status,
                 timerStartedAt: $timerStartedAt,
-                isImportant: $isImportant         // ✅ pass down
+                isImportant: $isImportant
             )
 
-            // Notes section
-            Section("Notes") {
-                ZStack(alignment: .topLeading) {
-                    if notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Add any context, decisions, or client requests…")
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 8)
-                            .padding(.leading, 5)
-                    }
-                    TextEditor(text: $notes)
-                        .frame(minHeight: 120)
-                        .accessibilityLabel("Notes")
-                }
-                HStack {
-                    Spacer()
-                    Text("\(notes.count) chars")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            // Deadline & Billing
+            // ── Deadline & Billing ──
             Section("Deadline & Billing") {
+                // Rate with $/hr label (#6)
                 HStack {
                     Text("Rate")
                     Spacer()
@@ -106,6 +90,8 @@ struct NewEntryView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 140)
+                    Text("$/hr")
+                        .foregroundStyle(.secondary)
                 }
                 Toggle("Set Due Date", isOn: Binding(
                     get: { showDueDatePicker },
@@ -126,46 +112,57 @@ struct NewEntryView: View {
                                displayedComponents: .date)
                 }
                 Toggle("Bill on Completion", isOn: $billOnCompletion)
+                // Subtext for bill on completion (#7)
                 if billOnCompletion {
-                    Text("Invoice date will use the completion date instead of the service date.")
+                    Text("Invoice on completion date.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
             }
 
-            // Expenses
+            // ── Expenses (collapsed by default) (#8) ──
             Section("Expenses") {
-                HStack {
-                    Text("Amount")
-                    Spacer()
-                    TextField("0.00", value: $expenseAmount, format: .number.precision(.fractionLength(2)))
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 140)
-                }
-                HStack {
-                    Text("Markup")
-                    Spacer()
-                    TextField("0", value: $expenseMarkup, format: .number.precision(.fractionLength(2)))
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 100)
-                    Picker("", selection: $expenseMarkupIsPercent) {
-                        Text("%").tag(true)
-                        Text("$").tag(false)
+                if !expensesExpanded {
+                    Button {
+                        withAnimation { expensesExpanded = true }
+                    } label: {
+                        Label("+ Add Expense…", systemImage: "plus.circle")
+                            .foregroundStyle(.secondary)
                     }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 80)
-                }
-                HStack {
-                    Text("Expense Total")
-                    Spacer()
-                    Text(computedExpenseTotal, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.secondary)
+                } else {
+                    HStack {
+                        Text("Amount")
+                        Spacer()
+                        TextField("0.00", value: $expenseAmount, format: .number.precision(.fractionLength(2)))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 140)
+                    }
+                    HStack {
+                        Text("Markup")
+                        Spacer()
+                        TextField("0", value: $expenseMarkup, format: .number.precision(.fractionLength(2)))
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(maxWidth: 100)
+                        Picker("", selection: $expenseMarkupIsPercent) {
+                            Text("%").tag(true)
+                            Text("$").tag(false)
+                        }
+                        .pickerStyle(.segmented)
+                        .frame(maxWidth: 80)
+                    }
+                    HStack {
+                        Text("Expense Total")
+                        Spacer()
+                        Text(computedExpenseTotal, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
+            // ── Time Log ──
             Section {
                 // Show pending logs (most recent first)
                 let logs = pendingLogs.sorted { $0.addedAt > $1.addedAt }
@@ -180,7 +177,6 @@ struct NewEntryView: View {
                                     get: { pendingLogs[idx].hours },
                                     set: { newVal in
                                         let clamped = max(0.0, min(24.0, newVal))
-                                        // Adjust total hours to reflect change
                                         let delta = clamped - pendingLogs[idx].hours
                                         pendingLogs[idx].hours = clamped
                                         hours += delta
@@ -242,7 +238,6 @@ struct NewEntryView: View {
                                 if let idx = pendingLogs.firstIndex(where: { $0.id == log.id }) {
                                     let doomed = pendingLogs[idx]
                                     pendingLogs.remove(at: idx)
-                                    // Reduce total hours by removed log amount
                                     hours -= doomed.hours
                                 }
                             } label: {
@@ -251,8 +246,9 @@ struct NewEntryView: View {
                         }
                     }
                 }
+                // Renamed "Amount" → "Total" (#9)
                 HStack {
-                    Text("Amount")
+                    Text("Total")
                     Spacer()
                     Text(hours * rate, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                         .font(.subheadline)
@@ -260,7 +256,6 @@ struct NewEntryView: View {
                 }
                 NavigationLink {
                     NewTimeLogEditor(onSave: { addedHours, note in
-                        // For new entries, just bump hours; notes can optionally be appended
                         hours += addedHours
                         if !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             let trimmed = note.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -276,20 +271,19 @@ struct NewEntryView: View {
                 Text("Time Log")
             }
 
-            // Subtasks section (simple editor prior to saving the entry)
+            // ── Subtasks ──
             Section {
+                // Outline / plain style button (#10)
                 Button {
                     pendingSubtasks.append(PendingSubtask(title: ""))
                 } label: {
                     HStack {
-                        Image(systemName: "plus.circle.fill")
-                        Text("Add New Subtask").fontWeight(.semibold)
+                        Image(systemName: "plus.circle")
+                        Text("Add New Subtask")
                         Spacer()
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.vertical, 4)
+                .foregroundStyle(theme.accent)
 
                 if pendingSubtasks.isEmpty {
                     Text("No subtasks yet").foregroundStyle(.secondary)
@@ -325,19 +319,56 @@ struct NewEntryView: View {
                 Text("Subtasks")
             }
 
+            // ── Notes (moved after Subtasks) ──
+            Section("Notes") {
+                ZStack(alignment: .topLeading) {
+                    if notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Add any context, decisions, or client requests…")
+                            .foregroundStyle(.secondary)
+                            .padding(.top, 8)
+                            .padding(.leading, 5)
+                    }
+                    TextEditor(text: $notes)
+                        .frame(minHeight: 120)
+                        .accessibilityLabel("Notes")
+                }
+                HStack {
+                    Spacer()
+                    Text("\(notes.count) chars")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            // ── Save — full-width primary button (#11) ──
             Section {
                 Button(action: save) {
                     if isSaving {
-                        HStack { ProgressView(); Text("Saving…") }
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Text("Saving…")
+                            Spacer()
+                        }
                     } else {
-                        Label("Save Entry", systemImage: "tray.and.arrow.down.fill")
+                        HStack {
+                            Spacer()
+                            Label("Save Entry", systemImage: "tray.and.arrow.down.fill")
+                                .fontWeight(.semibold)
+                            Spacer()
+                        }
                     }
                 }
                 .disabled(!canSave || isSaving)
+                .listRowInsets(EdgeInsets())
+                .frame(maxWidth: .infinity, minHeight: 50)
+                .background(canSave ? Color(red: 0.79, green: 0.25, blue: 0.25) : Color.gray.opacity(0.3))
+                .foregroundStyle(.white)
             }
         }
         .id(formResetKey) // rebuilds the Form when we reset
         .navigationTitle("New Entry")
+        .navigationBarTitleDisplayMode(.inline) // (#1) no duplicate large title
         .interactiveDismissDisabled(hasUnsavedChanges)
         .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
             Button("Save Entry") { save() }
@@ -351,7 +382,7 @@ struct NewEntryView: View {
             // Single shared keyboard accessory in the parent
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Hide Keyboard") {          // ✅ clearer wording
+                Button("Hide Keyboard") {
                     UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder),
                                                     to: nil, from: nil, for: nil)
                 }
@@ -499,6 +530,7 @@ struct NewEntryView: View {
         expenseMarkupIsPercent = true
         pendingSubtasks = []
         pendingLogs = []
+        expensesExpanded = false
 
         // Force full view refresh to drop any lingering focus/validation state
         formResetKey = UUID()
@@ -548,4 +580,3 @@ private struct NewTimeLogEditor: View {
         .navigationTitle("Add Time")
     }
 }
-

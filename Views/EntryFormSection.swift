@@ -14,7 +14,7 @@ struct EntryFormSection: View {
     @Binding var rate: Double
     @Binding var status: EntryStatus
     @Binding var timerStartedAt: Date?
-    @Binding var isImportant: Bool   // keeps your “important” flag
+    @Binding var isImportant: Bool
 
     // Optional callbacks
     var onProgressStart: (() -> Void)?
@@ -23,13 +23,7 @@ struct EntryFormSection: View {
 
     var body: some View {
         Group {
-            StatusSection(
-                status: $status,
-                timerStartedAt: $timerStartedAt,
-                isImportant: $isImportant
-            )
-
-            CoreDetailsSection(
+            ProjectSection(
                 clients: clients,
                 selectedClient: $selectedClient,
                 service: $service,
@@ -37,6 +31,12 @@ struct EntryFormSection: View {
                 detail: $detail,
                 hours: $hours,
                 rate: $rate
+            )
+
+            StatusSection(
+                status: $status,
+                timerStartedAt: $timerStartedAt,
+                isImportant: $isImportant
             )
 
             if status == .inProgress {
@@ -81,9 +81,6 @@ private struct StatusSection: View {
             .pickerStyle(.segmented)
             .onChange(of: status) { _, newStatus in
                 if newStatus != .inProgress { timerStartedAt = nil }
-                if newStatus == .done {
-                    // The parent should set completedAt when saving; this is a hint path
-                }
             }
 
             Toggle(isOn: $isImportant) {
@@ -97,9 +94,9 @@ private struct StatusSection: View {
     }
 }
 
-// MARK: - Core Details
+// MARK: - Project (was CoreDetails)
 
-private struct CoreDetailsSection: View {
+private struct ProjectSection: View {
     let clients: [Client]
 
     @Binding var selectedClient: Client?
@@ -111,8 +108,6 @@ private struct CoreDetailsSection: View {
 
     @Environment(\.modelContext) private var ctx
 
-    // Focus & expand handling
-    @State private var descExpanded = false
     @FocusState private var descFocused: Bool
     @State private var showNewClient = false
     @State private var newClientName = ""
@@ -123,22 +118,8 @@ private struct CoreDetailsSection: View {
         case newClient
     }
 
-    private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
-    private var hoursText: String { String(format: "%.2f", hours) }
-    private var amountText: String { currencyString(hours * rate) }
-
-    private func currencyString(_ value: Double) -> String {
-        let nf = NumberFormatter()
-        nf.numberStyle = .currency
-        nf.currencyCode = currencyCode
-        return nf.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
-    }
-
-    // Target height for the description editor
-    private var descHeight: CGFloat { (descExpanded || descFocused) ? 180 : 96 }
-
     var body: some View {
-        Section {
+        Section("Project") {
             // Client
             Picker("Client", selection: $pickerClient) {
                 Text("＋ New Client…").tag(PickerClient.newClient)
@@ -195,27 +176,12 @@ private struct CoreDetailsSection: View {
             // Date
             DatePicker("Service Date", selection: $serviceDate, displayedComponents: .date)
 
-            // Description (auto-expands on focus, can be toggled with a chevron)
+            // Description — always visible, no collapse toggle
             VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Text("Description")
-                    Spacer()
-                    Button {
-                        withAnimation(.easeInOut) { descExpanded.toggle() }
-                    } label: {
-                        Label(descExpanded ? "Collapse" : "Expand", systemImage: descExpanded ? "chevron.up" : "chevron.down")
-                            .labelStyle(.iconOnly)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 4)
-                            .background(Capsule().fill(Color.secondary.opacity(0.12)))
-                    }
-                    .buttonStyle(.plain)
-                }
+                Text("Description")
 
                 TextEditor(text: $detail)
-                    .frame(minHeight: descHeight, alignment: .topLeading)
+                    .frame(minHeight: descFocused ? 160 : 80, alignment: .topLeading)
                     .scrollContentBackground(.hidden)
                     .padding(8)
                     .background(
@@ -223,7 +189,6 @@ private struct CoreDetailsSection: View {
                             .fill(Color.secondary.opacity(0.07))
                     )
                     .overlay(
-                        // Placeholder
                         Group {
                             if detail.isEmpty {
                                 Text("Add a short description…")
@@ -236,18 +201,8 @@ private struct CoreDetailsSection: View {
                         }
                     )
                     .focused($descFocused)
-                    .onTapGesture {
-                        // Tapping inside also expands for comfort
-                        withAnimation(.easeInOut) { descExpanded = true }
-                    }
-                    .onChange(of: descFocused) { _, isFocused in
-                        // Smoothly grow/shrink on focus changes
-                        withAnimation(.easeInOut(duration: 0.2)) { _ = isFocused }
-                    }
             }
-            .animation(.easeInOut(duration: 0.2), value: descExpanded)
             .animation(.easeInOut(duration: 0.2), value: descFocused)
-
         }
     }
 }
@@ -325,4 +280,3 @@ private struct ProgressSection: View {
         return hr > 0 ? "\(hr)h \(mn)m" : "\(mn)m"
     }
 }
-
