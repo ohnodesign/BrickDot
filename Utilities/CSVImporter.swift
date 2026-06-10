@@ -30,14 +30,23 @@ struct CSVImporter {
             content = String(c.dropFirst())
         }
 
-        guard let csv = content, !csv.isEmpty else {
+        guard let rawCSV = content, !rawCSV.isEmpty else {
             throw ImportError.emptyFile
         }
+
+        // Normalize line endings: \r\n → \n, then bare \r → \n
+        let csv = rawCSV
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
 
         let rows = parseCSV(csv)
 
         guard rows.count > 1 else {
-            throw ImportError.custom("Parsed \(rows.count) rows from file (\(csv.count) chars). First 200 chars: \(String(csv.prefix(200)))")
+            // Debug: show what line ending characters exist
+            let hasLF = csv.contains("\n")
+            let hasCR = csv.contains("\r")
+            let lineInfo = "LF:\(hasLF) CR:\(hasCR)"
+            throw ImportError.custom("Parsed \(rows.count) rows from file (\(csv.count) chars, \(lineInfo)). First 200 chars: \(String(csv.prefix(200)))")
         }
 
         let header = rows[0]
@@ -148,6 +157,7 @@ struct CSVImporter {
 
     // MARK: - CSV Parsing
 
+    /// Parse CSV content (assumes line endings already normalized to \n)
     private static func parseCSV(_ content: String) -> [[String]] {
         var rows: [[String]] = []
         var current: [String] = []
@@ -160,15 +170,12 @@ struct CSVImporter {
             let c = chars[i]
             if inQuotes {
                 if c == "\"" {
-                    // Check for escaped quote ""
                     if i + 1 < chars.count && chars[i + 1] == "\"" {
                         field.append("\"")
                         i += 2
-                        continue
                     } else {
                         inQuotes = false
                         i += 1
-                        continue
                     }
                 } else {
                     field.append(c)
@@ -183,19 +190,14 @@ struct CSVImporter {
                     current.append(field)
                     field = ""
                     i += 1
-                case "\r", "\n":
+                case "\n":
                     current.append(field)
                     field = ""
                     if !current.allSatisfy({ $0.trimmingCharacters(in: .whitespaces).isEmpty }) {
                         rows.append(current)
                     }
                     current = []
-                    // Consume \r\n as one line ending
-                    if c == "\r" && i + 1 < chars.count && chars[i + 1] == "\n" {
-                        i += 2
-                    } else {
-                        i += 1
-                    }
+                    i += 1
                 default:
                     field.append(c)
                     i += 1
@@ -203,7 +205,6 @@ struct CSVImporter {
             }
         }
 
-        // Last row (no trailing newline)
         if !field.isEmpty || !current.isEmpty {
             current.append(field)
             if !current.allSatisfy({ $0.trimmingCharacters(in: .whitespaces).isEmpty }) {
@@ -255,9 +256,10 @@ struct CSVImporter {
               let amt = find(["itemamount"])
         else { return nil }
 
-        // Service Date is last column — find it specifically (not the Product/Service column)
-        let svcDate = h.lastIndex(where: { $0 == "service date" || $0.hasPrefix("service date") })
-            ?? h.lastIndex(where: { $0.contains("service") && $0.contains("date") && !$0.contains("product") })
+        // Service Date / Item Date is the last date column
+        let svcDate = h.lastIndex(where: {
+            ($0 == "service date" || $0 == "item date" || $0.hasPrefix("service date") || $0.hasPrefix("item date"))
+        })
 
         guard let serviceDateIdx = svcDate else { return nil }
 
