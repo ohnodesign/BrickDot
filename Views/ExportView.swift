@@ -403,18 +403,21 @@ struct ExportView: View {
             }
             .sheet(isPresented: $showCSVImportPicker) {
                 CSVDocumentPicker { url in
-                    do {
-                        let result = try CSVImporter.importQuickBooksCSV(url: url, ctx: ctx)
-                        var msg = "Imported \(result.entriesCreated) entries"
-                        if result.invoicesCreated > 0 { msg += ", \(result.invoicesCreated) invoices" }
-                        if result.clientsCreated > 0 { msg += ", \(result.clientsCreated) new clients" }
-                        if result.skipped > 0 { msg += " (\(result.skipped) skipped)" }
-                        msg += "."
-                        importInfo = msg
-                        showImportInfo = true
-                    } catch {
-                        importError = "Import failed: \(error.localizedDescription)"
-                        showImportError = true
+                    // Delay to let sheet fully dismiss before showing alert
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        do {
+                            let result = try CSVImporter.importQuickBooksCSV(url: url, ctx: ctx)
+                            var msg = "Imported \(result.entriesCreated) entries"
+                            if result.invoicesCreated > 0 { msg += ", \(result.invoicesCreated) invoices" }
+                            if result.clientsCreated > 0 { msg += ", \(result.clientsCreated) new clients" }
+                            if result.skipped > 0 { msg += " (\(result.skipped) skipped)" }
+                            msg += "."
+                            importInfo = msg
+                            showImportInfo = true
+                        } catch {
+                            importError = "Import failed: \(error.localizedDescription)"
+                            showImportError = true
+                        }
                     }
                 }
             }
@@ -1054,7 +1057,7 @@ private struct CSVDocumentPicker: UIViewControllerRepresentable {
     let onPick: (URL) -> Void
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.commaSeparatedText, .text], asCopy: true)
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.commaSeparatedText, .text, .plainText, .data], asCopy: true)
         picker.delegate = context.coordinator
         return picker
     }
