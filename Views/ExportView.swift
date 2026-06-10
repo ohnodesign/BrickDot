@@ -409,10 +409,11 @@ struct ExportView: View {
                         if result.invoicesCreated > 0 { msg += ", \(result.invoicesCreated) invoices" }
                         if result.clientsCreated > 0 { msg += ", \(result.clientsCreated) new clients" }
                         if result.skipped > 0 { msg += " (\(result.skipped) skipped)" }
+                        msg += "."
                         importInfo = msg
                         showImportInfo = true
                     } catch {
-                        importError = error.localizedDescription
+                        importError = "Import failed: \(error.localizedDescription)"
                         showImportError = true
                     }
                 }

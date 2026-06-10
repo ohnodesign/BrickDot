@@ -6,23 +6,44 @@ struct CSVImportResult {
     let invoicesCreated: Int
     let clientsCreated: Int
     let skipped: Int
+    let debugInfo: String
 }
 
 struct CSVImporter {
 
-    /// Import entries from a QuickBooks-format CSV into SwiftData.
-    /// Matches or creates clients, creates entries as Done, and groups by invoice number.
     static func importQuickBooksCSV(url: URL, ctx: ModelContext) throws -> CSVImportResult {
-        let content = try String(contentsOf: url, encoding: .utf8)
-        let rows = parseCSV(content)
+        // Security-scoped resource access for files from document picker
+        let accessing = url.startAccessingSecurityScopedResource()
+        defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+
+        // Try multiple encodings
+        var content: String?
+        for encoding in [String.Encoding.utf8, .isoLatin1, .windowsCP1252, .macOSRoman] {
+            if let s = try? String(contentsOf: url, encoding: encoding), !s.isEmpty {
+                content = s
+                break
+            }
+        }
+
+        // Strip BOM if present
+        if let c = content, c.hasPrefix("\u{FEFF}") {
+            content = String(c.dropFirst())
+        }
+
+        guard let csv = content, !csv.isEmpty else {
+            throw ImportError.emptyFile
+        }
+
+        let rows = parseCSV(csv)
 
         guard rows.count > 1 else {
-            throw ImportError.emptyFile
+            throw ImportError.custom("Parsed \(rows.count) rows from file (\(csv.count) chars). First 200 chars: \(String(csv.prefix(200)))")
         }
 
         let header = rows[0]
         guard let colMap = mapColumns(header) else {
-            throw ImportError.unrecognizedFormat
+            let headerStr = header.joined(separator: " | ")
+            throw ImportError.custom("Could not map columns. Header (\(header.count) cols): \(headerStr)")
         }
 
         let existingClients = (try? ctx.fetch(FetchDescriptor<Client>())) ?? []
@@ -44,6 +65,7 @@ struct CSVImporter {
 
         let dateFormatter = DateFormatter()
         dateFormatter.calendar = Calendar(identifier: .gregorian)
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
         dateFormatter.dateFormat = "MM/dd/yyyy"
 
         for i in 1..<rows.count {
@@ -98,7 +120,6 @@ struct CSVImporter {
                 invoicesCreated += 1
             }
 
-            // Create entry
             let entry = Entry(
                 serviceDate: serviceDate,
                 service: service,
@@ -120,7 +141,8 @@ struct CSVImporter {
             entriesCreated: entriesCreated,
             invoicesCreated: invoicesCreated,
             clientsCreated: clientsCreated,
-            skipped: skipped
+            skipped: skipped,
+            debugInfo: "Parsed \(rows.count) rows, \(header.count) columns"
         )
     }
 
@@ -131,15 +153,14 @@ struct CSVImporter {
         var current: [String] = []
         var field = ""
         var inQuotes = false
-
         let chars = Array(content)
         var i = 0
 
         while i < chars.count {
             let c = chars[i]
-
             if inQuotes {
                 if c == "\"" {
+                    // Check for escaped quote ""
                     if i + 1 < chars.count && chars[i + 1] == "\"" {
                         field.append("\"")
                         i += 2
@@ -154,35 +175,38 @@ struct CSVImporter {
                     i += 1
                 }
             } else {
-                if c == "\"" {
+                switch c {
+                case "\"":
                     inQuotes = true
                     i += 1
-                } else if c == "," {
+                case ",":
                     current.append(field)
                     field = ""
                     i += 1
-                } else if c == "\n" || c == "\r" {
+                case "\r", "\n":
                     current.append(field)
                     field = ""
-                    if !current.allSatisfy({ $0.isEmpty }) {
+                    if !current.allSatisfy({ $0.trimmingCharacters(in: .whitespaces).isEmpty }) {
                         rows.append(current)
                     }
                     current = []
+                    // Consume \r\n as one line ending
                     if c == "\r" && i + 1 < chars.count && chars[i + 1] == "\n" {
                         i += 2
                     } else {
                         i += 1
                     }
-                } else {
+                default:
                     field.append(c)
                     i += 1
                 }
             }
         }
 
+        // Last row (no trailing newline)
         if !field.isEmpty || !current.isEmpty {
             current.append(field)
-            if !current.allSatisfy({ $0.isEmpty }) {
+            if !current.allSatisfy({ $0.trimmingCharacters(in: .whitespaces).isEmpty }) {
                 rows.append(current)
             }
         }
@@ -206,18 +230,36 @@ struct CSVImporter {
     }
 
     private static func mapColumns(_ header: [String]) -> ColumnMap? {
-        let h = header.map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().replacingOccurrences(of: "*", with: "") }
+        let h = header.map {
+            $0.trimmingCharacters(in: .whitespacesAndNewlines)
+              .lowercased()
+              .replacingOccurrences(of: "*", with: "")
+        }
 
-        guard let invNo = h.firstIndex(of: "invoiceno"),
-              let cust = h.firstIndex(of: "customer"),
-              let invDate = h.firstIndex(of: "invoicedate"),
-              let svc = h.firstIndex(where: { $0.contains("product/service") || $0 == "item" }),
-              let desc = h.firstIndex(of: "itemdescription"),
-              let qty = h.firstIndex(of: "itemquantity"),
-              let rate = h.firstIndex(of: "itemrate"),
-              let amt = h.firstIndex(of: "itemamount"),
-              let svcDate = h.firstIndex(of: "service date")
+        func find(_ candidates: [String]) -> Int? {
+            for candidate in candidates {
+                if let idx = h.firstIndex(where: { $0.contains(candidate) }) {
+                    return idx
+                }
+            }
+            return nil
+        }
+
+        guard let invNo = find(["invoiceno"]),
+              let cust = find(["customer"]),
+              let invDate = find(["invoicedate"]),
+              let svc = find(["product/service", "item(product"]),
+              let desc = find(["itemdescription"]),
+              let qty = find(["itemquantity"]),
+              let rate = find(["itemrate"]),
+              let amt = find(["itemamount"])
         else { return nil }
+
+        // Service Date is last column — find it specifically (not the Product/Service column)
+        let svcDate = h.lastIndex(where: { $0 == "service date" || $0.hasPrefix("service date") })
+            ?? h.lastIndex(where: { $0.contains("service") && $0.contains("date") && !$0.contains("product") })
+
+        guard let serviceDateIdx = svcDate else { return nil }
 
         return ColumnMap(
             invoiceNo: invNo,
@@ -228,18 +270,18 @@ struct CSVImporter {
             quantity: qty,
             rate: rate,
             amount: amt,
-            serviceDate: svcDate
+            serviceDate: serviceDateIdx
         )
     }
 
     enum ImportError: LocalizedError {
         case emptyFile
-        case unrecognizedFormat
+        case custom(String)
 
         var errorDescription: String? {
             switch self {
-            case .emptyFile: return "The CSV file is empty."
-            case .unrecognizedFormat: return "Could not recognize the CSV column format. Expected QuickBooks import headers."
+            case .emptyFile: return "The CSV file appears to be empty or could not be read."
+            case .custom(let msg): return msg
             }
         }
     }
