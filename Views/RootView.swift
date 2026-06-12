@@ -2,7 +2,7 @@
 import SwiftUI
 import SwiftData
 
-enum RootTab: Hashable { case home, profile, clients, stats, settings, log, export }
+enum RootTab: Hashable { case home, profile, clients, stats, settings, log, export, coach }
 
 extension Notification.Name {
     static let goHome = Notification.Name("goHome")
@@ -38,6 +38,14 @@ private struct iPhoneRootView: View {
                 .environment(\.modelContext, ctx)
                 .tabItem { Label("Profile", systemImage: "person.crop.circle") }
                 .tag(RootTab.profile)
+
+                NavigationStack {
+                    CoachView()
+                        .toolbar { homeButton }
+                }
+                .environment(\.modelContext, ctx)
+                .tabItem { Label("Coach", systemImage: "brain.head.profile") }
+                .tag(RootTab.coach)
 
                 NavigationStack {
                     ClientListView()
@@ -141,9 +149,9 @@ private struct iPhoneRootView: View {
     private var tabBarMirror: some View {
         HStack {
             tabButton("Profile", icon: "person.crop.circle", tab: .profile)
+            tabButton("Coach", icon: "brain.head.profile", tab: .coach)
             tabButton("Clients", icon: "person.2", tab: .clients)
             tabButton("Stats", icon: "chart.bar", tab: .stats)
-            tabButton("Settings", icon: "gear", tab: .settings)
             tabButton("More", icon: "ellipsis", tab: nil)
         }
         .padding(.top, 6)
@@ -188,6 +196,7 @@ private enum SidebarDestination: Hashable {
     case newEntry
     case allClients
     case client(PersistentIdentifier)
+    case coach
     case profile
     case settings
 }
@@ -205,9 +214,6 @@ private struct iPadRootView: View {
     @State private var showFullNewEntry = false
     @State private var detailPath = NavigationPath()
     @State private var showSearch = false
-    @State private var isLandscape = UIDevice.current.orientation.isLandscape
-
-    private var sidebarColumns: Int { isLandscape ? 2 : 1 }
 
     var body: some View {
         NavigationSplitView {
@@ -219,19 +225,14 @@ private struct iPadRootView: View {
                             ZStack {
                                 Circle()
                                     .fill(Color(red: 0.79, green: 0.25, blue: 0.25))
-                                    .frame(width: 36, height: 36)
+                                    .frame(width: 40, height: 40)
                                 Image(systemName: "plus")
-                                    .font(.system(size: 16, weight: .bold))
+                                    .font(.system(size: 18, weight: .bold))
                                     .foregroundStyle(.white)
                             }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Quick Capture")
-                                    .font(.headline)
-                                    .foregroundStyle(theme.primaryText)
-                                Text("Log work in seconds")
-                                    .font(.subheadline)
-                                    .foregroundStyle(theme.secondaryText)
-                            }
+                            Text("Quick Capture")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(theme.primaryText)
                         }
                         .padding(.vertical, 4)
                     }
@@ -240,9 +241,10 @@ private struct iPadRootView: View {
 
                 // Today summary card
                 Section {
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 6) {
                             Image(systemName: "sun.max.fill")
+                                .font(.subheadline)
                                 .foregroundStyle(theme.overdue)
                             Text("TODAY")
                                 .font(.subheadline.weight(.bold))
@@ -252,22 +254,24 @@ private struct iPadRootView: View {
                         SidebarStatRow(icon: "calendar", tint: theme.dueToday, value: "\(dueTodayCount)", label: "Due Today")
                         SidebarStatRow(icon: "timer", tint: theme.running, value: "\(timersRunning)", label: "Running")
                     }
-                    .padding(12)
+                    .padding(14)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray6)))
-                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
                 }
 
                 // Navigation
                 Section {
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: sidebarColumns), spacing: 10) {
+                    LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+                        sidebarNavTile("Home", icon: "house", dest: .home)
                         sidebarNavTile("Clients", icon: "person.2", dest: .allClients)
+                        sidebarNavTile("Coach", icon: "brain.head.profile", dest: .coach)
                         sidebarNavTile("Stats", icon: "chart.bar", dest: .stats)
                         sidebarNavTile("Log", icon: "doc.text", dest: .log)
                         sidebarNavTile("Export", icon: "square.and.arrow.up", dest: .export)
-                        sidebarNavTile("Settings", icon: "gear", dest: .settings)
                         sidebarNavTile("Profile", icon: "person.crop.circle", dest: .profile)
+                        sidebarNavTile("Settings", icon: "gear", dest: .settings)
                     }
-                    .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
                 }
             }
             .listStyle(.sidebar)
@@ -321,12 +325,6 @@ private struct iPadRootView: View {
         .onChange(of: selection) { _, _ in
             detailPath = NavigationPath()
         }
-        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
-            let orientation = UIDevice.current.orientation
-            if orientation.isValidInterfaceOrientation {
-                isLandscape = orientation.isLandscape
-            }
-        }
         .sheet(isPresented: $showNewEntry) {
             QuickAddView(onSaved: {
                 showNewEntry = false
@@ -344,6 +342,7 @@ private struct iPadRootView: View {
             }
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
+            .presentationContentInteraction(.scrolls)
         }
     }
 
@@ -378,6 +377,8 @@ private struct iPadRootView: View {
             } else {
                 Text("Client not found").foregroundStyle(.secondary)
             }
+        case .coach:
+            CoachView()
         case .profile:
             ProfileView()
         case .settings:
@@ -393,14 +394,14 @@ private struct iPadRootView: View {
         } label: {
             VStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.title)
-                    .frame(height: 34)
+                    .font(.system(size: 32))
+                    .frame(height: 40)
                 Text(label)
-                    .font(.caption.weight(.medium))
+                    .font(.subheadline.weight(.medium))
                     .lineLimit(1)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: 10)
                     .fill(selection == dest ? theme.accent.opacity(0.15) : .clear)
@@ -490,11 +491,11 @@ private struct SidebarStatRow: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: icon)
-                .font(.body)
+                .font(.subheadline)
                 .foregroundStyle(tint)
-                .frame(width: 24)
+                .frame(width: 22)
             Text(value)
-                .font(.title2.weight(.bold))
+                .font(.title3.weight(.bold))
                 .monospacedDigit()
             Text(label)
                 .font(.subheadline)

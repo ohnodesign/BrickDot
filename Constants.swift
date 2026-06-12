@@ -2,37 +2,19 @@
 import Foundation
 
 enum Constants {
+    // Generic starter set for new installs. Users add their own in
+    // Settings; existing users keep the list saved under servicesKey.
     private static let defaultServices: [String] = [
-        "ADWORD",
-        "COMM",
-        "CONSULT",
         "DESIGN",
-        "EMAIL",
-        "HOST",
-        "MEDIA",
-        "MEET",
-        "MISC",
         "PHOTO",
-        "PRINT",
-        "Sales",
-        "SOCIAL",
-        "TECHNICAL",
-        "WEBCUST",
-        "WEBESS",
-        "WEBUP"
+        "SALES"
     ]
 
     private static let servicesKey = "user.services"
 
     static var services: [String] {
         get {
-            if var saved = UserDefaults.standard.stringArray(forKey: servicesKey) {
-                // Migrate: ensure COMM is present for existing users
-                if !saved.contains("COMM") {
-                    saved.append("COMM")
-                    saved.sort()
-                    UserDefaults.standard.set(saved, forKey: servicesKey)
-                }
+            if let saved = UserDefaults.standard.stringArray(forKey: servicesKey) {
                 return saved
             }
             UserDefaults.standard.set(defaultServices, forKey: servicesKey)

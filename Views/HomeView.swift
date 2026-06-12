@@ -6,12 +6,25 @@ struct HomeView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query private var allClients: [Client]
 
     @State private var showNewEntry = false
     @State private var searchText = ""
     @State private var showSearch = false
     @Query private var profiles: [UserProfile]
     private var profile: UserProfile? { profiles.first }
+
+    // MARK: - Onboarding
+    @AppStorage(OnboardingPrefs.dismissed) private var onboardingDismissed = false
+    @AppStorage(OnboardingPrefs.started) private var onboardingStarted = false
+
+    private var onboardingStepsComplete: Bool {
+        !allClients.isEmpty && !allEntries.isEmpty &&
+        allEntries.contains { $0.timerStartedAt != nil || $0.hours > 0 || !$0.timeLogsList.isEmpty }
+    }
+    private var showGettingStarted: Bool {
+        !onboardingDismissed && (onboardingStarted || !onboardingStepsComplete)
+    }
 
     @State private var expandedSections: Set<String> = []
 
@@ -58,6 +71,15 @@ struct HomeView: View {
                     }
                     .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 4, trailing: 16))
 
+                    // MARK: - Getting Started (first launch)
+                    if showGettingStarted {
+                        Section {
+                            GettingStartedCard()
+                                .listRowSeparator(.hidden)
+                        }
+                        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                    }
+
                     if !todayFocusEntries.isEmpty {
                         Section {
                             ForEach(Array(todayFocusEntries.prefix(3).enumerated()), id: \.element.persistentModelID) { index, entry in
@@ -86,7 +108,10 @@ struct HomeView: View {
                 }
 
                 // MARK: - Action List
-                if actionEntries.isEmpty {
+                if actionEntries.isEmpty && allEntries.isEmpty && showGettingStarted {
+                    // Brand-new user: the Getting Started card is the empty state.
+                    EmptyView()
+                } else if actionEntries.isEmpty {
                     Section {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.seal.fill")
@@ -147,6 +172,16 @@ struct HomeView: View {
             .listSectionSeparator(.hidden)
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                guard !onboardingDismissed else { return }
+                if onboardingStepsComplete && !onboardingStarted {
+                    // Existing user (e.g. data arrived via CloudKit sync) —
+                    // never show setup they don't need.
+                    onboardingDismissed = true
+                } else {
+                    onboardingStarted = true
+                }
+            }
             .sheet(isPresented: $showNewEntry) {
                 QuickAddView(onSaved: { showNewEntry = false })
                     .presentationDetents([.medium])
@@ -269,11 +304,13 @@ struct HomeView: View {
         e.timeLogsList.append(TimeLog(hours: elapsed, entry: e))
         e.timerStartedAt = nil
         try? ctx.save()
+        NotificationManager.shared.cancelNoTimeLoggedReminder()
     }
     private func quickBump(_ e: Entry, _ h: Double) {
         e.hours += h
         e.timeLogsList.append(TimeLog(hours: h, entry: e))
         try? ctx.save()
+        NotificationManager.shared.cancelNoTimeLoggedReminder()
     }
     private func markDone(_ e: Entry) {
         e.timerStartedAt = nil

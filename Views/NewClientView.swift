@@ -35,10 +35,10 @@ struct NewClientView: View {
             }
 
             SwiftUI.Section("Quick Add Shortcode") {
-                TextField("e.g. cs, sve, dlw", text: $shortcode)
+                TextField("e.g. ac, blu, nw", text: $shortcode)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                Text("Used for shorthand entry: \"cs photo 121 Rasho\"")
+                Text("A short abbreviation for quick entry: \"ac design logo 30m\"")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

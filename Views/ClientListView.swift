@@ -16,8 +16,33 @@ struct ClientListView: View {
     var body: some View {
         List {
             if filteredClients.isEmpty {
-                Text("No clients yet.")
-                    .foregroundStyle(.secondary)
+                if clients.isEmpty {
+                    VStack(spacing: 12) {
+                        Image(systemName: "person.2.badge.plus")
+                            .font(.largeTitle)
+                            .foregroundStyle(theme.accent)
+                        Text("No clients yet")
+                            .font(.headline)
+                        Text("Clients are who you bill. Every entry, timer, and invoice hangs off one — and their rate fills in automatically.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                        Button {
+                            showNewClient = true
+                        } label: {
+                            Label("Add Your First Client", systemImage: "plus")
+                                .fontWeight(.semibold)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 4)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                    .listRowSeparator(.hidden)
+                } else {
+                    Text("No clients match “\(searchText)”")
+                        .foregroundStyle(.secondary)
+                }
             } else {
                 ForEach(filteredClients, id: \.persistentModelID) { c in
                     NavigationLink {

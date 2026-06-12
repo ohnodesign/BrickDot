@@ -15,6 +15,7 @@ struct QuickAddView: View {
     @State private var isSaving = false
     @State private var showFullEntry = false
     @State private var showManualPickers = false
+    @State private var showNewClient = false
     @State private var parsedPreview: ParsedInput?
 
     @StateObject private var speech = SpeechRecognizer()
@@ -39,7 +40,7 @@ struct QuickAddView: View {
                         .padding(.horizontal, 4)
 
                     HStack {
-                        TextField("cs photo fix drain 15m done", text: $rawInput)
+                        TextField("acme design logo 30m done", text: $rawInput)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .focused($inputFocused)
@@ -107,10 +108,23 @@ struct QuickAddView: View {
                 }
 
                 if clients.isEmpty {
-                    HStack(spacing: 8) {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                        Text("Add a client first from the Clients tab, or use Full Entry to create one inline.")
-                            .font(.caption).foregroundStyle(.secondary)
+                    VStack(spacing: 10) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                            Text("Entries belong to a client — add one first.")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                        Button {
+                            showNewClient = true
+                        } label: {
+                            Label("Add a Client", systemImage: "person.badge.plus")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(RoundedRectangle(cornerRadius: 8).fill(theme.accent))
+                                .foregroundStyle(theme.buttonText)
+                        }
+                        .buttonStyle(.plain)
                     }
                     .padding(10)
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color(.systemGray6)))
@@ -206,6 +220,9 @@ struct QuickAddView: View {
                         prefillDetail: effectiveDetail
                     )
                 }
+            }
+            .sheet(isPresented: $showNewClient) {
+                NavigationStack { NewClientView() }
             }
             .sheet(isPresented: $showManualPickers) {
                 ManualPickerSheet(

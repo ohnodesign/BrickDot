@@ -12,7 +12,6 @@ struct ClientDetailView: View {
     @AppStorage("client.showStarred") private var showStarred = true
     @AppStorage("client.showTodo") private var showTodo = false
     @AppStorage("client.showInProgress") private var showInProgress = false
-    @AppStorage("client.showAllClientDone") private var showAllClientDone = false
     @AppStorage("client.showDone") private var showDone = false
     @AppStorage("client.showStats") private var showStats = false
     @AppStorage("client.showInvoices") private var showInvoices = false
@@ -26,6 +25,8 @@ struct ClientDetailView: View {
     @State private var showEntryPicker = false
     @State private var templateToEdit: EntryTemplate? = nil
     @State private var showDeleteConfirm = false
+    @State private var invoiceToDelete: Invoice? = nil
+    @State private var showInvoiceDeleteConfirm = false
 
     // Broad queries; filter in Swift
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
@@ -66,6 +67,43 @@ struct ClientDetailView: View {
                 let d1 = $1.completedAt ?? $1.serviceDate
                 return d0 > d1
             }
+    }
+
+    private struct MonthGroup {
+        let month: Int
+        let monthName: String
+        let entries: [Entry]
+    }
+
+    private struct YearGroup {
+        let year: Int
+        let months: [MonthGroup]
+        var totalCount: Int { months.reduce(0) { $0 + $1.entries.count } }
+    }
+
+    private var doneGroupedByYear: [YearGroup] {
+        let cal = Calendar.current
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM"
+
+        let grouped = Dictionary(grouping: clientDoneSorted) { e -> Int in
+            cal.component(.year, from: e.completedAt ?? e.serviceDate)
+        }
+
+        return grouped.keys.sorted(by: >).map { year in
+            let yearEntries = grouped[year]!
+            let byMonth = Dictionary(grouping: yearEntries) { e -> Int in
+                cal.component(.month, from: e.completedAt ?? e.serviceDate)
+            }
+            let monthGroups = byMonth.keys.sorted(by: >).map { month in
+                MonthGroup(
+                    month: month,
+                    monthName: formatter.monthSymbols[month - 1],
+                    entries: byMonth[month]!
+                )
+            }
+            return YearGroup(year: year, months: monthGroups)
+        }
     }
 
     private var clientTodayDone: [Entry] {
@@ -257,35 +295,46 @@ struct ClientDetailView: View {
                 }
             }
 
-            // Done - last 20, sorted by completion date (fallback to service date)
+            // Done - grouped by year > month
             Section {
                 DisclosureGroup(isExpanded: $showDone) {
-                    let items = clientDoneSorted
-                    let displayed = showAllClientDone ? items : Array(items.prefix(20))
-                    if items.isEmpty {
+                    if clientDoneSorted.isEmpty {
                         Text("No done items").foregroundStyle(.secondary)
                             .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
                     } else {
-                        ForEach(displayed, id: \.persistentModelID) { e in
-                            NavigationLink { EditEntryView(entry: e) } label: {
-                                ClientDoneRow(entry: e)
-                            }
-                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
-                        }
-                        if items.count > 20 {
-                            Button(action: { withAnimation { showAllClientDone.toggle() } }) {
+                        ForEach(doneGroupedByYear, id: \.year) { yearGroup in
+                            DisclosureGroup {
+                                ForEach(yearGroup.months, id: \.month) { monthGroup in
+                                    DisclosureGroup {
+                                        ForEach(monthGroup.entries, id: \.persistentModelID) { e in
+                                            NavigationLink { EditEntryView(entry: e) } label: {
+                                                ClientDoneRow(entry: e)
+                                            }
+                                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
+                                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
+                                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
+                                        }
+                                    } label: {
+                                        HStack {
+                                            Text(monthGroup.monthName)
+                                                .font(.subheadline)
+                                            Spacer()
+                                            Text("\(monthGroup.entries.count)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            } label: {
                                 HStack {
+                                    Text(String(yearGroup.year))
+                                        .font(.subheadline.weight(.semibold))
                                     Spacer()
-                                    Text(showAllClientDone ? "Show Less" : "Show All (\(items.count))")
-                                        .font(.footnote)
+                                    Text("\(yearGroup.totalCount)")
+                                        .font(.caption)
                                         .foregroundStyle(.secondary)
-                                    Spacer()
                                 }
                             }
-                            .buttonStyle(.plain)
-                            .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 8, trailing: 12))
                         }
                     }
                 } label: {
@@ -387,6 +436,14 @@ struct ClientDetailView: View {
                         ForEach(clientInvoicesSorted, id: \.persistentModelID) { inv in
                             NavigationLink { InvoiceDetailView(invoice: inv) } label: {
                                 InvoiceRow(invoice: inv)
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    invoiceToDelete = inv
+                                    showInvoiceDeleteConfirm = true
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
                             }
                         }
                     }
@@ -520,6 +577,19 @@ struct ClientDetailView: View {
         } message: {
             Text("This will permanently delete \(client.name) and all associated entries, invoices, and templates. This cannot be undone.")
         }
+        .alert("Delete Invoice?", isPresented: $showInvoiceDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                if let inv = invoiceToDelete {
+                    deleteInvoice(inv)
+                }
+                invoiceToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { invoiceToDelete = nil }
+        } message: {
+            if let inv = invoiceToDelete {
+                Text("Delete \(inv.title)? The \(inv.entriesList.count) entries on this invoice will be kept but unlinked.")
+            }
+        }
     }
 
     // MARK: - Quick actions (same as HomeView)
@@ -535,16 +605,26 @@ struct ClientDetailView: View {
         e.timeLogsList.append(TimeLog(hours: elapsed, entry: e))
         e.timerStartedAt = nil
         try? ctx.save()
+        NotificationManager.shared.cancelNoTimeLoggedReminder()
     }
     private func quickBump(_ e: Entry, _ h: Double) {
         e.hours += h
         e.timeLogsList.append(TimeLog(hours: h, entry: e))
         try? ctx.save()
+        NotificationManager.shared.cancelNoTimeLoggedReminder()
     }
     private func markDone(_ e: Entry) {
         e.timerStartedAt = nil
         e.status = .done
         e.completedAt = Date()
+        try? ctx.save()
+    }
+
+    private func deleteInvoice(_ inv: Invoice) {
+        for entry in inv.entriesList {
+            entry.invoice = nil
+        }
+        ctx.delete(inv)
         try? ctx.save()
     }
 
@@ -924,7 +1004,7 @@ private struct ClientInlineEditor: View {
                 }
             }
             Section("Quick Add Shortcode") {
-                TextField("e.g. cs, sve, dlw", text: $shortcode)
+                TextField("e.g. ac, blu, nw", text: $shortcode)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
