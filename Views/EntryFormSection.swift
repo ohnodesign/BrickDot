@@ -125,23 +125,20 @@ private struct ProjectSection: View {
     @FocusState private var descFocused: Bool
     @State private var showNewClient = false
     @State private var newClientName = ""
-    @State private var pickerClient: PickerClient = .existing(nil)
 
     private enum PickerClient: Hashable {
         case existing(Client?)
         case newClient
     }
 
-    var body: some View {
-        Section("Project") {
-            // Client
-            Picker("Client", selection: $pickerClient) {
-                Text("＋ New Client…").tag(PickerClient.newClient)
-                ForEach(clients, id: \.persistentModelID) { c in
-                    Text(c.name).tag(PickerClient.existing(c))
-                }
-            }
-            .onChange(of: pickerClient) { _, newValue in
+    // Derived directly from selectedClient so the picker always shows the
+    // assigned client on first render (a mirrored @State synced in onAppear
+    // showed "+ New Client…" on Mac Catalyst). Choosing "＋ New Client…"
+    // only opens the alert; the selection stays on the current client.
+    private var pickerClient: Binding<PickerClient> {
+        Binding(
+            get: { .existing(selectedClient) },
+            set: { newValue in
                 switch newValue {
                 case .newClient:
                     newClientName = ""
@@ -151,8 +148,21 @@ private struct ProjectSection: View {
                     if let c { rate = c.rate }
                 }
             }
-            .onAppear { pickerClient = .existing(selectedClient) }
-            .onChange(of: selectedClient) { _, c in pickerClient = .existing(c) }
+        )
+    }
+
+    var body: some View {
+        Section("Project") {
+            // Client
+            Picker("Client", selection: pickerClient) {
+                if selectedClient == nil {
+                    Text("Select Client…").tag(PickerClient.existing(nil))
+                }
+                Text("＋ New Client…").tag(PickerClient.newClient)
+                ForEach(clients, id: \.persistentModelID) { c in
+                    Text(c.name).tag(PickerClient.existing(c))
+                }
+            }
             .alert("New Client", isPresented: $showNewClient) {
                 TextField("Company name", text: $newClientName)
                     .textInputAutocapitalization(.words)
@@ -174,12 +184,6 @@ private struct ProjectSection: View {
             } message: {
                 Text("Enter the company name. It will be added to your clients list.")
             }
-            .onChange(of: showNewClient) { _, showing in
-                if !showing && pickerClient == .newClient {
-                    pickerClient = .existing(selectedClient)
-                }
-            }
-
             // Service
             Picker("Service", selection: $service) {
                 ForEach(Constants.services, id: \.self) { s in
