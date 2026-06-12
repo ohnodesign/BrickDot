@@ -20,10 +20,13 @@ struct GettingStartedCard: View {
     @State private var showNewClient = false
     @State private var showNewEntry = false
 
+    // Seeded setup todos don't count toward the user's own progress.
+    private var realEntries: [Entry] { entries.filter { $0.setupAction == nil } }
+
     private var hasClient: Bool { !clients.isEmpty }
-    private var hasEntry: Bool { !entries.isEmpty }
+    private var hasEntry: Bool { !realEntries.isEmpty }
     private var hasTrackedTime: Bool {
-        entries.contains { $0.timerStartedAt != nil || $0.hours > 0 || !$0.timeLogsList.isEmpty }
+        realEntries.contains { $0.timerStartedAt != nil || $0.hours > 0 || !$0.timeLogsList.isEmpty }
     }
     private var allDone: Bool { hasClient && hasEntry && hasTrackedTime }
 
@@ -109,7 +112,7 @@ struct GettingStartedCard: View {
     private func startFirstTimer() {
         // Start the clock on the newest open entry; if everything is already
         // done, send them to create another entry to time instead.
-        guard let entry = entries.first(where: { $0.status != .done }) else {
+        guard let entry = realEntries.first(where: { $0.status != .done }) else {
             showNewEntry = true
             return
         }

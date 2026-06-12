@@ -110,7 +110,7 @@ private struct LogEntryRow: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(theme.accent)
                     Text("·").foregroundStyle(.secondary)
-                    Text(entry.clientName)
+                    Text(entry.displayClientName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

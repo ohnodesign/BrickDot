@@ -117,6 +117,17 @@ private struct iPhoneRootView: View {
         .onReceive(NotificationCenter.default.publisher(for: .goHome)) { _ in
             withAnimation { showingHome = true }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToSection)) { note in
+            guard let raw = note.userInfo?["action"] as? String,
+                  let action = SetupAction(rawValue: raw) else { return }
+            switch action {
+            case .profile:              selectedTab = .profile
+            case .services, .reminders: selectedTab = .settings
+            case .clients:              selectedTab = .clients
+            case .importData:           selectedTab = .export
+            }
+            withAnimation { showingHome = false }
+        }
         .sheet(isPresented: $showQuickCapture) {
             QuickAddView(onSaved: { showQuickCapture = false })
                 .presentationDetents([.medium])
@@ -335,6 +346,16 @@ private struct iPadRootView: View {
         }
         .onChange(of: selection) { _, _ in
             detailPath = NavigationPath()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .navigateToSection)) { note in
+            guard let raw = note.userInfo?["action"] as? String,
+                  let action = SetupAction(rawValue: raw) else { return }
+            switch action {
+            case .profile:              selection = .profile
+            case .services, .reminders: selection = .settings
+            case .clients:              selection = .allClients
+            case .importData:           selection = .export
+            }
         }
         .sheet(isPresented: $showNewEntry) {
             QuickAddView(onSaved: {

@@ -36,6 +36,7 @@
 		EEA142562E9437B300ACB8DD /* DateBoundsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA142552E9437B300ACB8DD /* DateBoundsTests.swift */; };
 		EEAB0DDA2FDA000000000002 /* GettingStartedCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAB0DDA2FDA000000000001 /* GettingStartedCard.swift */; };
 		EEAB0DDA2FDA000000000004 /* RunningTimerBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAB0DDA2FDA000000000003 /* RunningTimerBar.swift */; };
+		EEAB0DDA2FDA000000000006 /* StarterTodos.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEAB0DDA2FDA000000000005 /* StarterTodos.swift */; };
 		EEABCEB32E4E47A20029A98C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB22E4E47A20029A98C /* HomeView.swift */; };
 		EEABCEB52E4E5E3F0029A98C /* DateExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB42E4E5E3F0029A98C /* DateExtensions.swift */; };
 		EEABCEB72E4E845E0029A98C /* AutoBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEABCEB62E4E845E0029A98C /* AutoBackup.swift */; };
@@ -97,6 +98,7 @@
 		EEA142552E9437B300ACB8DD /* DateBoundsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateBoundsTests.swift; sourceTree = "<group>"; };
 		EEAB0DDA2FDA000000000001 /* GettingStartedCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GettingStartedCard.swift; sourceTree = "<group>"; };
 		EEAB0DDA2FDA000000000003 /* RunningTimerBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunningTimerBar.swift; sourceTree = "<group>"; };
+		EEAB0DDA2FDA000000000005 /* StarterTodos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StarterTodos.swift; sourceTree = "<group>"; };
 		EEABCEB22E4E47A20029A98C /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		EEABCEB42E4E5E3F0029A98C /* DateExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateExtensions.swift; sourceTree = "<group>"; };
 		EEABCEB62E4E845E0029A98C /* AutoBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoBackup.swift; sourceTree = "<group>"; };
@@ -212,6 +214,7 @@
 				EE984E952E58DA08004A272F /* NewClientView.swift */,
 				EEAB0DDA2FDA000000000001 /* GettingStartedCard.swift */,
 				EEAB0DDA2FDA000000000003 /* RunningTimerBar.swift */,
+				EEAB0DDA2FDA000000000005 /* StarterTodos.swift */,
 				EEABCEB22E4E47A20029A98C /* HomeView.swift */,
 				E99887AC14A84BD1A61B3ECA /* CoachView.swift */,
 				EEC744BC2E5D10D500E9D21A /* InvoiceDetailView.swift */,
@@ -380,6 +383,7 @@
 				EEC377902E921A860066C54E /* StatPill.swift in Sources */,
 				EEAB0DDA2FDA000000000002 /* GettingStartedCard.swift in Sources */,
 				EEAB0DDA2FDA000000000004 /* RunningTimerBar.swift in Sources */,
+				EEAB0DDA2FDA000000000006 /* StarterTodos.swift in Sources */,
 				EECB80BA2FCDC488007252D5 /* SearchView.swift in Sources */,
 				EEC744BB2E5D0F5100E9D21A /* Invoice.swift in Sources */,
 				EE150DFA2E920DA7005C4321 /* TimeLog.swift in Sources */,

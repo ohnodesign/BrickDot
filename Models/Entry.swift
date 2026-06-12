@@ -15,6 +15,9 @@ final class Entry {
     var timerStartedAt: Date?
     var isImportant: Bool = false
     var isQuickAdd: Bool = false
+    // First-run starter todo: SetupAction rawValue ("profile", "services", …)
+    // that deep-links the row to an app section. Nil for normal entries.
+    var setupAction: String? = nil
     var dueDate: Date? = nil
     var billOnCompletion: Bool = false
 
@@ -50,6 +53,12 @@ final class Entry {
     }
 
     var clientName: String { client?.name ?? "Unknown" }
+
+    /// Row-display name: starter setup todos have no client, so label them
+    /// instead of showing "Unknown".
+    var displayClientName: String {
+        setupAction != nil ? "Getting Started" : clientName
+    }
     var clientRate: Double { client?.rate ?? 0 }
 
     // Non-optional accessors for CloudKit-optional arrays

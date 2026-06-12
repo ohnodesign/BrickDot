@@ -25,5 +25,11 @@ enum Constants {
         }
     }
 
+    /// True once the user has changed the service list from the defaults.
+    static var servicesCustomized: Bool {
+        guard let saved = UserDefaults.standard.stringArray(forKey: servicesKey) else { return false }
+        return saved != defaultServices
+    }
+
     static let defaultRate: Double = 125
 }

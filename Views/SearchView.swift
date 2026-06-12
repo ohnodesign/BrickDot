@@ -107,7 +107,7 @@ struct SearchView: View {
                                             Circle()
                                                 .fill(entry.client?.accentColor ?? ClientColors.palette[0].color)
                                                 .frame(width: 8, height: 8)
-                                            Text(entry.clientName)
+                                            Text(entry.displayClientName)
                                                 .font(.subheadline.weight(.semibold))
                                             Spacer()
                                             Text(entry.status.rawValue)

@@ -19,8 +19,9 @@ struct HomeView: View {
     @AppStorage(OnboardingPrefs.started) private var onboardingStarted = false
 
     private var onboardingStepsComplete: Bool {
-        !allClients.isEmpty && !allEntries.isEmpty &&
-        allEntries.contains { $0.timerStartedAt != nil || $0.hours > 0 || !$0.timeLogsList.isEmpty }
+        let realEntries = allEntries.filter { $0.setupAction == nil }
+        return !allClients.isEmpty && !realEntries.isEmpty &&
+        realEntries.contains { $0.timerStartedAt != nil || $0.hours > 0 || !$0.timeLogsList.isEmpty }
     }
     private var showGettingStarted: Bool {
         !onboardingDismissed && (onboardingStarted || !onboardingStepsComplete)
@@ -173,6 +174,8 @@ struct HomeView: View {
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
+                StarterTodos.seedIfNeeded(ctx)
+                StarterTodos.autoComplete(ctx)
                 guard !onboardingDismissed else { return }
                 if onboardingStepsComplete && !onboardingStarted {
                     // Existing user (e.g. data arrived via CloudKit sync) —
@@ -181,6 +184,12 @@ struct HomeView: View {
                 } else {
                     onboardingStarted = true
                 }
+            }
+            .onChange(of: allEntries.count) { _, _ in
+                StarterTodos.autoComplete(ctx)
+            }
+            .onChange(of: allClients.count) { _, _ in
+                StarterTodos.autoComplete(ctx)
             }
             .sheet(isPresented: $showNewEntry) {
                 QuickAddView(onSaved: { showNewEntry = false })
@@ -330,8 +339,25 @@ struct HomeView: View {
 
             Section {
                 ForEach(displayed) { entry in
-                    NavigationLink { EditEntryView(entry: entry) } label: {
-                        ActionRow(entry: entry, badge: badge ?? dueBadge(for: entry))
+                    Group {
+                        if let raw = entry.setupAction, let action = SetupAction(rawValue: raw) {
+                            // Starter todo: tapping jumps to the app section it asks for.
+                            Button {
+                                action.navigate()
+                            } label: {
+                                HStack {
+                                    ActionRow(entry: entry, badge: ActionRowBadge.none)
+                                    Image(systemName: "arrow.right.circle")
+                                        .foregroundStyle(theme.accent)
+                                        .imageScale(.large)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            NavigationLink { EditEntryView(entry: entry) } label: {
+                                ActionRow(entry: entry, badge: badge ?? dueBadge(for: entry))
+                            }
+                        }
                     }
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         entrySwipeActions(entry)
@@ -648,7 +674,7 @@ private struct ActionRow: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(theme.accent)
                     Text("·").foregroundStyle(.secondary)
-                    Text(entry.clientName)
+                    Text(entry.displayClientName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -812,7 +838,7 @@ private struct FocusRow: View {
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(theme.accent)
                     Text("·").foregroundStyle(.secondary)
-                    Text(entry.clientName)
+                    Text(entry.displayClientName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
