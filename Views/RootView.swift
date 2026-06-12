@@ -94,6 +94,7 @@ private struct iPhoneRootView: View {
             .onChange(of: selectedTab) { _, _ in
                 if showingHome { withAnimation { showingHome = false } }
             }
+            .runningTimerBarAttachment()
 
             if showingHome {
                 VStack(spacing: 0) {
@@ -101,6 +102,10 @@ private struct iPhoneRootView: View {
                         HomeView()
                     }
                     .environment(\.modelContext, ctx)
+
+                    RunningTimerBar()
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 6)
 
                     Divider()
                     tabBarMirror
@@ -321,6 +326,12 @@ private struct iPadRootView: View {
                     SearchView()
                         .environment(\.modelContext, ctx)
                 }
+        }
+        .safeAreaInset(edge: .bottom) {
+            RunningTimerBar()
+                .frame(maxWidth: 440)
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
         }
         .onChange(of: selection) { _, _ in
             detailPath = NavigationPath()
