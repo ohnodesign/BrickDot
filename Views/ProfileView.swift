@@ -4,6 +4,7 @@ import PhotosUI
 
 struct ProfileView: View {
     @Environment(\.modelContext) private var ctx
+    @Query private var profiles: [UserProfile]
     @State private var profile: UserProfile?
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var showRemoveLogoAlert = false
@@ -14,6 +15,27 @@ struct ProfileView: View {
             get: { profile[keyPath: keyPath] },
             set: { profile[keyPath: keyPath] = $0; try? ctx.save() }
         )
+    }
+
+    /// Picks the profile to edit, preferring one that actually has data. This
+    /// fixes the reinstall race: an empty profile can be created before
+    /// CloudKit syncs the real one down, so once the real record arrives we
+    /// switch to it and delete any leftover empty placeholder. Only creates a
+    /// new profile when there genuinely isn't one anywhere.
+    private func resolveProfile() {
+        if let populated = profiles.first(where: { $0.hasContent }) {
+            profile = populated
+            for p in profiles where p !== populated && !p.hasContent {
+                ctx.delete(p)
+            }
+            try? ctx.save()
+        } else if let existing = profiles.first {
+            profile = existing
+        } else if profile == nil {
+            let p = UserProfile()
+            ctx.insert(p)
+            profile = p
+        }
     }
 
     var body: some View {
@@ -107,11 +129,8 @@ struct ProfileView: View {
             }
         }
         .navigationTitle("Profile")
-        .onAppear {
-            if profile == nil {
-                profile = UserProfile.fetchOrCreate(in: ctx)
-            }
-        }
+        .onAppear { resolveProfile() }
+        .onChange(of: profiles.count) { _, _ in resolveProfile() }
         .onChange(of: selectedPhoto) { _, item in
             Task {
                 guard let item else { return }
