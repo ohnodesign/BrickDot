@@ -86,8 +86,10 @@ public struct CalendarMonthView: View {
                     } label: {
                         ZStack(alignment: .topTrailing) {
                             Text("\(calendar.component(.day, from: day))")
+                                .font(isToday ? .title3 : .body)
                                 .frame(maxWidth: .infinity, maxHeight: 32)
-                                .foregroundColor(isToday ? .primary : .primary)
+                                .fontWeight(isToday ? .bold : .regular)
+                                .foregroundColor(isToday ? .green : .primary)
                                 .contentShape(Rectangle())
 
                             if count > 0 {
@@ -100,12 +102,6 @@ public struct CalendarMonthView: View {
                             }
                         }
                         .padding(.vertical, 4)
-                        .overlay {
-                            if isToday {
-                                RoundedRectangle(cornerRadius: 6)
-                                    .stroke(Color.accentColor, lineWidth: 2)
-                            }
-                        }
                     }
                     .buttonStyle(.plain)
                 }
