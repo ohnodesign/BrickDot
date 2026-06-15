@@ -17,7 +17,7 @@ enum InvoicePDFRenderer {
         terms: String = "Due on receipt"
     ) -> URL {
         let entries = invoice.entriesList.sorted { $0.serviceDate < $1.serviceDate }
-        let clientName = invoice.client?.billingName ?? "Unknown"
+        let clientName = invoice.client?.name ?? "Unknown"
         let client = invoice.client
 
         let pageWidth: CGFloat = 612   // US Letter

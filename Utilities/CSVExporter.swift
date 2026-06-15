@@ -152,7 +152,7 @@ struct CSVExporter {
 
             let cols: [String] = [
                 escapeQB(invNo),                          // *InvoiceNo
-                escapeQB(client.billingName),             // *Customer
+                escapeQB(client.name),                    // *Customer
                 invDateStr,                               // *InvoiceDate
                 dueStr,                                   // *DueDate
                 escapeQB(terms),                          // Terms
