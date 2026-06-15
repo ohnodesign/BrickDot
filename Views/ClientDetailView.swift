@@ -27,6 +27,7 @@ struct ClientDetailView: View {
     @State private var showDeleteConfirm = false
     @State private var invoiceToDelete: Invoice? = nil
     @State private var showInvoiceDeleteConfirm = false
+    @State private var showReorderInvoices = false
 
     // Broad queries; filter in Swift
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
@@ -173,7 +174,12 @@ struct ClientDetailView: View {
     }
 
     private var clientInvoices: [Invoice] { allInvoices.filter { $0.client == client } }
-    private var clientInvoicesSorted: [Invoice] { clientInvoices.sorted { $0.createdAt > $1.createdAt } }
+    private var clientInvoicesSorted: [Invoice] {
+        clientInvoices.sorted {
+            if $0.sortIndex != $1.sortIndex { return $0.sortIndex < $1.sortIndex }
+            return $0.createdAt > $1.createdAt
+        }
+    }
 
     // Fast lookup set of invoiced Entry IDs (for green dot in Recent)
     private var invoicedEntryIDs: Set<PersistentIdentifier> {
@@ -433,6 +439,14 @@ struct ClientDetailView: View {
                     if clientInvoicesSorted.isEmpty {
                         Text("No invoices yet.").foregroundStyle(.secondary)
                     } else {
+                        if clientInvoices.count > 1 {
+                            Button {
+                                showReorderInvoices = true
+                            } label: {
+                                Label("Reorder", systemImage: "arrow.up.arrow.down")
+                                    .font(.subheadline)
+                            }
+                        }
                         ForEach(clientInvoicesSorted, id: \.persistentModelID) { inv in
                             NavigationLink { InvoiceDetailView(invoice: inv) } label: {
                                 InvoiceRow(invoice: inv)
@@ -529,6 +543,9 @@ struct ClientDetailView: View {
                     showEdit = false
                 }
             }
+        }
+        .sheet(isPresented: $showReorderInvoices) {
+            InvoiceReorderSheet(invoices: clientInvoicesSorted)
         }
         .sheet(isPresented: $showNewEntry) {
             if let template = selectedTemplate {
@@ -941,6 +958,51 @@ private struct InvoiceRow: View {
             }
             .font(.caption)
         }
+    }
+}
+
+// MARK: - Invoice Reorder Sheet
+
+private struct InvoiceReorderSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var ctx
+    @State private var ordered: [Invoice]
+
+    init(invoices: [Invoice]) {
+        _ordered = State(initialValue: invoices)
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(ordered, id: \.persistentModelID) { inv in
+                        InvoiceRow(invoice: inv)
+                    }
+                    .onMove { from, to in
+                        ordered.move(fromOffsets: from, toOffset: to)
+                        persistOrder()
+                    }
+                } footer: {
+                    Text("Drag the handles to set the order invoices appear in for this client.")
+                }
+            }
+            .environment(\.editMode, .constant(.active))
+            .navigationTitle("Reorder Invoices")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func persistOrder() {
+        for (index, invoice) in ordered.enumerated() {
+            invoice.sortIndex = index
+        }
+        try? ctx.save()
     }
 }
 

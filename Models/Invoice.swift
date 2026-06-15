@@ -7,6 +7,9 @@ final class Invoice {
     var title: String = ""
     var number: String?
     var createdAt: Date = Date()
+    /// Manual ordering within a client's invoice list. Lower sorts first;
+    /// ties fall back to createdAt. Defaults to 0 until the user reorders.
+    var sortIndex: Int = 0
     var client: Client?
 
     @Relationship(deleteRule: .noAction, inverse: \Entry.invoice)
