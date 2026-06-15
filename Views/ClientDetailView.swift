@@ -186,6 +186,9 @@ struct ClientDetailView: View {
             // Client summary
             Section("Client") {
                 HStack { Text("Name"); Spacer(); Text(client.name).foregroundStyle(.secondary) }
+                if !client.invoiceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    HStack { Text("Invoice Name"); Spacer(); Text(client.invoiceName).foregroundStyle(.secondary) }
+                }
                 HStack {
                     Text("Default Rate"); Spacer()
                     Text(client.rate, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
@@ -968,6 +971,7 @@ private struct ClientInlineEditor: View {
     var onClose: (Bool) -> Void   // pass true if saved
 
     @State private var name: String
+    @State private var invoiceName: String
     @State private var rate: Double
     @State private var colorIndex: Int
     @State private var shortcode: String
@@ -981,6 +985,7 @@ private struct ClientInlineEditor: View {
         self._client = Bindable(wrappedValue: client)
         self.onClose = onClose
         _name = State(initialValue: client.name)
+        _invoiceName = State(initialValue: client.invoiceName)
         _rate = State(initialValue: client.rate)
         _colorIndex = State(initialValue: client.colorIndex)
         _shortcode = State(initialValue: client.shortcode)
@@ -1002,6 +1007,14 @@ private struct ClientInlineEditor: View {
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 140)
                 }
+            }
+            Section {
+                TextField("Invoice Name", text: $invoiceName)
+                    .textInputAutocapitalization(.words)
+            } header: {
+                Text("Invoice Name")
+            } footer: {
+                Text("Shown on invoices in place of the client name. Leave blank to use “\(name.isEmpty ? "the client name" : name)”.")
             }
             Section("Quick Add Shortcode") {
                 TextField("e.g. ac, blu, nw", text: $shortcode)
@@ -1028,6 +1041,7 @@ private struct ClientInlineEditor: View {
             Section {
                 Button {
                     client.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                    client.invoiceName = invoiceName.trimmingCharacters(in: .whitespacesAndNewlines)
                     client.rate = rate
                     client.colorIndex = colorIndex
                     client.shortcode = shortcode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

@@ -3,9 +3,17 @@ import SwiftData
 @Model
 final class Client {
     var name: String = ""
+    /// Optional billing name shown on invoices instead of `name`. Lets the
+    /// in-app short name differ from the formal name on the invoice.
+    var invoiceName: String = ""
     var rate: Double = 0
     var colorIndex: Int = 0
     var shortcode: String = ""
+    var contactName: String = ""
+    var address: String = ""
+    var phone: String = ""
+    var businessPhone: String = ""
+    var email: String = ""
     @Relationship(deleteRule: .cascade, inverse: \Entry.client)
     var entries: [Entry]? = []
     @Relationship(deleteRule: .cascade, inverse: \EntryTemplate.client)
@@ -28,6 +36,11 @@ final class Client {
         self.name = name
         self.rate = rate
         self.colorIndex = colorIndex
+    }
+
+    /// Name to display on invoices: the invoice name if set, else the client name.
+    var billingName: String {
+        invoiceName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? name : invoiceName
     }
 }
 
