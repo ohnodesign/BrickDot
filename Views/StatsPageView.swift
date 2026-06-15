@@ -9,6 +9,7 @@ struct StatsPageView: View {
     @State private var selectedStat: StatsPageSelectedStat? = nil
     @State private var selectedDueList: StatsPageSelectedStat? = nil
     @State private var calendarMonthAnchor: Date = Date()
+    @State private var reportPeriod: ReportPeriod = .last12Weeks
 
     var body: some View {
         NavigationStack {
@@ -85,18 +86,26 @@ struct StatsPageView: View {
                 }
 
                 // Charts
-                Section("Reports") {
-                    RevenueChartView(entries: allEntries)
+                Section {
+                    HStack {
+                        Text("Reports")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .textCase(.uppercase)
+                        Spacer()
+                        ReportPeriodPicker(selection: $reportPeriod)
+                    }
+                    RevenueChartView(entries: allEntries, period: reportPeriod)
                         .padding(.vertical, 8)
                 }
 
                 Section {
-                    ClientProfitabilityChartView(entries: allEntries)
+                    ClientProfitabilityChartView(entries: allEntries, period: reportPeriod)
                         .padding(.vertical, 8)
                 }
 
                 Section {
-                    ServiceHoursChartView(entries: allEntries)
+                    ServiceHoursChartView(entries: allEntries, period: reportPeriod)
                         .padding(.vertical, 8)
                 }
 

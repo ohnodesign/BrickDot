@@ -1,61 +1,208 @@
 import SwiftUI
 import Charts
 
-// MARK: - Revenue Over Time (weekly bar chart, last 12 weeks)
+// MARK: - Report Period
+
+enum ReportPeriod: String, CaseIterable, Identifiable {
+    case thisWeek = "This Week"
+    case thisMonth = "This Month"
+    case lastMonth = "Last Month"
+    case thisQuarter = "This Quarter"
+    case yearToDate = "Year to Date"
+    case last12Weeks = "Last 12 Weeks"
+    case allTime = "All Time"
+
+    var id: String { rawValue }
+
+    var dateRange: (start: Date, end: Date) {
+        let cal = Calendar.current
+        let now = Date()
+        switch self {
+        case .thisWeek:
+            return (now.bdStartOfWeek, now.bdEndOfWeek)
+        case .thisMonth:
+            return (now.startOfMonth, now.endOfMonth)
+        case .lastMonth:
+            guard let prev = cal.date(byAdding: .month, value: -1, to: now) else { return (now, now) }
+            return (prev.startOfMonth, prev.endOfMonth)
+        case .thisQuarter:
+            let b = now.bdQuarterBounds
+            return (b.start, b.end)
+        case .yearToDate:
+            let startOfYear = cal.date(from: cal.dateComponents([.year], from: now)) ?? now
+            return (startOfYear, now)
+        case .last12Weeks:
+            let start = cal.date(byAdding: .weekOfYear, value: -11, to: now)?.bdStartOfWeek ?? now
+            return (start, now)
+        case .allTime:
+            return (Date.distantPast, now)
+        }
+    }
+
+    func filter(_ entries: [Entry]) -> [Entry] {
+        let range = dateRange
+        return entries.filter { e in
+            guard e.status == .done else { return false }
+            let d = e.completedAt ?? e.serviceDate
+            return d >= range.start && d <= range.end
+        }
+    }
+}
+
+// MARK: - Period Picker
+
+struct ReportPeriodPicker: View {
+    @Binding var selection: ReportPeriod
+
+    var body: some View {
+        Menu {
+            ForEach(ReportPeriod.allCases) { period in
+                Button {
+                    selection = period
+                } label: {
+                    HStack {
+                        Text(period.rawValue)
+                        if period == selection {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(selection.rawValue)
+                    .font(.subheadline.weight(.medium))
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.semibold))
+            }
+            .foregroundStyle(.accent)
+        }
+    }
+}
+
+// MARK: - Revenue Over Time
 
 struct RevenueChartView: View {
     let entries: [Entry]
+    let period: ReportPeriod
     @Environment(\.appTheme) private var theme
 
-    private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
-
-    private struct WeekBucket: Identifiable {
+    private struct TimeBucket: Identifiable {
         let id: Date
         let label: String
         let amount: Double
     }
 
-    private var weeklyData: [WeekBucket] {
+    private enum BucketSize {
+        case daily, weekly, monthly
+    }
+
+    private var bucketSize: BucketSize {
+        switch period {
+        case .thisWeek: return .daily
+        case .thisMonth, .lastMonth, .last12Weeks: return .weekly
+        case .thisQuarter, .yearToDate, .allTime: return .monthly
+        }
+    }
+
+    private var filteredEntries: [Entry] {
+        period.filter(entries)
+    }
+
+    private var totalRevenue: Double {
+        filteredEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
+    }
+
+    private var bucketData: [TimeBucket] {
         let cal = Calendar.current
-        let today = Date()
-        var buckets: [WeekBucket] = []
+        let range = period.dateRange
+        let done = filteredEntries
 
-        for weeksAgo in (0..<12).reversed() {
-            guard let weekStart = cal.date(byAdding: .weekOfYear, value: -weeksAgo, to: today) else { continue }
-            let start = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: weekStart)
-            guard let bucketStart = cal.date(from: start),
-                  let bucketEnd = cal.date(byAdding: .day, value: 6, to: bucketStart) else { continue }
+        switch bucketSize {
+        case .daily:
+            return buildDailyBuckets(cal: cal, range: range, entries: done)
+        case .weekly:
+            return buildWeeklyBuckets(cal: cal, range: range, entries: done)
+        case .monthly:
+            return buildMonthlyBuckets(cal: cal, range: range, entries: done)
+        }
+    }
 
-            let amount = entries
-                .filter { e in
-                    guard e.status == .done else { return false }
-                    let d = e.completedAt ?? e.serviceDate
-                    return d >= bucketStart && d <= bucketEnd.endOfDay
-                }
-                .reduce(0.0) { $0 + ($1.hours * $1.rate) }
+    private func buildDailyBuckets(cal: Calendar, range: (start: Date, end: Date), entries: [Entry]) -> [TimeBucket] {
+        var buckets: [TimeBucket] = []
+        let df = DateFormatter()
+        df.dateFormat = "E"
+        var day = cal.startOfDay(for: range.start)
+        while day <= range.end {
+            let dayEnd = day.endOfDay
+            let amount = entries.filter { e in
+                let d = e.completedAt ?? e.serviceDate
+                return d >= day && d <= dayEnd
+            }.reduce(0.0) { $0 + ($1.hours * $1.rate) }
+            buckets.append(TimeBucket(id: day, label: df.string(from: day), amount: amount))
+            guard let next = cal.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return buckets
+    }
 
-            let df = DateFormatter()
-            df.dateFormat = "M/d"
-            buckets.append(WeekBucket(id: bucketStart, label: df.string(from: bucketStart), amount: amount))
+    private func buildWeeklyBuckets(cal: Calendar, range: (start: Date, end: Date), entries: [Entry]) -> [TimeBucket] {
+        var buckets: [TimeBucket] = []
+        let df = DateFormatter()
+        df.dateFormat = "M/d"
+        var weekStart = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: range.start)) ?? range.start
+        while weekStart <= range.end {
+            guard let weekEnd = cal.date(byAdding: .day, value: 6, to: weekStart) else { break }
+            let amount = entries.filter { e in
+                let d = e.completedAt ?? e.serviceDate
+                return d >= weekStart && d <= weekEnd.endOfDay
+            }.reduce(0.0) { $0 + ($1.hours * $1.rate) }
+            buckets.append(TimeBucket(id: weekStart, label: df.string(from: weekStart), amount: amount))
+            guard let next = cal.date(byAdding: .weekOfYear, value: 1, to: weekStart) else { break }
+            weekStart = next
+        }
+        return buckets
+    }
+
+    private func buildMonthlyBuckets(cal: Calendar, range: (start: Date, end: Date), entries: [Entry]) -> [TimeBucket] {
+        var buckets: [TimeBucket] = []
+        let df = DateFormatter()
+        df.dateFormat = "MMM"
+        var monthStart = cal.date(from: cal.dateComponents([.year, .month], from: range.start)) ?? range.start
+        while monthStart <= range.end {
+            let monthEnd = monthStart.endOfMonth
+            let amount = entries.filter { e in
+                let d = e.completedAt ?? e.serviceDate
+                return d >= monthStart && d <= monthEnd
+            }.reduce(0.0) { $0 + ($1.hours * $1.rate) }
+            buckets.append(TimeBucket(id: monthStart, label: df.string(from: monthStart), amount: amount))
+            guard let next = cal.date(byAdding: .month, value: 1, to: monthStart) else { break }
+            monthStart = next
         }
         return buckets
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Revenue — Last 12 Weeks")
-                .font(.subheadline.weight(.semibold))
+            HStack(alignment: .firstTextBaseline) {
+                Text("Revenue")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(totalRevenue.shortCurrency)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(theme.revenue)
+            }
 
-            if weeklyData.allSatisfy({ $0.amount == 0 }) {
-                Text("No completed billable work yet.")
+            if bucketData.allSatisfy({ $0.amount == 0 }) {
+                Text("No completed billable work in this period.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(height: 180)
                     .frame(maxWidth: .infinity)
             } else {
-                Chart(weeklyData) { bucket in
+                Chart(bucketData) { bucket in
                     BarMark(
-                        x: .value("Week", bucket.label),
+                        x: .value("Period", bucket.label),
                         y: .value("Revenue", bucket.amount)
                     )
                     .foregroundStyle(theme.revenue.gradient)
@@ -73,7 +220,7 @@ struct RevenueChartView: View {
                     }
                 }
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 6)) { value in
+                    AxisMarks(values: .automatic(desiredCount: 6)) { _ in
                         AxisValueLabel()
                             .font(.caption2)
                     }
@@ -88,9 +235,8 @@ struct RevenueChartView: View {
 
 struct ClientProfitabilityChartView: View {
     let entries: [Entry]
+    let period: ReportPeriod
     @Environment(\.appTheme) private var theme
-
-    private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
 
     private struct ClientRevenue: Identifiable {
         let id: String
@@ -101,7 +247,7 @@ struct ClientProfitabilityChartView: View {
     }
 
     private var clientData: [ClientRevenue] {
-        let done = entries.filter { $0.status == .done }
+        let done = period.filter(entries)
         var grouped: [String: (amount: Double, hours: Double, color: Color)] = [:]
 
         for e in done {
@@ -122,7 +268,7 @@ struct ClientProfitabilityChartView: View {
                 .font(.subheadline.weight(.semibold))
 
             if clientData.isEmpty {
-                Text("No completed work yet.")
+                Text("No completed work in this period.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(height: 160)
@@ -136,9 +282,17 @@ struct ClientProfitabilityChartView: View {
                     .foregroundStyle(client.color.gradient)
                     .cornerRadius(3)
                     .annotation(position: .trailing, spacing: 4) {
-                        Text(client.amount.shortCurrency)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 4) {
+                            Text(client.amount.shortCurrency)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                            Text("·")
+                                .font(.caption2)
+                                .foregroundStyle(.quaternary)
+                            Text(String(format: "%.1fh", client.hours))
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
                 }
                 .chartXAxis(.hidden)
@@ -158,6 +312,7 @@ struct ClientProfitabilityChartView: View {
 
 struct ServiceHoursChartView: View {
     let entries: [Entry]
+    let period: ReportPeriod
     @Environment(\.appTheme) private var theme
 
     private struct ServiceSlice: Identifiable {
@@ -179,11 +334,12 @@ struct ServiceHoursChartView: View {
     ]
 
     private var serviceData: [ServiceSlice] {
-        let done = entries.filter { $0.status == .done && $0.hours > 0 }
+        let done = period.filter(entries).filter { $0.hours > 0 }
         var grouped: [String: Double] = [:]
 
         for e in done {
-            grouped[e.service, default: 0] += e.hours
+            let key = e.service.uppercased()
+            grouped[key, default: 0] += e.hours
         }
 
         let sorted = grouped.sorted { $0.value > $1.value }
@@ -207,7 +363,7 @@ struct ServiceHoursChartView: View {
                 .font(.subheadline.weight(.semibold))
 
             if serviceData.isEmpty {
-                Text("No logged hours yet.")
+                Text("No logged hours in this period.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(height: 180)
