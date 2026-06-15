@@ -1,10 +1,14 @@
 import SwiftUI
 import SwiftData
+#if targetEnvironment(macCatalyst)
+import UIKit
+#endif
 
 @main
 struct BrickDotApp: App {
     @AppStorage(AppPrefsKey.colorScheme)  private var appearanceRaw: String = "system"
     @AppStorage("appearance.theme") private var themeRaw: String = "professional"
+    @Environment(\.scenePhase) private var scenePhase
 
     private var currentTheme: AppTheme {
         (ThemeKey(rawValue: themeRaw) ?? .professional).theme
@@ -55,11 +59,27 @@ struct BrickDotApp: App {
                 .onAppear {
                     if UserDefaults.standard.bool(forKey: "cloudkit.fallbackToLocal") {
                         UserDefaults.standard.set(false, forKey: "cloudkit.fallbackToLocal")
-                        // Next launch will retry CloudKit
                     }
+                    #if targetEnvironment(macCatalyst)
+                    if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                        scene.sizeRestrictions?.minimumSize = CGSize(width: 900, height: 600)
+                    }
+                    #endif
                 }
         }
         .modelContainer(container)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                refreshNotifications()
+            }
+        }
+    }
+
+    private func refreshNotifications() {
+        guard UserDefaults.standard.bool(forKey: AppPrefsKey.notificationsEnabled) else { return }
+        let ctx = container.mainContext
+        let entries = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
+        NotificationManager.shared.reschedule(entries: entries)
     }
 
     // MARK: - Appearance mapping
