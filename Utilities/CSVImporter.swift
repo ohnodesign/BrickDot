@@ -82,7 +82,7 @@ struct CSVImporter {
             guard cols.count >= colMap.minCols else { skipped += 1; continue }
 
             let customerName = cols[colMap.customer].trimmingCharacters(in: .whitespacesAndNewlines)
-            let service = cols[colMap.service].trimmingCharacters(in: .whitespacesAndNewlines)
+            let service = cols[colMap.service].trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
             let description = cols[colMap.description].trimmingCharacters(in: .whitespacesAndNewlines)
             let invoiceNo = cols[colMap.invoiceNo].trimmingCharacters(in: .whitespacesAndNewlines)
             let invoiceDateStr = cols[colMap.invoiceDate].trimmingCharacters(in: .whitespacesAndNewlines)
