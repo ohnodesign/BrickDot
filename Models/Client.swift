@@ -6,6 +6,11 @@ final class Client {
     var rate: Double = 0
     var colorIndex: Int = 0
     var shortcode: String = ""
+    var contactName: String = ""
+    var address: String = ""
+    var phone: String = ""
+    var businessPhone: String = ""
+    var email: String = ""
     @Relationship(deleteRule: .cascade, inverse: \Entry.client)
     var entries: [Entry]? = []
     @Relationship(deleteRule: .cascade, inverse: \EntryTemplate.client)

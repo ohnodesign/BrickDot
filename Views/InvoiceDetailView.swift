@@ -13,6 +13,8 @@ struct InvoiceDetailView: View {
     @State private var sharePayload: InvoiceSharePayload?
     @State private var showDocumentExport = false
     @State private var exportFileURL: URL? = nil
+    @State private var showDeleteConfirm = false
+    @Environment(\.dismiss) private var dismiss
 
     // Sorted entries on this invoice
     private var items: [Entry] {
@@ -31,13 +33,32 @@ struct InvoiceDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
 
-                // Header
+                // Header — editable title / number / date
                 InvoiceSectionTitle("Invoice")
-                InvoiceKeyValueRow("Title", invoice.title)
-                if let n = invoice.number, !n.isEmpty {
-                    InvoiceKeyValueRow("Number", n)
+                HStack {
+                    Text("Title")
+                    Spacer()
+                    TextField("Invoice title", text: $invoice.title)
+                        .multilineTextAlignment(.trailing)
+                        .textInputAutocapitalization(.words)
+                        .onChange(of: invoice.title) { _, _ in try? ctx.save() }
                 }
-                InvoiceKeyValueRow("Date", invoice.createdAt, asDate: true)
+                HStack {
+                    Text("Number")
+                    Spacer()
+                    TextField("e.g. 1001", text: Binding(
+                        get: { invoice.number ?? "" },
+                        set: { invoice.number = $0.isEmpty ? nil : $0; try? ctx.save() }
+                    ))
+                    .multilineTextAlignment(.trailing)
+                }
+                HStack {
+                    Text("Date")
+                    Spacer()
+                    DatePicker("", selection: $invoice.createdAt, displayedComponents: .date)
+                        .labelsHidden()
+                        .onChange(of: invoice.createdAt) { _, _ in try? ctx.save() }
+                }
                 InvoiceKeyValueRow("Client", invoice.client?.name ?? "Unknown")
 
                 Divider()
@@ -121,11 +142,37 @@ struct InvoiceDetailView: View {
                     Text(totalAmount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                         .fontWeight(.semibold)
                 }
+
+                Divider()
+
+                Button(role: .destructive) {
+                    showDeleteConfirm = true
+                } label: {
+                    HStack {
+                        Spacer()
+                        Label("Delete Invoice", systemImage: "trash")
+                        Spacer()
+                    }
+                }
+                .padding(.vertical, 8)
             }
             .padding(.horizontal)
             .padding(.top, 12)
         }
         .navigationTitle(invoice.title)
+        .alert("Delete Invoice?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) {
+                for entry in invoice.entriesList {
+                    entry.invoice = nil
+                }
+                ctx.delete(invoice)
+                try? ctx.save()
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Delete \(invoice.title)? The \(items.count) entries on this invoice will be kept but unlinked from this invoice.")
+        }
         .sheet(item: $sharePayload) { payload in
             ShareSheet(activityItems: payload.items).ignoresSafeArea()
         }
