@@ -47,8 +47,11 @@ struct StatsPageView: View {
                                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
                                 Text("Overdue")
                                 Spacer()
-                                Text("\(overdue.cou4
-                }
+                                Text("\(overdue.count)").foregroundStyle(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
 
                 // Calendar (minimal month)
                 Section("Calendar") {

@@ -16,6 +16,7 @@ final class Entry {
     var timerStartedAt: Date?
     var isImportant: Bool = false
     var isQuickCapture: Bool = false
+    var dueDate: Date? = nil
 
     // Timestamps
     var createdAt: Date = Date()
@@ -41,7 +42,8 @@ final class Entry {
          invoice: Invoice? = nil,
          isImportant: Bool = false,
          notes: String = "",     // ← NEW: default empty
-         isQuickCapture: Bool = false
+         isQuickCapture: Bool = false,
+         dueDate: Date? = nil
     ) {
         self.serviceDate = serviceDate
         self.service = service
@@ -57,6 +59,7 @@ final class Entry {
         self.invoice = invoice
         self.isImportant = isImportant
         self.isQuickCapture = isQuickCapture
+        self.dueDate = dueDate
     }
 
     /// Any change to a Quick Capture entry means it's no longer a raw, unreviewed capture.
