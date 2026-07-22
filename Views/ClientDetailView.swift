@@ -332,6 +332,7 @@ struct ClientDetailView: View {
     private func quickStart(_ e: Entry) {
         e.status = .inProgress
         if e.timerStartedAt == nil { e.timerStartedAt = Date() }
+        e.markModified()
         try? ctx.save()
     }
     private func quickPauseAndAdd(_ e: Entry) {
@@ -339,17 +340,20 @@ struct ClientDetailView: View {
         e.hours += e.runningElapsedHoursOrZero
         e.timeLogs.append(TimeLog(hours: e.runningElapsedHoursOrZero, entry: e))
         e.timerStartedAt = nil
+        e.markModified()
         try? ctx.save()
     }
     private func quickBump(_ e: Entry, _ h: Double) {
         e.hours += h
         e.timeLogs.append(TimeLog(hours: h, entry: e))
+        e.markModified()
         try? ctx.save()
     }
     private func markDone(_ e: Entry) {
         e.timerStartedAt = nil
         e.status = .done
         e.completedAt = Date()
+        e.markModified()
         try? ctx.save()
     }
 }

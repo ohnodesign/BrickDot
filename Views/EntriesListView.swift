@@ -29,6 +29,7 @@ struct EntriesListView: View, Identifiable {
                                 let e = allEntries[idx]
                                 e.hours += 0.25
                                 e.timeLogs.append(TimeLog(hours: 0.25, entry: e))
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: { Text("+15m") }.tint(.blue)
@@ -38,6 +39,7 @@ struct EntriesListView: View, Identifiable {
                                 let e = allEntries[idx]
                                 e.hours += 0.5
                                 e.timeLogs.append(TimeLog(hours: 0.5, entry: e))
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: { Text("+30m") }.tint(.indigo)
@@ -47,6 +49,7 @@ struct EntriesListView: View, Identifiable {
                                 let e = allEntries[idx]
                                 e.hours += 1.0
                                 e.timeLogs.append(TimeLog(hours: 1.0, entry: e))
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: { Text("+1h") }.tint(.purple)
@@ -57,6 +60,7 @@ struct EntriesListView: View, Identifiable {
                                 e.timerStartedAt = nil
                                 e.status = .done
                                 e.completedAt = Date()
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: {
@@ -81,6 +85,7 @@ struct EntriesListView: View, Identifiable {
                                 let e = allEntries[idx]
                                 e.hours += 0.25
                                 e.timeLogs.append(TimeLog(hours: 0.25, entry: e))
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: { Text("+15m") }.tint(.blue)
@@ -90,6 +95,7 @@ struct EntriesListView: View, Identifiable {
                                 let e = allEntries[idx]
                                 e.hours += 0.5
                                 e.timeLogs.append(TimeLog(hours: 0.5, entry: e))
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: { Text("+30m") }.tint(.indigo)
@@ -99,6 +105,7 @@ struct EntriesListView: View, Identifiable {
                                 let e = allEntries[idx]
                                 e.hours += 1.0
                                 e.timeLogs.append(TimeLog(hours: 1.0, entry: e))
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: { Text("+1h") }.tint(.purple)
@@ -109,6 +116,7 @@ struct EntriesListView: View, Identifiable {
                                 e.timerStartedAt = nil
                                 e.status = .done
                                 e.completedAt = Date()
+                                e.markModified()
                                 try? ctx.save()
                             }
                         } label: {

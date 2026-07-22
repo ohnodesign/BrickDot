@@ -58,4 +58,11 @@ final class Entry {
         self.isImportant = isImportant
         self.isQuickCapture = isQuickCapture
     }
+
+    /// Any change to a Quick Capture entry means it's no longer a raw, unreviewed capture.
+    func markModified() {
+        if isQuickCapture {
+            isQuickCapture = false
+        }
+    }
 }
