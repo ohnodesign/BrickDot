@@ -4,6 +4,15 @@ public enum EntryStatus: String, Codable, CaseIterable {
     case todo = "To Do"
     case inProgress = "In Progress"
     case done = "Done"
+
+    /// User-facing label, decoupled from rawValue so display wording can
+    /// change without touching the persisted status string.
+    var displayLabel: String {
+        switch self {
+        case .todo: return "On Deck"
+        default:    return rawValue
+        }
+    }
 }
 
 /// Canonical color mapping for status display across the app.

@@ -7,12 +7,8 @@ struct ClientDetailView: View {
     @Environment(\.appTheme) private var theme
     @Bindable var client: Client
 
-    // Collapsible sections (To Do / In Progress start collapsed)
+    // Collapsible sections
     @AppStorage("client.showDetails") private var showDetails = false
-    @AppStorage("client.showStarred") private var showStarred = true
-    @AppStorage("client.showTodo") private var showTodo = false
-    @AppStorage("client.showInProgress") private var showInProgress = false
-    @AppStorage("client.showDone") private var showDone = false
     @AppStorage("client.showStats") private var showStats = false
     @AppStorage("client.showInvoices") private var showInvoices = false
     @AppStorage("client.showRecent") private var showRecent = false
@@ -35,77 +31,6 @@ struct ClientDetailView: View {
 
     // Filtered for this client
     private var clientEntries: [Entry] { allEntries.filter { $0.client == client } }
-
-    private var clientStarredSorted: [Entry] {
-        clientEntries
-            .filter { $0.isImportant && $0.status != .done }
-            .sorted { $0.serviceDate > $1.serviceDate }
-    }
-
-    // Important-first sorting, then newest first
-    private var clientTodosSorted: [Entry] {
-        clientEntries
-            .filter { $0.status == .todo }
-            .sorted {
-                if $0.isImportant != $1.isImportant { return $0.isImportant && !$1.isImportant }
-                return $0.serviceDate > $1.serviceDate
-            }
-    }
-    private var clientInProgressSorted: [Entry] {
-        clientEntries
-            .filter { $0.status == .inProgress }
-            .sorted {
-                if $0.isImportant != $1.isImportant { return $0.isImportant && !$1.isImportant }
-                return $0.serviceDate > $1.serviceDate
-            }
-    }
-
-    private var clientDoneSorted: [Entry] {
-        clientEntries
-            .filter { $0.status == .done }
-            .sorted {
-                let d0 = $0.completedAt ?? $0.serviceDate
-                let d1 = $1.completedAt ?? $1.serviceDate
-                return d0 > d1
-            }
-    }
-
-    private struct MonthGroup {
-        let month: Int
-        let monthName: String
-        let entries: [Entry]
-    }
-
-    private struct YearGroup {
-        let year: Int
-        let months: [MonthGroup]
-        var totalCount: Int { months.reduce(0) { $0 + $1.entries.count } }
-    }
-
-    private var doneGroupedByYear: [YearGroup] {
-        let cal = Calendar.current
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMMM"
-
-        let grouped = Dictionary(grouping: clientDoneSorted) { e -> Int in
-            cal.component(.year, from: e.completedAt ?? e.serviceDate)
-        }
-
-        return grouped.keys.sorted(by: >).map { year in
-            let yearEntries = grouped[year]!
-            let byMonth = Dictionary(grouping: yearEntries) { e -> Int in
-                cal.component(.month, from: e.completedAt ?? e.serviceDate)
-            }
-            let monthGroups = byMonth.keys.sorted(by: >).map { month in
-                MonthGroup(
-                    month: month,
-                    monthName: formatter.monthSymbols[month - 1],
-                    entries: byMonth[month]!
-                )
-            }
-            return YearGroup(year: year, months: monthGroups)
-        }
-    }
 
     private var clientTodayDone: [Entry] {
         clientEntries.filter {
@@ -228,128 +153,8 @@ struct ClientDetailView: View {
                 }
             }
 
-            // Starred
-            Section {
-                DisclosureGroup(isExpanded: $showStarred) {
-                    let items = clientStarredSorted
-                    if items.isEmpty {
-                        Text("No starred items").foregroundStyle(.secondary)
-                    } else {
-                        ForEach(items) { e in
-                            NavigationLink { EditEntryView(entry: e) } label: {
-                                SharedEntryRow(entry: e)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "star.fill").foregroundStyle(.yellow)
-                        Text("Starred (\(clientStarredSorted.count))")
-                    }
-                }
-            }
-
-            // To Do - matches HomeView (star/dot before client, important-first)
-            Section {
-                DisclosureGroup(isExpanded: $showTodo) {
-                    let items = clientTodosSorted
-                    if items.isEmpty {
-                        Text("No to-do items").foregroundStyle(.secondary)
-                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                    } else {
-                        ForEach(items, id: \.persistentModelID) { e in
-                            NavigationLink { EditEntryView(entry: e) } label: {
-                                ClientTodoRow(entry: e)
-                            }
-                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        StatusDot(color: .orange)
-                        Text("To Do (\(clientTodosSorted.count))")
-                    }
-                }
-            }
-
-            // In Progress - matches HomeView + swipe actions, important-first
-            Section {
-                DisclosureGroup(isExpanded: $showInProgress) {
-                    let active = clientInProgressSorted
-                    if active.isEmpty {
-                        Text("No in-progress items").foregroundStyle(.secondary)
-                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                    } else {
-                        ForEach(active, id: \.persistentModelID) { e in
-                            NavigationLink { EditEntryView(entry: e) } label: {
-                                ClientInProgressRow(entry: e)
-                            }
-                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
-                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        StatusDot(color: theme.running) // solid red in header replaced with theme.running
-                        Text("In Progress (\(clientInProgressSorted.count))")
-                    }
-                }
-            }
-
-            // Done - grouped by year > month
-            Section {
-                DisclosureGroup(isExpanded: $showDone) {
-                    if clientDoneSorted.isEmpty {
-                        Text("No done items").foregroundStyle(.secondary)
-                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                    } else {
-                        ForEach(doneGroupedByYear, id: \.year) { yearGroup in
-                            DisclosureGroup {
-                                ForEach(yearGroup.months, id: \.month) { monthGroup in
-                                    DisclosureGroup {
-                                        ForEach(monthGroup.entries, id: \.persistentModelID) { e in
-                                            NavigationLink { EditEntryView(entry: e) } label: {
-                                                ClientDoneRow(entry: e)
-                                            }
-                                            .listRowInsets(EdgeInsets(top: 2, leading: 12, bottom: 2, trailing: 12))
-                                            .swipeActions(edge: .trailing, allowsFullSwipe: false) { trailingSwipe(e) }
-                                            .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(e) }
-                                        }
-                                    } label: {
-                                        HStack {
-                                            Text(monthGroup.monthName)
-                                                .font(.subheadline)
-                                            Spacer()
-                                            Text("\(monthGroup.entries.count)")
-                                                .font(.caption)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-                                }
-                            } label: {
-                                HStack {
-                                    Text(String(yearGroup.year))
-                                        .font(.subheadline.weight(.semibold))
-                                    Spacer()
-                                    Text("\(yearGroup.totalCount)")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 8) {
-                        StatusDot(color: .green)
-                        Text("Done (\(clientDoneSorted.count))")
-                    }
-                }
-            }
+            // Entries - filter pills, sort bar, unified list, collapsed Done
+            EntryListView(entries: clientEntries, isClientScoped: true)
 
             // Stats (completed-only)
             Section {
@@ -609,82 +414,12 @@ struct ClientDetailView: View {
         }
     }
 
-    // MARK: - Quick actions (same as HomeView)
-    private func quickStart(_ e: Entry) {
-        e.status = .inProgress
-        if e.timerStartedAt == nil { e.timerStartedAt = Date() }
-        try? ctx.save()
-    }
-    private func quickPauseAndAdd(_ e: Entry) {
-        guard e.timerStartedAt != nil else { return }
-        let elapsed = e.runningElapsedHoursOrZero
-        e.hours += elapsed
-        e.timeLogsList.append(TimeLog(hours: elapsed, entry: e))
-        e.timerStartedAt = nil
-        try? ctx.save()
-        NotificationManager.shared.cancelNoTimeLoggedReminder()
-    }
-    private func quickBump(_ e: Entry, _ h: Double) {
-        e.hours += h
-        e.timeLogsList.append(TimeLog(hours: h, entry: e))
-        try? ctx.save()
-        NotificationManager.shared.cancelNoTimeLoggedReminder()
-    }
-    private func markDone(_ e: Entry) {
-        e.timerStartedAt = nil
-        e.status = .done
-        e.completedAt = Date()
-        try? ctx.save()
-    }
-
     private func deleteInvoice(_ inv: Invoice) {
         for entry in inv.entriesList {
             entry.invoice = nil
         }
         ctx.delete(inv)
         try? ctx.save()
-    }
-
-    @ViewBuilder
-    func trailingSwipe(_ e: Entry) -> some View {
-        if e.status == .inProgress && e.timerStartedAt != nil {
-            Button { quickPauseAndAdd(e) } label: {
-                Label("Pause & Add", systemImage: "pause.circle")
-            }.tint(theme.dueToday)
-        } else if e.status != .done {
-            Button { quickStart(e) } label: {
-                Label("Start", systemImage: "play.circle")
-            }.tint(theme.success)
-        }
-        Button { quickBump(e, 0.25) } label: { Text("+15m") }.tint(theme.accent)
-        Button { quickBump(e, 0.5) }  label: { Text("+30m") }.tint(theme.accentHover)
-    }
-
-    @ViewBuilder
-    func leadingSwipe(_ e: Entry) -> some View {
-        Button {
-            e.isImportant.toggle()
-            try? ctx.save()
-        } label: {
-            Label(e.isImportant ? "Unstar" : "Star",
-                  systemImage: e.isImportant ? "star.slash.fill" : "star.fill")
-        }.tint(.yellow)
-
-        if e.status != .todo {
-            Button { e.status = .todo; e.timerStartedAt = nil; try? ctx.save() } label: {
-                Label("To Do", systemImage: "circle")
-            }.tint(theme.dueToday)
-        }
-        if e.status != .inProgress {
-            Button { e.status = .inProgress; if e.timerStartedAt == nil { e.timerStartedAt = Date() }; try? ctx.save() } label: {
-                Label("In Progress", systemImage: "bolt.fill")
-            }.tint(theme.running)
-        }
-        if e.status != .done {
-            Button { markDone(e) } label: {
-                Label("Done", systemImage: "checkmark.circle.fill")
-            }.tint(theme.success)
-        }
     }
 }
 
@@ -751,133 +486,6 @@ private struct StatusIconOrDot: View {
                 StatusDot(color: color)
             }
         }
-    }
-}
-
-// To Do row (star/dot before client)
-private struct ClientTodoRow: View {
-    let entry: Entry
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        HStack(spacing: 10) {
-            StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-                }
-                HStack(spacing: 6) {
-                    Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(theme.accent)
-                    Text("·").foregroundStyle(.secondary)
-                    Text(entry.clientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 2)
-    }
-}
-
-private struct ClientInProgressRow: View {
-    let entry: Entry
-    @Environment(\.appTheme) private var theme
-    @State private var tick = Date()
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
-
-    var body: some View {
-        HStack(spacing: 10) {
-            StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: entry.timerStartedAt != nil)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-                }
-                HStack(spacing: 6) {
-                    Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(theme.accent)
-                    Text("·").foregroundStyle(.secondary)
-                    Text(entry.clientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if entry.timerStartedAt != nil {
-                Text(entry.runningElapsedHoursOrZero.hoursMinutesString)
-                    .font(.caption.weight(.medium))
-                    .monospacedDigit()
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Capsule().fill(theme.running.opacity(0.15)))
-                    .foregroundStyle(theme.running)
-            } else {
-                Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 2)
-        .onReceive(timer) { tick = $0 }
-    }
-}
-
-private struct ClientDoneRow: View {
-    let entry: Entry
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        HStack(spacing: 10) {
-            StatusIconOrDot(status: entry.status, isImportant: entry.isImportant, pulsing: false)
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-                }
-                HStack(spacing: 6) {
-                    Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(theme.accent)
-                    Text("·").foregroundStyle(.secondary)
-                    Text(entry.clientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            Spacer()
-            if let completed = entry.completedAt {
-                Text(completed, format: .dateTime.month(.abbreviated).day())
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.vertical, 2)
     }
 }
 

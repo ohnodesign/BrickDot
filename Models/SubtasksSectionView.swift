@@ -10,7 +10,7 @@ struct SubtasksSectionView: View {
 
     var body: some View {
         Section(header: header) {
-            ForEach(template.subtasksList) { subtask in
+            ForEach(template.orderedSubtasks) { subtask in
                 SubtaskRow(subtask: subtask,
                            onDelete: { deleteSubtask(subtask) },
                            onMoveUp: { moveSubtaskUp(subtask) },
@@ -39,6 +39,9 @@ struct SubtasksSectionView: View {
             if !template.subtasksList.isEmpty {
                 Text("\(template.subtasksList.count)")
                     .foregroundStyle(.secondary)
+                EditButton()
+                    .font(.body)
+                    .textCase(nil)
             }
         }
     }
@@ -57,60 +60,64 @@ struct SubtasksSectionView: View {
 
     private func deleteSubtask(_ subtask: TemplateSubtask) {
         withAnimation {
-            if let idx = template.subtasksList.firstIndex(where: { $0 === subtask }) {
-                let doomed = template.subtasksList[idx]
-                modelContext.delete(doomed)
-                template.subtasksList.remove(at: idx)
-                normalizeOrders()
-                try? modelContext.save()
-            }
+            var items = template.orderedSubtasks
+            guard let idx = items.firstIndex(where: { $0 === subtask }) else { return }
+            items.remove(at: idx)
+            modelContext.delete(subtask)
+            renumber(items)
+            try? modelContext.save()
         }
     }
 
     private func moveSubtaskUp(_ subtask: TemplateSubtask) {
-        if let idx = template.subtasksList.firstIndex(where: { $0 === subtask }), idx > 0 {
-            withAnimation {
-                template.subtasksList.move(fromOffsets: IndexSet(integer: idx), toOffset: idx - 1)
-                normalizeOrders()
-                try? modelContext.save()
-            }
+        var items = template.orderedSubtasks
+        guard let idx = items.firstIndex(where: { $0 === subtask }), idx > 0 else { return }
+        withAnimation {
+            items.swapAt(idx, idx - 1)
+            renumber(items)
+            try? modelContext.save()
         }
     }
 
     private func moveSubtaskDown(_ subtask: TemplateSubtask) {
-        if let idx = template.subtasksList.firstIndex(where: { $0 === subtask }), idx < template.subtasksList.count - 1 {
-            withAnimation {
-                template.subtasksList.move(fromOffsets: IndexSet(integer: idx), toOffset: idx + 2)
-                normalizeOrders()
-                try? modelContext.save()
-            }
+        var items = template.orderedSubtasks
+        guard let idx = items.firstIndex(where: { $0 === subtask }), idx < items.count - 1 else { return }
+        withAnimation {
+            items.swapAt(idx, idx + 1)
+            renumber(items)
+            try? modelContext.save()
         }
     }
 
     private func deleteSubtasks(at offsets: IndexSet) {
         withAnimation {
-            for index in offsets {
-                let item = template.subtasksList[index]
-                modelContext.delete(item)
-            }
-            template.subtasksList.remove(atOffsets: offsets)
-            normalizeOrders()
+            var items = template.orderedSubtasks
+            let doomed = offsets.map { items[$0] }
+            items.remove(atOffsets: offsets)
+            for item in doomed { modelContext.delete(item) }
+            renumber(items)
             try? modelContext.save()
         }
     }
 
     private func moveSubtasks(from source: IndexSet, to destination: Int) {
         withAnimation {
-            template.subtasksList.move(fromOffsets: source, toOffset: destination)
-            normalizeOrders()
+            var items = template.orderedSubtasks
+            items.move(fromOffsets: source, toOffset: destination)
+            renumber(items)
             try? modelContext.save()
         }
     }
 
-    private func normalizeOrders() {
-        for (idx, subtask) in template.subtasksList.enumerated() {
-            if subtask.order != idx { subtask.order = idx }
+    /// Reassigns `order` to match the given display sequence (0-based, contiguous).
+    private func renumber(_ items: [TemplateSubtask]) {
+        for (idx, subtask) in items.enumerated() where subtask.order != idx {
+            subtask.order = idx
         }
+    }
+
+    private func normalizeOrders() {
+        renumber(template.orderedSubtasks)
     }
 }
 

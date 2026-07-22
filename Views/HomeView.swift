@@ -32,14 +32,6 @@ struct HomeView: View {
     private func isExpanded(_ key: String) -> Bool { expandedSections.contains(key) }
     private func toggleExpanded(_ key: String) { if expandedSections.contains(key) { expandedSections.remove(key) } else { expandedSections.insert(key) } }
 
-    private func statusColor(_ status: EntryStatus) -> Color {
-        switch status {
-        case .todo:       return theme.dueToday
-        case .inProgress: return theme.running
-        case .done:       return theme.success
-        }
-    }
-
     var body: some View {
             List {
                 // MARK: - Search bar (iPhone)
@@ -108,11 +100,26 @@ struct HomeView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                 }
 
-                // MARK: - Action List
-                if actionEntries.isEmpty && allEntries.isEmpty && showGettingStarted {
+                // MARK: - Quick Captures (pinned)
+                if !quickCaptureEntries.isEmpty {
+                    let quickCapCap = 3
+                    let quickCapExpanded = isExpanded("quickcaptures")
+                    Section {
+                        ForEach(quickCapExpanded ? quickCaptureEntries : Array(quickCaptureEntries.prefix(quickCapCap)), id: \.persistentModelID) { entry in
+                            NavigationLink { EditEntryView(entry: entry) } label: {
+                                QuickCaptureRow(entry: entry)
+                            }
+                        }
+                    } header: {
+                        sectionHeader("Quick Captures", count: quickCaptureEntries.count, cap: quickCapCap, key: "quickcaptures")
+                    }
+                }
+
+                // MARK: - Filtered List (filter pills, sort bar, unified list, done)
+                if mainListEntries.isEmpty && quickCaptureEntries.isEmpty && allEntries.isEmpty && showGettingStarted {
                     // Brand-new user: the Getting Started card is the empty state.
                     EmptyView()
-                } else if actionEntries.isEmpty {
+                } else if mainListEntries.isEmpty && quickCaptureEntries.isEmpty {
                     Section {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.seal.fill")
@@ -128,44 +135,7 @@ struct HomeView: View {
                         .padding(.vertical, 24)
                     }
                 } else {
-                    // Overdue
-                    cappedSection(key: "overdue", entries: overdueEntries, badge: .overdue,
-                                  icon: "exclamationmark.triangle.fill", title: "Overdue", tint: theme.overdue)
-
-                    // Due Today
-                    cappedSection(key: "today", entries: dueTodayEntries, badge: .dueToday,
-                                  icon: "sun.max.fill", title: "Due Today", tint: theme.dueToday)
-
-                    // Quick Captures
-                    cappedSection(key: "quickadd", entries: quickAddEntries, badge: ActionRowBadge.none,
-                                  icon: "plus.circle.fill", title: "Quick Captures", tint: theme.quickCapture, iconScale: 1.0)
-
-                    // In Progress (with timers)
-                    cappedSection(key: "inprogress", entries: inProgressEntries, badge: ActionRowBadge.none,
-                                  icon: "bolt.fill", title: "In Progress", tint: theme.running)
-
-                    // Upcoming
-                    cappedSection(key: "upcoming", entries: upcomingEntries, badge: nil,
-                                  icon: "calendar.badge.clock", title: "Upcoming", tint: theme.accent)
-
-                    // Backlog
-                    cappedSection(key: "backlog", entries: backlogEntries, badge: ActionRowBadge.none,
-                                  icon: "tray.fill", title: "Backlog", tint: theme.mutedText)
-                }
-
-                // MARK: - Done (collapsed)
-                if !doneEntries.isEmpty {
-                    let doneCap = 5
-                    let doneExpanded = isExpanded("done")
-                    Section {
-                        ForEach(doneExpanded ? Array(doneEntries.prefix(20)) : Array(doneEntries.prefix(doneCap))) { entry in
-                            NavigationLink { EditEntryView(entry: entry) } label: {
-                                ActionRow(entry: entry, badge: .none)
-                            }
-                        }
-                    } header: {
-                        sectionHeader("Done", count: doneEntries.count, cap: doneCap, key: "done")
-                    }
+                    EntryListView(entries: mainListEntries, isClientScoped: false)
                 }
             }
             .listStyle(.plain)
@@ -238,139 +208,7 @@ struct HomeView: View {
             }
     }
 
-    // MARK: - Swipe Actions
-    @ViewBuilder
-    private func entrySwipeActions(_ entry: Entry) -> some View {
-        if entry.status == .inProgress && entry.timerStartedAt != nil {
-            Button { quickPauseAndAdd(entry) } label: {
-                Label("Pause & Add", systemImage: "pause.circle")
-            }.tint(theme.dueToday)
-        } else if entry.status != .done {
-            Button { quickStart(entry) } label: {
-                Label("Start", systemImage: "play.circle")
-            }.tint(theme.success)
-        }
-        Button { quickBump(entry, 0.25) } label: { Text("+15m") }.tint(theme.accent)
-        Button { quickBump(entry, 0.5) }  label: { Text("+30m") }.tint(theme.accentHover)
-    }
-
-    @ViewBuilder
-    private func entryLeadingSwipeActions(_ entry: Entry) -> some View {
-        // Star / Unstar
-        Button {
-            entry.isImportant.toggle()
-            try? ctx.save()
-        } label: {
-            Label(entry.isImportant ? "Unstar" : "Star",
-                  systemImage: entry.isImportant ? "star.slash.fill" : "star.fill")
-        }
-        .tint(.yellow)
-
-        // Status changes
-        if entry.status != .todo {
-            Button {
-                entry.status = .todo
-                entry.timerStartedAt = nil
-                try? ctx.save()
-            } label: {
-                Label("To Do", systemImage: "circle")
-            }
-            .tint(theme.dueToday)
-        }
-        if entry.status != .inProgress {
-            Button {
-                entry.status = .inProgress
-                if entry.timerStartedAt == nil { entry.timerStartedAt = Date() }
-                try? ctx.save()
-            } label: {
-                Label("In Progress", systemImage: "bolt.fill")
-            }
-            .tint(theme.running)
-        }
-        if entry.status != .done {
-            Button {
-                entry.status = .done
-                entry.timerStartedAt = nil
-                entry.completedAt = Date()
-                try? ctx.save()
-            } label: {
-                Label("Done", systemImage: "checkmark.circle.fill")
-            }
-            .tint(theme.success)
-        }
-    }
-
-    // MARK: - Quick Actions
-    private func quickStart(_ e: Entry) {
-        e.status = .inProgress
-        if e.timerStartedAt == nil { e.timerStartedAt = Date() }
-        try? ctx.save()
-    }
-    private func quickPauseAndAdd(_ e: Entry) {
-        guard e.timerStartedAt != nil else { return }
-        let elapsed = e.runningElapsedHoursOrZero
-        e.hours += elapsed
-        e.timeLogsList.append(TimeLog(hours: elapsed, entry: e))
-        e.timerStartedAt = nil
-        try? ctx.save()
-        NotificationManager.shared.cancelNoTimeLoggedReminder()
-    }
-    private func quickBump(_ e: Entry, _ h: Double) {
-        e.hours += h
-        e.timeLogsList.append(TimeLog(hours: h, entry: e))
-        try? ctx.save()
-        NotificationManager.shared.cancelNoTimeLoggedReminder()
-    }
-    private func markDone(_ e: Entry) {
-        e.timerStartedAt = nil
-        e.status = .done
-        e.completedAt = Date()
-        try? ctx.save()
-    }
-
-    // MARK: - Capped Section Builder
-
-    @ViewBuilder
-    private func cappedSection(key: String, entries: [Entry], badge: ActionRowBadge?, icon: String, title: String, tint: Color, iconScale: CGFloat = 1.0) -> some View {
-        if !entries.isEmpty {
-            let cap = 3
-            let expanded = isExpanded(key)
-            let displayed = expanded ? entries : Array(entries.prefix(cap))
-
-            Section {
-                ForEach(displayed) { entry in
-                    Group {
-                        if let raw = entry.setupAction, let action = SetupAction(rawValue: raw) {
-                            // Starter todo: tapping jumps to the app section it asks for.
-                            Button {
-                                action.navigate()
-                            } label: {
-                                HStack {
-                                    ActionRow(entry: entry, badge: ActionRowBadge.none)
-                                    Image(systemName: "arrow.right.circle")
-                                        .foregroundStyle(theme.accent)
-                                        .imageScale(.large)
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        } else {
-                            NavigationLink { EditEntryView(entry: entry) } label: {
-                                ActionRow(entry: entry, badge: badge ?? dueBadge(for: entry))
-                            }
-                        }
-                    }
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        entrySwipeActions(entry)
-                    }
-                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                        entryLeadingSwipeActions(entry)
-                    }
-                }
-            } header: {
-                sectionHeader(title, count: entries.count, cap: cap, key: key)
-            }
-        }
-    }
+    // MARK: - Section Header (Today's Focus)
 
     @ViewBuilder
     private func sectionHeader(_ title: String, count: Int, cap: Int, key: String) -> some View {
@@ -400,7 +238,6 @@ struct HomeView: View {
     private var cal: Calendar { Calendar.current }
     private var todayStart: Date { cal.startOfDay(for: Date()) }
     private var todayEnd: Date { cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? Date() }
-    private var weekEnd: Date { Date().bdEndOfWeek }
 
     private func matchesSearch(_ entry: Entry) -> Bool {
         guard !searchText.isEmpty else { return true }
@@ -429,54 +266,17 @@ struct HomeView: View {
         }.count
     }
 
-    private var dueTodayEntries: [Entry] {
-        openEntries.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due >= todayStart && due <= todayEnd && e.status != .inProgress
-        }.sorted(by: prioritySort)
-    }
-
-    private var inProgressEntries: [Entry] {
-        openEntries.filter { $0.status == .inProgress }
-            .sorted { a, b in
-                // Timers running first
-                if (a.timerStartedAt != nil) != (b.timerStartedAt != nil) {
-                    return a.timerStartedAt != nil
-                }
-                return prioritySort(a, b)
-            }
-    }
-
-    private var quickAddEntries: [Entry] {
-        openEntries.filter { $0.isQuickAdd && $0.status == .todo }
+    private var quickCaptureEntries: [Entry] {
+        allEntries.filter { $0.isQuickAdd && matchesSearch($0) }
             .sorted { $0.createdAt > $1.createdAt }
     }
 
-    private var upcomingEntries: [Entry] {
-        let shown = Set(overdueEntries.map(\.persistentModelID))
-            .union(dueTodayEntries.map(\.persistentModelID))
-            .union(inProgressEntries.map(\.persistentModelID))
-            .union(quickAddEntries.map(\.persistentModelID))
-
-        return openEntries.filter { e in
-            guard !shown.contains(e.persistentModelID) else { return false }
-            guard let due = e.dueDate else { return false }
-            return due > todayEnd
-        }.sorted { ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
+    // Everything else shown below Today's Focus: filter pills + sort bar +
+    // unified list + collapsed Done, via the shared EntryListView.
+    private var mainListEntries: [Entry] {
+        let focusIDs = Set(todayFocusEntries.map(\.persistentModelID))
+        return allEntries.filter { !focusIDs.contains($0.persistentModelID) && matchesSearch($0) }
     }
-
-    private var backlogEntries: [Entry] {
-        let shown = Set(overdueEntries.map(\.persistentModelID))
-            .union(dueTodayEntries.map(\.persistentModelID))
-            .union(inProgressEntries.map(\.persistentModelID))
-            .union(quickAddEntries.map(\.persistentModelID))
-            .union(upcomingEntries.map(\.persistentModelID))
-
-        return openEntries.filter { !shown.contains($0.persistentModelID) }
-            .sorted(by: prioritySort)
-    }
-
-    private var actionEntries: [Entry] { openEntries }
 
     // Today's Focus: top 5 most urgent entries (overdue → due today → in progress → starred)
     private var todayFocusEntries: [Entry] {
@@ -519,11 +319,6 @@ struct HomeView: View {
         todayFocusEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
     }
 
-    private var doneEntries: [Entry] {
-        allEntries.filter { $0.status == .done && matchesSearch($0) }
-            .sorted { ($0.completedAt ?? $0.serviceDate) > ($1.completedAt ?? $1.serviceDate) }
-    }
-
     private var timersRunningCount: Int {
         allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }.count
     }
@@ -548,13 +343,6 @@ struct HomeView: View {
         }
     }
 
-    private func dueBadge(for entry: Entry) -> ActionRowBadge {
-        guard let due = entry.dueDate else { return .none }
-        if due < todayStart { return .overdue }
-        if due <= todayEnd { return .dueToday }
-        if due <= weekEnd { return .dueSoon }
-        return .none
-    }
 }
 
 // MARK: - Dashboard Row
@@ -620,122 +408,6 @@ private struct DashboardPill: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-    }
-}
-
-// MARK: - Action Row
-
-enum ActionRowBadge {
-    case none, overdue, dueToday, dueSoon
-}
-
-private struct ActionRow: View {
-    let entry: Entry
-    let badge: ActionRowBadge
-
-    @Environment(\.appTheme) private var theme
-
-    @State private var tick = Date()
-
-    private var hasRunningTimer: Bool {
-        entry.status == .inProgress && entry.timerStartedAt != nil
-    }
-
-    private var clientColor: Color {
-        entry.client?.accentColor ?? ClientColors.palette[0].color
-    }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            SharedStatusMark(
-                color: statusColor(entry.status),
-                isImportant: entry.isImportant,
-                pulsing: entry.status == .inProgress && entry.timerStartedAt != nil
-            )
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-
-                    if let due = entry.dueDate, badge != .none {
-                        dueBadgeView(due: due)
-                    }
-                }
-
-                HStack(spacing: 6) {
-                    Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(theme.accent)
-                    Text("·").foregroundStyle(.secondary)
-                    Text(entry.displayClientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            VStack(alignment: .trailing, spacing: 3) {
-                if entry.status == .inProgress, entry.timerStartedAt != nil {
-                    Text(entry.runningElapsedHoursOrZero.hoursMinutesString)
-                        .font(.caption.weight(.medium))
-                        .monospacedDigit()
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Capsule().fill(theme.running.opacity(0.15)))
-                        .foregroundStyle(theme.running)
-                } else {
-                    Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                if entry.hours > 0 {
-                    Text("\(entry.hours, specifier: "%.1f")h")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-            }
-        }
-        .padding(.vertical, 2)
-        .task(id: hasRunningTimer) {
-            guard hasRunningTimer else { return }
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                tick = Date()
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func dueBadgeView(due: Date) -> some View {
-        switch badge {
-        case .overdue:
-            badgePill("Overdue", color: theme.overdue)
-        case .dueToday:
-            badgePill("Today", color: theme.dueToday)
-        case .dueSoon:
-            badgePill(due.formatted(.dateTime.month(.abbreviated).day()), color: theme.accent)
-        case .none:
-            EmptyView()
-        }
-    }
-
-    private func badgePill(_ text: String, color: Color) -> some View {
-        Text(text)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 6)
-            .padding(.vertical, 2)
-            .background(Capsule().fill(color.opacity(0.15)))
-            .foregroundStyle(color)
     }
 }
 

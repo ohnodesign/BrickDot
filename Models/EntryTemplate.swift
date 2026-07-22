@@ -36,6 +36,12 @@ final class EntryTemplate {
         set { subtasks = newValue }
     }
 
+    /// Subtasks in their persisted display order. The underlying SwiftData
+    /// relationship is unordered, so always read through this when order matters.
+    var orderedSubtasks: [TemplateSubtask] {
+        subtasksList.sorted { $0.order < $1.order }
+    }
+
     init(
         name: String = "",
         service: String = "",

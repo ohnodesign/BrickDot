@@ -9,7 +9,7 @@ struct CoachView: View {
     @State private var input = ""
     @State private var isLoading = false
     @State private var error: String?
-    @State private var pendingAction: AIService.ToolUseRequest?
+    @State private var pendingChanges: [PendingChange] = []
     @StateObject private var speech = SpeechRecognizer()
 
     @Query private var profiles: [UserProfile]
@@ -22,6 +22,11 @@ struct CoachView: View {
         "Any tasks stalling?"
     ]
 
+    // Hide the internal tool_result turns; show only user/assistant chat.
+    private var visibleMessages: [AIService.Message] {
+        messages.filter { $0.toolResults.isEmpty }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if !AIService.hasAPIKey {
@@ -32,8 +37,14 @@ struct CoachView: View {
                 chatList
             }
 
-            if let action = pendingAction {
-                confirmationBar(action)
+            if !pendingChanges.isEmpty {
+                CoachConfirmationCard(
+                    changes: pendingChanges,
+                    accent: theme.accent,
+                    onApply: applyChanges,
+                    onDismiss: dismissChanges
+                )
+                .equatable()
             } else if AIService.hasAPIKey {
                 inputBar
             }
@@ -46,7 +57,7 @@ struct CoachView: View {
                     Button("Clear") {
                         messages.removeAll()
                         error = nil
-                        pendingAction = nil
+                        pendingChanges = []
                     }
                     .font(.subheadline)
                 }
@@ -69,7 +80,7 @@ struct CoachView: View {
                 .foregroundStyle(theme.accent)
             Text("AI Work Coach")
                 .font(.title2.weight(.bold))
-            Text("Ask me what to work on, or tell me to start timers, mark tasks done, and more.")
+            Text("Ask me what to work on, or tell me to start timers, reschedule, focus, and update tasks.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -121,11 +132,10 @@ struct CoachView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 12) {
-                    ForEach(messages) { msg in
-                        if msg.toolResultID == nil {
-                            ChatBubble(message: msg, theme: theme)
-                                .id(msg.id)
-                        }
+                    ForEach(visibleMessages) { msg in
+                        ChatBubble(message: msg)
+                            .equatable()
+                            .id(msg.id)
                     }
                     if isLoading {
                         HStack(spacing: 8) {
@@ -148,10 +158,12 @@ struct CoachView: View {
                 .padding(.vertical, 12)
             }
             .onChange(of: messages.count) { _, _ in
-                withAnimation {
-                    if let lastID = messages.last?.id {
-                        proxy.scrollTo(lastID, anchor: .bottom)
-                    }
+                guard let lastID = messages.last?.id else { return }
+                // Defer to the next runloop so freshly-appended rows lay out
+                // before scrolling. Scrolling to a not-yet-rendered row in a
+                // LazyVStack can send SwiftUI into a layout loop (a hang).
+                DispatchQueue.main.async {
+                    withAnimation { proxy.scrollTo(lastID, anchor: .bottom) }
                 }
             }
         }
@@ -191,62 +203,6 @@ struct CoachView: View {
         .background(.bar)
     }
 
-    // MARK: - Confirmation Bar
-
-    private func confirmationBar(_ action: AIService.ToolUseRequest) -> some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: iconForTool(action.name))
-                    .foregroundStyle(theme.accent)
-                Text(action.displayDescription)
-                    .font(.subheadline.weight(.medium))
-                    .lineLimit(2)
-                Spacer()
-            }
-            .padding(.horizontal, 16)
-
-            HStack(spacing: 12) {
-                Button {
-                    denyAction(action)
-                } label: {
-                    Text("Cancel")
-                        .font(.subheadline.weight(.medium))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray5)))
-                        .foregroundStyle(.primary)
-                }
-                .buttonStyle(.plain)
-
-                Button {
-                    confirmAction(action)
-                } label: {
-                    Text("Confirm")
-                        .font(.subheadline.weight(.bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 10).fill(theme.accent))
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
-            }
-            .padding(.horizontal, 16)
-        }
-        .padding(.vertical, 10)
-        .background(.bar)
-    }
-
-    private func iconForTool(_ name: String) -> String {
-        switch name {
-        case "start_timer": return "play.circle.fill"
-        case "stop_timer": return "pause.circle.fill"
-        case "mark_done": return "checkmark.circle.fill"
-        case "add_time": return "clock.badge.fill"
-        case "set_priority": return "star.fill"
-        default: return "wrench.fill"
-        }
-    }
-
     // MARK: - Speech
 
     private func toggleSpeech() {
@@ -271,36 +227,37 @@ struct CoachView: View {
 
         if speech.isRecording { speech.stopRecording() }
 
-        let userMsg = AIService.Message(role: .user, content: trimmed)
-        messages.append(userMsg)
+        messages.append(AIService.Message(role: .user, content: trimmed))
         input = ""
         error = nil
         isLoading = true
 
-        let taskJSON = TaskDataSerializer.buildPayload(context: ctx)
         let history = messages
-        let service = AIService(
-            taskJSON: taskJSON,
-            userName: profile?.displayName ?? "",
-            companyName: profile?.companyName ?? ""
-        )
+        let container = ctx.container
+        let userName = profile?.displayName ?? ""
+        let company = profile?.companyName ?? ""
 
         Task {
+            // Build the task payload off the main thread — serializing every
+            // entry (and encoding their ids) is too heavy for the main thread.
+            let taskJSON = await PayloadBuilder(modelContainer: container).build()
+            let service = AIService(taskJSON: taskJSON, userName: userName, companyName: company)
             do {
                 let response = try await service.send(messages: history)
 
                 await MainActor.run {
-                    if let toolUse = response.toolUse {
-                        let assistantMsg = AIService.Message(
+                    if response.toolCalls.isEmpty {
+                        messages.append(AIService.Message(role: .assistant, content: response.text))
+                    } else {
+                        messages.append(AIService.Message(
                             role: .assistant,
                             content: response.text,
-                            toolUse: toolUse
-                        )
-                        messages.append(assistantMsg)
-                        pendingAction = toolUse
-                    } else {
-                        let assistantMsg = AIService.Message(role: .assistant, content: response.text)
-                        messages.append(assistantMsg)
+                            toolCalls: response.toolCalls
+                        ))
+                        let resolver = EntryResolver(ctx)
+                        pendingChanges = response.toolCalls.map { call in
+                            PendingChange(summary: describe(call, resolver: resolver), toolCall: call)
+                        }
                     }
                     isLoading = false
                 }
@@ -313,133 +270,194 @@ struct CoachView: View {
         }
     }
 
-    // MARK: - Tool Execution
+    // MARK: - Apply / Dismiss
 
-    private func confirmAction(_ action: AIService.ToolUseRequest) {
-        let result = executeAction(action)
-        pendingAction = nil
+    private func applyChanges() {
+        // Apply on the main context and save once — the same path the task
+        // editor uses for a single-field change, which saves cleanly.
+        let calls = pendingChanges.map { $0.toolCall }
+        pendingChanges = []
 
-        let toolResultMsg = AIService.Message(
-            role: .user,
-            content: result,
-            toolResultID: action.id
-        )
-        messages.append(toolResultMsg)
+        var blocks: [ToolResultBlock] = []
+        for call in calls {
+            let text = CoachToolExecutor.execute(call, context: ctx)
+            blocks.append(ToolResultBlock(toolUseID: call.id, content: text))
+        }
+        try? ctx.save()
 
-        let confirmMsg = AIService.Message(role: .assistant, content: result)
-        messages.append(confirmMsg)
+        messages.append(AIService.Message(role: .user, content: "", toolResults: blocks))
+        let summary: String
+        if blocks.count == 1 {
+            summary = blocks[0].content
+        } else {
+            summary = "Done:\n" + blocks.map { "• \($0.content)" }.joined(separator: "\n")
+        }
+        messages.append(AIService.Message(role: .assistant, content: summary))
     }
 
-    private func denyAction(_ action: AIService.ToolUseRequest) {
-        pendingAction = nil
-
-        let toolResultMsg = AIService.Message(
-            role: .user,
-            content: "Action cancelled by user.",
-            toolResultID: action.id
-        )
-        messages.append(toolResultMsg)
-
-        let cancelMsg = AIService.Message(role: .assistant, content: "No problem — cancelled.")
-        messages.append(cancelMsg)
+    private func dismissChanges() {
+        let results = pendingChanges.map {
+            ToolResultBlock(toolUseID: $0.toolCall.id, content: "Change dismissed by the user.")
+        }
+        messages.append(AIService.Message(role: .user, content: "", toolResults: results))
+        messages.append(AIService.Message(role: .assistant, content: "No problem — dismissed."))
+        pendingChanges = []
     }
 
-    private func executeAction(_ action: AIService.ToolUseRequest) -> String {
-        let desc = action.input["task_description"] ?? ""
-        guard let entry = findEntry(matching: desc) else {
-            return "Could not find a task matching \"\(desc)\"."
+    // MARK: - Change Summaries (read-only)
+
+    private func describe(_ call: CoachToolCall, resolver: EntryResolver) -> String {
+        func names(_ key: String) -> String {
+            let ids = call.stringArray(key)
+            let entries = resolver.entries(ids)
+            if entries.isEmpty { return "\(ids.count) task(s)" }
+            let ns = entries.map { CoachToolFormat.name($0) }
+            if ns.count == 1 { return "\"\(ns[0])\"" }
+            if ns.count <= 3 { return ns.map { "\"\($0)\"" }.joined(separator: ", ") }
+            return "\(ns.count) tasks"
         }
 
-        switch action.name {
-        case "start_timer":
-            entry.status = .inProgress
-            if entry.timerStartedAt == nil { entry.timerStartedAt = Date() }
-            try? ctx.save()
-            return "Started timer on \"\(entry.detail.isEmpty ? entry.service : entry.detail)\"."
-
-        case "stop_timer":
-            guard let started = entry.timerStartedAt else {
-                return "No timer running on that task."
+        switch call.name {
+        case "moveTaskToFocus":
+            return "Star \(names("taskIds")) for Today's Focus"
+        case "removeFromFocus":
+            return "Remove \(names("taskIds")) from Today's Focus"
+        case "updateDueDate":
+            if let shift = call.string("shift") {
+                return "Move due date for \(names("taskIds")) to \(CoachToolFormat.shiftLabel(shift))"
+            } else if let ds = call.string("dueDate") {
+                return "Set due date for \(names("taskIds")) to \(ds)"
             }
-            let elapsed = Date().timeIntervalSince(started) / 3600
-            entry.hours += elapsed
-            entry.timeLogsList.append(TimeLog(hours: elapsed, entry: entry))
-            entry.timerStartedAt = nil
-            try? ctx.save()
-            let mins = Int(elapsed * 60)
-            return "Stopped timer on \"\(entry.detail.isEmpty ? entry.service : entry.detail)\" — logged \(mins) min."
-
+            return "Update due date for \(names("taskIds"))"
+        case "updateTaskStatus":
+            let raw = call.string("status") ?? ""
+            return "Mark \(names("taskIds")) as \(CoachToolFormat.statusFrom(raw).map(CoachToolFormat.statusLabel) ?? raw)"
+        case "bulkUpdate":
+            return "Apply \(call.objectArray("updates").count) changes to tasks"
+        case "start_timer":
+            return "Start timer on \"\(call.string("task_description") ?? "task")\""
+        case "stop_timer":
+            return "Stop timer on \"\(call.string("task_description") ?? "task")\""
         case "mark_done":
-            entry.status = .done
-            entry.timerStartedAt = nil
-            entry.completedAt = Date()
-            try? ctx.save()
-            return "Marked \"\(entry.detail.isEmpty ? entry.service : entry.detail)\" as done."
-
+            return "Mark \"\(call.string("task_description") ?? "task")\" as done"
         case "add_time":
-            let minutes = Double(action.input["minutes"] ?? "0") ?? 0
-            let hours = minutes / 60
-            entry.hours += hours
-            entry.timeLogsList.append(TimeLog(hours: hours, entry: entry))
-            try? ctx.save()
-            return "Added \(Int(minutes)) min to \"\(entry.detail.isEmpty ? entry.service : entry.detail)\"."
-
+            return "Add \(call.string("minutes") ?? "?") min to \"\(call.string("task_description") ?? "task")\""
         case "set_priority":
-            let isHigh = action.input["priority"] == "high"
-            entry.isImportant = isHigh
-            try? ctx.save()
-            return "Set \"\(entry.detail.isEmpty ? entry.service : entry.detail)\" to \(isHigh ? "high" : "normal") priority."
-
+            return "Set \"\(call.string("task_description") ?? "task")\" priority to \(call.string("priority") ?? "?")"
         default:
-            return "Unknown action."
+            return call.name
         }
     }
+}
 
-    private func findEntry(matching description: String) -> Entry? {
-        let allEntries = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
-        let open = allEntries.filter { $0.status != .done }
-        let query = description.lowercased()
+// MARK: - Confirmation Card
 
-        if let exact = open.first(where: {
-            $0.detail.lowercased() == query || $0.service.lowercased() == query
-        }) {
-            return exact
+private struct CoachConfirmationCard: View, Equatable {
+    let changes: [PendingChange]
+    let accent: Color
+    let onApply: () -> Void
+    let onDismiss: () -> Void
+
+    // Compare by change identity (closures are stable methods, ignored here) so
+    // SwiftUI never structurally walks the PendingChange values.
+    static func == (lhs: CoachConfirmationCard, rhs: CoachConfirmationCard) -> Bool {
+        lhs.changes.map(\.id) == rhs.changes.map(\.id) && lhs.accent == rhs.accent
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "wand.and.stars")
+                    .foregroundStyle(.secondary)
+                Text(changes.count == 1 ? "Proposed change" : "Proposed changes")
+                    .font(.subheadline.weight(.medium))
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Divider()
+
+            ForEach(changes) { change in
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 6))
+                        .foregroundStyle(accent)
+                        .padding(.top, 6)
+                    Text(change.summary)
+                        .font(.subheadline)
+                }
+            }
+
+            HStack(spacing: 12) {
+                Button {
+                    onDismiss()
+                } label: {
+                    Text("Dismiss")
+                        .font(.subheadline.weight(.medium))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(Color(.systemGray5)))
+                        .foregroundStyle(.primary)
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    onApply()
+                } label: {
+                    Text(changes.count == 1 ? "Apply" : "Apply All")
+                        .font(.subheadline.weight(.bold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(RoundedRectangle(cornerRadius: 10).fill(accent))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.top, 4)
         }
-
-        return open.first(where: {
-            $0.detail.lowercased().contains(query) ||
-            $0.service.lowercased().contains(query) ||
-            query.contains($0.detail.lowercased()) ||
-            query.contains($0.service.lowercased())
-        })
+        .padding()
+        .background(.bar)
     }
 }
 
 // MARK: - Chat Bubble
 
-private struct ChatBubble: View {
+private struct ChatBubble: View, Equatable {
     let message: AIService.Message
-    let theme: AppTheme
+    @Environment(\.appTheme) private var theme
+
+    // Messages are append-only and never mutated, so identity is sufficient.
+    // Conforming to Equatable + `.equatable()` makes SwiftUI compare rows by id
+    // instead of structurally walking the whole message (which was pinning the
+    // main thread in AttributeGraph's value comparison).
+    static func == (lhs: ChatBubble, rhs: ChatBubble) -> Bool {
+        lhs.message.id == rhs.message.id
+    }
 
     var body: some View {
         HStack {
             if message.role == .user { Spacer(minLength: 60) }
 
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                Text(message.content)
-                    .font(.body)
-                    .padding(12)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(message.role == .user ? theme.accent : Color(.systemGray6))
-                    )
-                    .foregroundStyle(message.role == .user ? .white : .primary)
+                if !message.content.isEmpty {
+                    Text(message.content)
+                        .font(.body)
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(message.role == .user ? theme.accent : Color(.systemGray6))
+                        )
+                        .foregroundStyle(message.role == .user ? .white : .primary)
+                }
 
-                if let toolUse = message.toolUse {
+                if !message.toolCalls.isEmpty {
                     HStack(spacing: 4) {
                         Image(systemName: "wrench.fill")
                             .font(.caption2)
-                        Text(toolUse.displayDescription)
+                        Text("\(message.toolCalls.count) proposed change\(message.toolCalls.count == 1 ? "" : "s")")
                             .font(.caption)
                     }
                     .foregroundStyle(.secondary)

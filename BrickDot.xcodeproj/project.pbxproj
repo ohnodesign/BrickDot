@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		39DBBEDBB80A424FBFE1045F /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308ADFE7164B4275830B6745 /* AIService.swift */; };
+		AABB11CC22DD33EE44FF5501 /* CoachToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11CC22DD33EE44FF5502 /* CoachToolModels.swift */; };
+		AABB11CC22DD33EE44FF5503 /* CoachToolWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11CC22DD33EE44FF5504 /* CoachToolWriter.swift */; };
 		56449446042E4A99A0524855 /* InvoicePDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85F67452D64B466F96EAC824 /* InvoicePDFRenderer.swift */; };
 		641EAE95C9BAC6DA7C66E2BC /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4ACCA611E51643F69DDAC54 /* UserProfile.swift */; };
 		80EBB0D0B8534DC8B6B2EE0C /* CoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E99887AC14A84BD1A61B3ECA /* CoachView.swift */; };
@@ -16,6 +18,7 @@
 		EE02CC6C2E4E31F000173CC4 /* EditEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC6B2E4E31F000173CC4 /* EditEntryView.swift */; };
 		EE02CC702E4E373900173CC4 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC6F2E4E373900173CC4 /* DocumentPicker.swift */; };
 		EE0C627E2E4F601C0008DDE4 /* ClientDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */; };
+		3F10911D3601473036CF262B /* EntryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78253F17C58F942AE90C87A5 /* EntryListView.swift */; };
 		EE0E53772EA9CB4100C07E2E /* StatsSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */; };
 		EE0E53792EA9CC0C00C07E2E /* StatsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */; };
 		EE0E537B2EA9CDE300C07E2E /* StatsPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E537A2EA9CDE300C07E2E /* StatsPageView.swift */; };
@@ -72,6 +75,8 @@
 
 /* Begin PBXFileReference section */
 		308ADFE7164B4275830B6745 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
+		AABB11CC22DD33EE44FF5502 /* CoachToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolModels.swift; sourceTree = "<group>"; };
+		AABB11CC22DD33EE44FF5504 /* CoachToolWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolWriter.swift; sourceTree = "<group>"; };
 		85F67452D64B466F96EAC824 /* InvoicePDFRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicePDFRenderer.swift; sourceTree = "<group>"; };
 		D4ACCA611E51643F69DDAC54 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		E99887AC14A84BD1A61B3ECA /* CoachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachView.swift; sourceTree = "<group>"; };
@@ -80,6 +85,7 @@
 		EE02CC6B2E4E31F000173CC4 /* EditEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditEntryView.swift; sourceTree = "<group>"; };
 		EE02CC6F2E4E373900173CC4 /* DocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
 		EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientDetailView.swift; sourceTree = "<group>"; };
+		78253F17C58F942AE90C87A5 /* EntryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryListView.swift; sourceTree = "<group>"; };
 		EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsSectionView.swift; sourceTree = "<group>"; };
 		EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsComponents.swift; sourceTree = "<group>"; };
 		EE0E537A2EA9CDE300C07E2E /* StatsPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsPageView.swift; sourceTree = "<group>"; };
@@ -201,6 +207,7 @@
 				EECB80BB2FCDC9ED007252D5 /* QuickAddView.swift */,
 				EECB80B92FCDC488007252D5 /* SearchView.swift */,
 				EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */,
+				78253F17C58F942AE90C87A5 /* EntryListView.swift */,
 				EEB9C9812E4FC907009D95B9 /* ClientListView.swift */,
 				EEC377932E921DC80066C54E /* Colors.swift */,
 				EEA142532E942FCF00ACB8DD /* Date+Bounds.swift */,
@@ -242,6 +249,8 @@
 				EECB80BF2FCDE69E007252D5 /* AppTheme.swift */,
 				FEA8EDC224D5497C8F236CA2 /* TaskDataSerializer.swift */,
 				308ADFE7164B4275830B6745 /* AIService.swift */,
+				AABB11CC22DD33EE44FF5502 /* CoachToolModels.swift */,
+				AABB11CC22DD33EE44FF5504 /* CoachToolWriter.swift */,
 				EECB80BD2FCDCBEB007252D5 /* SpeechRecognizer.swift */,
 				EEDCD68F2E4D7CCF00C792C4 /* CSVExporter.swift */,
 				EEDCD6902E4D7CCF00C792C4 /* ShareSheet.swift */,
@@ -368,6 +377,8 @@
 				EECB80C02FCDE69E007252D5 /* AppTheme.swift in Sources */,
 				EEC46E782FD9C0050047ABBE /* ReportsChartsView.swift in Sources */,
 				39DBBEDBB80A424FBFE1045F /* AIService.swift in Sources */,
+				AABB11CC22DD33EE44FF5501 /* CoachToolModels.swift in Sources */,
+				AABB11CC22DD33EE44FF5503 /* CoachToolWriter.swift in Sources */,
 				EB3A162D0B164E2F84430D72 /* TaskDataSerializer.swift in Sources */,
 				80EBB0D0B8534DC8B6B2EE0C /* CoachView.swift in Sources */,
 				EEABCEB32E4E47A20029A98C /* HomeView.swift in Sources */,
@@ -378,6 +389,7 @@
 				EE0E53772EA9CB4100C07E2E /* StatsSectionView.swift in Sources */,
 				EEB9C9742E4FC7FA009D95B9 /* Backup.swift in Sources */,
 				EE0C627E2E4F601C0008DDE4 /* ClientDetailView.swift in Sources */,
+				3F10911D3601473036CF262B /* EntryListView.swift in Sources */,
 				EEA142542E942FCF00ACB8DD /* Date+Bounds.swift in Sources */,
 				EEC744BD2E5D10D500E9D21A /* InvoiceDetailView.swift in Sources */,
 				EEC377902E921A860066C54E /* StatPill.swift in Sources */,

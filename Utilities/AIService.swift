@@ -8,45 +8,23 @@ actor AIService {
         let id = UUID()
         let role: Role
         let content: String
-        let toolUse: ToolUseRequest?
-        let toolResultID: String?
+        let toolCalls: [CoachToolCall]      // assistant tool_use blocks
+        let toolResults: [ToolResultBlock]  // user tool_result blocks
         let timestamp = Date()
 
         enum Role: String { case user, assistant }
 
-        init(role: Role, content: String, toolUse: ToolUseRequest? = nil, toolResultID: String? = nil) {
+        init(role: Role,
+             content: String,
+             toolCalls: [CoachToolCall] = [],
+             toolResults: [ToolResultBlock] = []) {
             self.role = role
             self.content = content
-            self.toolUse = toolUse
-            self.toolResultID = toolResultID
+            self.toolCalls = toolCalls
+            self.toolResults = toolResults
         }
 
         static func == (lhs: Message, rhs: Message) -> Bool { lhs.id == rhs.id }
-    }
-
-    struct ToolUseRequest: Equatable {
-        let id: String
-        let name: String
-        let input: [String: String]
-
-        var displayDescription: String {
-            switch name {
-            case "start_timer":
-                return "Start timer on \"\(input["task_description"] ?? "unknown")\""
-            case "stop_timer":
-                return "Stop timer on \"\(input["task_description"] ?? "unknown")\""
-            case "mark_done":
-                return "Mark \"\(input["task_description"] ?? "unknown")\" as done"
-            case "add_time":
-                let mins = input["minutes"] ?? "?"
-                return "Add \(mins) min to \"\(input["task_description"] ?? "unknown")\""
-            case "set_priority":
-                let level = input["priority"] ?? "?"
-                return "Set \"\(input["task_description"] ?? "unknown")\" priority to \(level)"
-            default:
-                return "\(name)"
-            }
-        }
     }
 
     // MARK: - API Key
@@ -63,6 +41,7 @@ actor AIService {
     // MARK: - Tool Definitions
 
     static let tools: [[String: Any]] = [
+        // --- Legacy, description-matched tools ---
         [
             "name": "start_timer",
             "description": "Start the timer on a task. Use the task_description to identify which task.",
@@ -141,6 +120,111 @@ actor AIService {
                 ],
                 "required": ["task_description", "priority"]
             ] as [String: Any]
+        ] as [String: Any],
+
+        // --- ID-based bulk-capable tools ---
+        [
+            "name": "moveTaskToFocus",
+            "description": "Surface one or more tasks in Today's Focus by starring them (high priority). The app has no manual focus flag; starring is how a task earns its place in the focus list.",
+            "input_schema": [
+                "type": "object",
+                "properties": [
+                    "taskIds": [
+                        "type": "array",
+                        "items": ["type": "string"] as [String: Any],
+                        "description": "Array of task ids (UUIDs) to star for Today's Focus"
+                    ] as [String: Any]
+                ],
+                "required": ["taskIds"]
+            ] as [String: Any]
+        ] as [String: Any],
+        [
+            "name": "removeFromFocus",
+            "description": "Remove one or more tasks from Today's Focus by unstarring them. Does not change task status.",
+            "input_schema": [
+                "type": "object",
+                "properties": [
+                    "taskIds": [
+                        "type": "array",
+                        "items": ["type": "string"] as [String: Any]
+                    ] as [String: Any]
+                ],
+                "required": ["taskIds"]
+            ] as [String: Any]
+        ] as [String: Any],
+        [
+            "name": "updateDueDate",
+            "description": "Set or shift the due date on one or more tasks. Use dueDate for an absolute date, or shift for a relative change.",
+            "input_schema": [
+                "type": "object",
+                "properties": [
+                    "taskIds": [
+                        "type": "array",
+                        "items": ["type": "string"] as [String: Any],
+                        "description": "Array of task ids (UUIDs) to update"
+                    ] as [String: Any],
+                    "dueDate": [
+                        "type": "string",
+                        "description": "Absolute due date in yyyy-MM-dd format, e.g. 2026-07-31"
+                    ] as [String: Any],
+                    "shift": [
+                        "type": "string",
+                        "enum": ["tomorrow", "nextWeek", "clear"],
+                        "description": "Relative shift: tomorrow, nextWeek, or clear to remove the due date"
+                    ] as [String: Any]
+                ],
+                "required": ["taskIds"]
+            ] as [String: Any]
+        ] as [String: Any],
+        [
+            "name": "updateTaskStatus",
+            "description": "Change the status of one or more tasks.",
+            "input_schema": [
+                "type": "object",
+                "properties": [
+                    "taskIds": [
+                        "type": "array",
+                        "items": ["type": "string"] as [String: Any]
+                    ] as [String: Any],
+                    "status": [
+                        "type": "string",
+                        "enum": ["to_do", "in_progress", "done"],
+                        "description": "New status to apply"
+                    ] as [String: Any]
+                ],
+                "required": ["taskIds", "status"]
+            ] as [String: Any]
+        ] as [String: Any],
+        [
+            "name": "bulkUpdate",
+            "description": "Apply different changes to different tasks in one call. Use when tasks need different updates simultaneously.",
+            "input_schema": [
+                "type": "object",
+                "properties": [
+                    "updates": [
+                        "type": "array",
+                        "items": [
+                            "type": "object",
+                            "properties": [
+                                "taskId": ["type": "string"] as [String: Any],
+                                "moveToFocus": ["type": "boolean"] as [String: Any],
+                                "removeFromFocus": ["type": "boolean"] as [String: Any],
+                                "dueDate": ["type": "string"] as [String: Any],
+                                "shift": [
+                                    "type": "string",
+                                    "enum": ["tomorrow", "nextWeek", "clear"]
+                                ] as [String: Any],
+                                "status": [
+                                    "type": "string",
+                                    "enum": ["to_do", "in_progress", "done"]
+                                ] as [String: Any]
+                            ] as [String: Any],
+                            "required": ["taskId"]
+                        ] as [String: Any]
+                    ] as [String: Any]
+                ],
+                "required": ["updates"]
+            ] as [String: Any]
         ] as [String: Any]
     ]
 
@@ -161,6 +245,14 @@ actor AIService {
         }
         let userRef = name.isEmpty ? "the user" : name
 
+        let human = DateFormatter()
+        human.dateFormat = "EEEE, MMMM d, yyyy"
+        human.locale = Locale(identifier: "en_US_POSIX")
+        let iso = DateFormatter()
+        iso.dateFormat = "yyyy-MM-dd"
+        iso.locale = Locale(identifier: "en_US_POSIX")
+        let now = Date()
+
         self.systemPrompt = """
         You are a work coach and productivity assistant for \(userDescription). You help them stay organized, prioritize tasks, and keep track of time across multiple clients.
         Here is their current task and time data:
@@ -171,15 +263,28 @@ actor AIService {
         - Flag anything that looks like it's been sitting too long without activity
         - Keep responses concise — they're usually checking in quickly between tasks
         - If they ask what to work on, give them a short, confident recommendation — not a long list
-        - When they ask you to do something (start a timer, mark done, add time, etc.), use the appropriate tool
-        - When using a tool, match the task_description to the closest matching task in the data
-        - Always include a brief text response along with any tool use
+
+        You can make changes to their tasks using tools. When they ask you to start, stop, reschedule, focus, or update tasks, call the appropriate tool rather than just describing what to do.
+
+        Task identification:
+        - For start_timer, stop_timer, mark_done, add_time, and set_priority, match task_description to the closest matching task in the data.
+        - moveTaskToFocus, removeFromFocus, updateDueDate, updateTaskStatus, and bulkUpdate reference tasks by their "id" (a UUID) from the data. Use bulkUpdate when different tasks need different changes in the same request.
+
+        Today's Focus is the app's prioritized short list. There is no manual focus flag — a task earns its place by being starred (high priority), overdue, due today, or actively timed. So:
+        - moveTaskToFocus stars the given tasks so they surface in Today's Focus.
+        - removeFromFocus unstars them.
+        - A task with a future due date may not appear in focus until that date even when starred — mention this if it's relevant.
+
+        Status values are "to_do", "in_progress", and "done". For updateDueDate, use shift="tomorrow"/"nextWeek"/"clear" for relative changes, or dueDate (yyyy-MM-dd) for an absolute date.
+
+        Always include a brief text response confirming what you're about to do alongside any tool call — one short sentence like "I'll move those three to tomorrow."
+        Today is \(human.string(from: now)) (\(iso.string(from: now))).
         """
     }
 
     // MARK: - Send
 
-    func send(messages: [Message]) async throws -> AIResponse {
+    func send(messages: [Message]) async throws -> CoachResponse {
         let key = Self.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { throw AIError.noAPIKey }
 
@@ -195,7 +300,7 @@ actor AIService {
 
         let body: [String: Any] = [
             "model": "claude-haiku-4-5-20251001",
-            "max_tokens": 1024,
+            "max_tokens": 2048,
             "system": systemPrompt,
             "tools": Self.tools,
             "messages": apiMessages
@@ -222,28 +327,21 @@ actor AIService {
         }
 
         var text = ""
-        var toolUse: ToolUseRequest?
+        var toolCalls: [CoachToolCall] = []
 
         for block in content {
-            if let blockType = block["type"] as? String {
-                if blockType == "text", let t = block["text"] as? String {
-                    text = t
-                } else if blockType == "tool_use",
-                          let id = block["id"] as? String,
-                          let name = block["name"] as? String,
-                          let rawInput = block["input"] as? [String: Any] {
-                    let stringInput = rawInput.mapValues { "\($0)" }
-                    toolUse = ToolUseRequest(id: id, name: name, input: stringInput)
-                }
+            guard let blockType = block["type"] as? String else { continue }
+            if blockType == "text", let t = block["text"] as? String {
+                text += t
+            } else if blockType == "tool_use",
+                      let id = block["id"] as? String,
+                      let name = block["name"] as? String,
+                      let rawInput = block["input"] as? [String: Any] {
+                toolCalls.append(CoachToolCall(id: id, name: name, input: rawInput))
             }
         }
 
-        return AIResponse(text: text, toolUse: toolUse)
-    }
-
-    struct AIResponse {
-        let text: String
-        let toolUse: ToolUseRequest?
+        return CoachResponse(text: text, toolCalls: toolCalls)
     }
 
     // MARK: - Build API Messages
@@ -252,32 +350,30 @@ actor AIService {
         var apiMessages: [[String: Any]] = []
 
         for msg in messages {
-            if let toolResultID = msg.toolResultID {
-                apiMessages.append([
-                    "role": "user",
-                    "content": [
-                        [
-                            "type": "tool_result",
-                            "tool_use_id": toolResultID,
-                            "content": msg.content
-                        ] as [String: Any]
+            if !msg.toolResults.isEmpty {
+                // All tool_result blocks for one assistant turn go in a single user message.
+                let content = msg.toolResults.map { tr -> [String: Any] in
+                    [
+                        "type": "tool_result",
+                        "tool_use_id": tr.toolUseID,
+                        "content": tr.content
                     ]
-                ])
-            } else if let toolUse = msg.toolUse {
+                }
+                apiMessages.append(["role": "user", "content": content])
+            } else if !msg.toolCalls.isEmpty {
                 var content: [[String: Any]] = []
                 if !msg.content.isEmpty {
                     content.append(["type": "text", "text": msg.content])
                 }
-                content.append([
-                    "type": "tool_use",
-                    "id": toolUse.id,
-                    "name": toolUse.name,
-                    "input": toolUse.input
-                ])
-                apiMessages.append([
-                    "role": "assistant",
-                    "content": content
-                ])
+                for call in msg.toolCalls {
+                    content.append([
+                        "type": "tool_use",
+                        "id": call.id,
+                        "name": call.name,
+                        "input": call.input
+                    ])
+                }
+                apiMessages.append(["role": "assistant", "content": content])
             } else {
                 apiMessages.append([
                     "role": msg.role.rawValue,

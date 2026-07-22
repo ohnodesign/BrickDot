@@ -12,6 +12,10 @@ enum TaskDataSerializer {
         let allEntries = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
         let allClients = (try? context.fetch(FetchDescriptor<Client>())) ?? []
 
+        // Read-only. Task ids come from Entry.coachID, a value computed from the
+        // SwiftData persistent id — there is no stored id field to assign, so
+        // serialization never writes to the store.
+
         let openEntries = allEntries.filter { $0.status != .done }
 
         // Active timer (first running entry found)
@@ -31,7 +35,7 @@ enum TaskDataSerializer {
         if let r = running, let started = r.timerStartedAt {
             let elapsed = Int(Date().timeIntervalSince(started) / 60)
             root["active_timer"] = [
-                "task_id": r.persistentModelID.hashValue.description,
+                "task_id": r.coachID ?? "",
                 "client": r.clientName,
                 "description": r.detail.isEmpty ? r.service : r.detail,
                 "started_at": iso.string(from: started),
@@ -48,7 +52,7 @@ enum TaskDataSerializer {
 
         root["tasks"] = openEntries.map { e -> [String: Any] in
             var task: [String: Any] = [
-                "id": e.persistentModelID.hashValue.description,
+                "id": e.coachID ?? "",
                 "client": e.clientName,
                 "description": e.detail.isEmpty ? e.service : e.detail,
                 "category": e.service.lowercased(),

@@ -54,6 +54,14 @@ final class Entry {
 
     var clientName: String { client?.name ?? "Unknown" }
 
+    /// Round-trippable, session-stable id for AI Coach tool calls, derived from
+    /// the SwiftData persistent id. Computed — there is NO stored field, so it
+    /// requires no migration and (unlike a stored UUID) never rewrites every
+    /// record into CloudKit. Matched by re-deriving it on lookup.
+    var coachID: String? {
+        (try? JSONEncoder().encode(persistentModelID))?.base64EncodedString()
+    }
+
     /// Row-display name: starter setup todos have no client, so label them
     /// instead of showing "Unknown".
     var displayClientName: String {

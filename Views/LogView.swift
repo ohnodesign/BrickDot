@@ -10,38 +10,36 @@ struct LogView: View {
     @State private var statusFilter: EntryStatus? = nil   // nil = All
 
     var body: some View {
-        NavigationStack {
-            List {
-                // Filter controls
-                Section("Filter") {
-                    StatusFilterBar(selection: $statusFilter)
-                }
+        List {
+            // Filter controls
+            Section("Filter") {
+                StatusFilterBar(selection: $statusFilter)
+            }
 
-                // Entries
-                Section("Entries") {
-                    let entries = filteredEntries
-                    if entries.isEmpty {
-                        Text("No entries").foregroundStyle(.secondary)
-                    } else {
-                        ForEach(entries, id: \.persistentModelID) { e in
-                            NavigationLink { EditEntryView(entry: e) } label: {
-                                LogEntryRow(entry: e)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    ctx.delete(e); try? ctx.save()
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
-                                }
+            // Entries
+            Section("Entries") {
+                let entries = filteredEntries
+                if entries.isEmpty {
+                    Text("No entries").foregroundStyle(.secondary)
+                } else {
+                    ForEach(entries, id: \.persistentModelID) { e in
+                        NavigationLink { EditEntryView(entry: e) } label: {
+                            LogEntryRow(entry: e)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                ctx.delete(e); try? ctx.save()
+                            } label: {
+                                Label("Delete", systemImage: "trash")
                             }
                         }
                     }
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationTitle("Log")
-            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
         }
+        .listStyle(.insetGrouped)
+        .navigationTitle("Log")
+        .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .automatic))
     }
 
     // MARK: - Derived (important-first + filters)

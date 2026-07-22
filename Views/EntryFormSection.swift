@@ -89,7 +89,7 @@ private struct StatusSection: View {
         Section("Status") {
             Picker("Status", selection: $status) {
                 ForEach(EntryStatus.allCases, id: \.self) { s in
-                    Text(s.rawValue).tag(s)
+                    Text(s.displayLabel).tag(s)
                 }
             }
             .pickerStyle(.segmented)

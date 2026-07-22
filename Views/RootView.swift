@@ -1,8 +1,10 @@
 // RootView.swift
 import SwiftUI
 import SwiftData
+import UIKit
 
-enum RootTab: Hashable { case home, profile, clients, stats, settings, log, export, coach }
+enum RootTab: Hashable { case home, profile, clients, stats, more, coach }
+enum MoreDestination: Hashable { case settings, log, export }
 
 extension Notification.Name {
     static let goHome = Notification.Name("goHome")
@@ -27,6 +29,29 @@ private struct iPhoneRootView: View {
     @State private var selectedTab: RootTab = .profile
     @State private var showingHome = true
     @State private var showQuickCapture = false
+    @State private var morePath = NavigationPath()
+
+    /// The BrickDot brand red, used for the Quick Capture button and the
+    /// selected tab-bar tint.
+    private let brandRed = Color(red: 0.79, green: 0.25, blue: 0.25)
+
+    init() {
+        // Tint only the tab bar's selected item the BrickDot red, without
+        // changing the app's blue accent used elsewhere in page content.
+        let red = UIColor(red: 0.79, green: 0.25, blue: 0.25, alpha: 1)
+        let item = UITabBarItemAppearance()
+        item.selected.iconColor = red
+        item.selected.titleTextAttributes = [.foregroundColor: red]
+
+        let appearance = UITabBarAppearance()
+        appearance.configureWithDefaultBackground()
+        appearance.stackedLayoutAppearance = item
+        appearance.inlineLayoutAppearance = item
+        appearance.compactInlineLayoutAppearance = item
+
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+    }
 
     var body: some View {
         ZStack {
@@ -67,29 +92,23 @@ private struct iPhoneRootView: View {
                 }
                 .tag(RootTab.stats)
 
-                NavigationStack {
-                    SettingsView()
+                NavigationStack(path: $morePath) {
+                    MoreListView()
                         .toolbar { homeButton }
+                        .navigationDestination(for: MoreDestination.self) { dest in
+                            switch dest {
+                            case .settings:
+                                SettingsView().toolbar { homeButton }
+                            case .log:
+                                LogView().toolbar { homeButton }
+                            case .export:
+                                ExportView().toolbar { homeButton }
+                            }
+                        }
                 }
                 .environment(\.modelContext, ctx)
-                .tabItem { Label("Settings", systemImage: "gear") }
-                .tag(RootTab.settings)
-
-                NavigationStack {
-                    LogView()
-                        .toolbar { homeButton }
-                }
-                .environment(\.modelContext, ctx)
-                .tabItem { Label("Log", systemImage: "doc.text") }
-                .tag(RootTab.log)
-
-                NavigationStack {
-                    ExportView()
-                        .toolbar { homeButton }
-                }
-                .environment(\.modelContext, ctx)
-                .tabItem { Label("Export", systemImage: "square.and.arrow.up") }
-                .tag(RootTab.export)
+                .tabItem { Label("More", systemImage: "ellipsis") }
+                .tag(RootTab.more)
             }
             .onChange(of: selectedTab) { _, _ in
                 if showingHome { withAnimation { showingHome = false } }
@@ -107,24 +126,34 @@ private struct iPhoneRootView: View {
                         .padding(.horizontal, 12)
                         .padding(.bottom, 6)
 
-                    Divider()
                     tabBarMirror
                 }
+                .background(Color(.systemBackground).ignoresSafeArea())
                 .transition(.opacity)
                 .ignoresSafeArea(.keyboard)
             }
         }
         .onReceive(NotificationCenter.default.publisher(for: .goHome)) { _ in
+            // Resign any active text field (e.g. the Coach input) before the
+            // home overlay covers it, otherwise the keyboard is left stranded
+            // with nothing to dismiss it.
+            dismissKeyboard()
             withAnimation { showingHome = true }
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSection)) { note in
             guard let raw = note.userInfo?["action"] as? String,
                   let action = SetupAction(rawValue: raw) else { return }
             switch action {
-            case .profile:              selectedTab = .profile
-            case .services, .reminders: selectedTab = .settings
-            case .clients:              selectedTab = .clients
-            case .importData:           selectedTab = .export
+            case .profile:
+                selectedTab = .profile
+            case .services, .reminders:
+                selectedTab = .more
+                morePath = NavigationPath([MoreDestination.settings])
+            case .clients:
+                selectedTab = .clients
+            case .importData:
+                selectedTab = .more
+                morePath = NavigationPath([MoreDestination.export])
             }
             withAnimation { showingHome = false }
         }
@@ -163,38 +192,72 @@ private struct iPhoneRootView: View {
     }
 
     private var tabBarMirror: some View {
-        HStack {
+        HStack(spacing: 0) {
             tabButton("Profile", icon: "person.crop.circle", tab: .profile)
             tabButton("Coach", icon: "brain.head.profile", tab: .coach)
             tabButton("Clients", icon: "person.2", tab: .clients)
             tabButton("Stats", icon: "chart.bar", tab: .stats)
-            tabButton("More", icon: "ellipsis", tab: nil)
+            tabButton("More", icon: "ellipsis", tab: .more)
         }
-        .padding(.top, 6)
-        .padding(.bottom, 2)
-        .background(Color(.systemBackground))
+        .padding(.vertical, 10)
+        .padding(.horizontal, 10)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
     }
 
-    private func tabButton(_ label: String, icon: String, tab: RootTab?) -> some View {
+    private func go(_ tab: RootTab) {
+        dismissKeyboard()
+        selectedTab = tab
+        withAnimation { showingHome = false }
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil, from: nil, for: nil
+        )
+    }
+
+    private func tabButton(_ label: String, icon: String, tab: RootTab) -> some View {
         Button {
-            if let tab {
-                selectedTab = tab
-                withAnimation { showingHome = false }
-            } else {
-                selectedTab = .log
-                withAnimation { showingHome = false }
-            }
+            go(tab)
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: icon)
                     .font(.system(size: 20))
+                    .symbolVariant(.fill)
                 Text(label)
                     .font(.caption2)
             }
-            .foregroundStyle(Color(.secondaryLabel))
+            .foregroundStyle(Color(.label))
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - More List (Settings / Log / Export)
+
+private struct MoreListView: View {
+    var body: some View {
+        List {
+            NavigationLink(value: MoreDestination.settings) {
+                Label("Settings", systemImage: "gear")
+            }
+            NavigationLink(value: MoreDestination.log) {
+                Label("Log", systemImage: "doc.text")
+            }
+            NavigationLink(value: MoreDestination.export) {
+                Label("Export", systemImage: "square.and.arrow.up")
+            }
+        }
+        .navigationTitle("More")
     }
 }
 
