@@ -111,4 +111,12 @@ final class Entry {
         self.dueDate = dueDate
         self.billOnCompletion = billOnCompletion
     }
+
+    /// Any manual change to a Quick Capture entry means it's no longer a raw,
+    /// unreviewed capture — unpins it from the Home "Quick Captures" section.
+    func markModified() {
+        if isQuickAdd {
+            isQuickAdd = false
+        }
+    }
 }

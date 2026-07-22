@@ -279,6 +279,7 @@ struct EntryListView: View {
     private func leadingSwipe(_ entry: Entry) -> some View {
         Button {
             entry.isImportant.toggle()
+            entry.markModified()
             try? ctx.save()
         } label: {
             Label(entry.isImportant ? "Unstar" : "Star",
@@ -289,6 +290,7 @@ struct EntryListView: View {
             Button {
                 entry.status = .todo
                 entry.timerStartedAt = nil
+                entry.markModified()
                 try? ctx.save()
             } label: {
                 Label(EntryStatus.todo.displayLabel, systemImage: "circle")
@@ -298,6 +300,7 @@ struct EntryListView: View {
             Button {
                 entry.status = .inProgress
                 if entry.timerStartedAt == nil { entry.timerStartedAt = Date() }
+                entry.markModified()
                 try? ctx.save()
             } label: {
                 Label("In Progress", systemImage: "bolt.fill")
@@ -313,6 +316,7 @@ struct EntryListView: View {
     private func quickStart(_ e: Entry) {
         e.status = .inProgress
         if e.timerStartedAt == nil { e.timerStartedAt = Date() }
+        e.markModified()
         try? ctx.save()
     }
     private func quickPauseAndAdd(_ e: Entry) {
@@ -321,12 +325,14 @@ struct EntryListView: View {
         e.hours += elapsed
         e.timeLogsList.append(TimeLog(hours: elapsed, entry: e))
         e.timerStartedAt = nil
+        e.markModified()
         try? ctx.save()
         NotificationManager.shared.cancelNoTimeLoggedReminder()
     }
     private func quickBump(_ e: Entry, _ h: Double) {
         e.hours += h
         e.timeLogsList.append(TimeLog(hours: h, entry: e))
+        e.markModified()
         try? ctx.save()
         NotificationManager.shared.cancelNoTimeLoggedReminder()
     }
@@ -334,6 +340,7 @@ struct EntryListView: View {
         e.timerStartedAt = nil
         e.status = .done
         e.completedAt = Date()
+        e.markModified()
         try? ctx.save()
     }
 }

@@ -129,6 +129,7 @@ struct RunningTimerBar: View {
         entry.hours += elapsed
         entry.timeLogsList.append(TimeLog(hours: elapsed, entry: entry))
         entry.timerStartedAt = nil
+        entry.markModified()
         try? ctx.save()
         NotificationManager.shared.cancelNoTimeLoggedReminder()
         UIImpactFeedbackGenerator(style: .light).impactOccurred()

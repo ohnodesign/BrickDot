@@ -48,6 +48,7 @@ struct EditEntryView: View {
                         if let c = newVal {
                             entry.client = c
                             entry.rate = c.rate
+                            entry.markModified()
                         }
                     }
                 ),
@@ -58,7 +59,7 @@ struct EditEntryView: View {
                 rate: $entry.rate,
                 status: Binding(
                     get: { entry.status },
-                    set: { entry.status = $0 }
+                    set: { entry.status = $0; entry.markModified() }
                 ),
                 timerStartedAt: $entry.timerStartedAt,
                 isImportant: $entry.isImportant,
@@ -86,7 +87,10 @@ struct EditEntryView: View {
                     }
                     TextEditor(text: $entry.notes)
                         .frame(minHeight: 120)
-                        .onChange(of: entry.notes) { _, _ in try? ctx.save() }
+                        .onChange(of: entry.notes) { _, _ in
+                            entry.markModified()
+                            try? ctx.save()
+                        }
                         .accessibilityLabel("Notes")
                 }
                 HStack {
@@ -109,13 +113,14 @@ struct EditEntryView: View {
                     get: { entry.dueDate != nil },
                     set: { on in
                         entry.dueDate = on ? (entry.dueDate ?? Calendar.current.date(byAdding: .weekOfYear, value: 1, to: entry.serviceDate) ?? entry.serviceDate) : nil
+                        entry.markModified()
                         try? ctx.save()
                     }
                 ))
                 if let _ = entry.dueDate {
                     DatePicker("", selection: Binding(
                         get: { entry.dueDate ?? Date() },
-                        set: { entry.dueDate = $0; try? ctx.save() }
+                        set: { entry.dueDate = $0; entry.markModified(); try? ctx.save() }
                     ), displayedComponents: .date)
                     .labelsHidden()
                 }
@@ -126,6 +131,7 @@ struct EditEntryView: View {
                         get: { entry.completedAt ?? Date() },
                         set: { newVal in
                             entry.completedAt = newVal
+                            entry.markModified()
                             try? ctx.save()
                         }
                     ), displayedComponents: .date)
@@ -167,7 +173,7 @@ struct EditEntryView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 140)
-                        .onChange(of: entry.expenseAmount) { _, _ in try? ctx.save() }
+                        .onChange(of: entry.expenseAmount) { _, _ in entry.markModified(); try? ctx.save() }
                 }
                 HStack {
                     Text("Markup")
@@ -176,14 +182,14 @@ struct EditEntryView: View {
                         .keyboardType(.decimalPad)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 100)
-                        .onChange(of: entry.expenseMarkup) { _, _ in try? ctx.save() }
+                        .onChange(of: entry.expenseMarkup) { _, _ in entry.markModified(); try? ctx.save() }
                     Picker("", selection: $entry.expenseMarkupIsPercent) {
                         Text("%").tag(true)
                         Text("$").tag(false)
                     }
                     .pickerStyle(.segmented)
                     .frame(maxWidth: 80)
-                    .onChange(of: entry.expenseMarkupIsPercent) { _, _ in try? ctx.save() }
+                    .onChange(of: entry.expenseMarkupIsPercent) { _, _ in entry.markModified(); try? ctx.save() }
                 }
                 HStack {
                     Text("Expense Total")
@@ -210,6 +216,7 @@ struct EditEntryView: View {
                                     let delta = newVal - log.hours
                                     log.hours = newVal
                                     entry.hours += delta
+                                    entry.markModified()
                                     try? ctx.save()
                                 }
                             ), in: 0.0...24, step: 0.25) {
@@ -230,6 +237,7 @@ struct EditEntryView: View {
                                         let delta = rounded - log.hours
                                         log.hours = rounded
                                         entry.hours += delta
+                                        entry.markModified()
                                         try? ctx.save()
                                     }
                                 ), format: .number.precision(.fractionLength(2)))
@@ -243,14 +251,16 @@ struct EditEntryView: View {
                                 get: { log.note },
                                 set: { newVal in
                                     log.note = newVal
+                                    entry.markModified()
                                     try? ctx.save()
                                 }
                             ))
-                            
+
                             DatePicker("Date", selection: Binding(
                                 get: { log.addedAt },
                                 set: { newVal in
                                     log.addedAt = newVal
+                                    entry.markModified()
                                     try? ctx.save()
                                 }
                             ), displayedComponents: [.date, .hourAndMinute])
@@ -278,6 +288,7 @@ struct EditEntryView: View {
                                     let doomed = entry.timeLogsList[idx]
                                     entry.timeLogsList.remove(at: idx)
                                     ctx.delete(doomed)
+                                    entry.markModified()
                                     try? ctx.save()
                                 }
                             } label: {
@@ -301,6 +312,7 @@ struct EditEntryView: View {
                         let log = TimeLog(hours: hours, note: note, entry: entry)
                         entry.timeLogsList.append(log)
                         entry.hours += hours
+                        entry.markModified()
                         try? ctx.save()
                     }
                 } label: {
@@ -317,6 +329,7 @@ struct EditEntryView: View {
                     let new = Subtask(title: "", parent: entry)
                     ctx.insert(new)
                     entry.subtasksList.append(new)
+                    entry.markModified()
                     try? ctx.save()
                     focusedSubtaskID = new.persistentModelID
                 } label: {
@@ -340,6 +353,7 @@ struct EditEntryView: View {
                             get: { st.isDone },
                             set: { newVal in
                                 st.isDone = newVal
+                                entry.markModified()
                                 try? ctx.save()
                             }
                         )) {
@@ -348,6 +362,7 @@ struct EditEntryView: View {
                                         get: { st.title },
                                         set: { newTitle in
                                             st.title = newTitle
+                                            entry.markModified()
                                             try? ctx.save()
                                         }
                                       )
@@ -384,6 +399,7 @@ struct EditEntryView: View {
             Section {
                 Button {
                     syncCommFieldsToEntry()
+                    entry.markModified()
                     try? ctx.save()
                     snapshotInitialState()
                     dismiss()
@@ -441,6 +457,7 @@ struct EditEntryView: View {
         .alert("Unsaved Changes", isPresented: $showUnsavedAlert) {
             Button("Save & Leave") {
                 syncCommFieldsToEntry()
+                entry.markModified()
                 try? ctx.save()
                 snapshotInitialState()
                 dismiss()
@@ -478,6 +495,14 @@ struct EditEntryView: View {
                 try? ctx.save()
             }
         }
+        .onChange(of: entry.service) { _, _ in entry.markModified() }
+        .onChange(of: entry.serviceDate) { _, _ in entry.markModified() }
+        .onChange(of: entry.detail) { _, _ in entry.markModified() }
+        .onChange(of: entry.hours) { _, _ in entry.markModified() }
+        .onChange(of: entry.rate) { _, _ in entry.markModified() }
+        .onChange(of: entry.isImportant) { _, _ in entry.markModified() }
+        .onChange(of: entry.billOnCompletion) { _, _ in entry.markModified() }
+        .onChange(of: entry.timerStartedAt) { _, _ in entry.markModified() }
     }
 
     private func applyRounding(_ hours: Double) -> Double {
