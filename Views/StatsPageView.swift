@@ -52,6 +52,7 @@ struct StatsPageView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                }
 
                 // Calendar (minimal month)
                 Section("Calendar") {
