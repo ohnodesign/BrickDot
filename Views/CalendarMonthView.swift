@@ -5,7 +5,7 @@ public struct CalendarMonthView: View {
     let anchorMonth: Date
     let entries: [Entry]
 
-    @State private var selectedDay: Date?
+    @State private var selectedDay: SelectedDay?
 
     private let calendar = Calendar.current
 
@@ -83,7 +83,7 @@ public struct CalendarMonthView: View {
                     let count = dueCount(for: day)
                     let isToday = calendar.isDateInToday(day)
                     Button {
-                        selectedDay = day
+                        selectedDay = SelectedDay(date: day)
                     } label: {
                         ZStack(alignment: .topTrailing) {
                             Text("\(calendar.component(.day, from: day))")
@@ -113,13 +113,13 @@ public struct CalendarMonthView: View {
             }
         }
         .padding(.horizontal)
-        .sheet(item: $selectedDay) { day in
+        .sheet(item: $selectedDay) { selection in
             NavigationStack {
-                let dayEntries = dueEntries(for: day)
-                List(dayEntries, id: \.self) { entry in
-                    Text(entry.title ?? "Untitled")
+                let dayEntries = dueEntries(for: selection.date)
+                List(dayEntries, id: \.persistentModelID) { entry in
+                    Text(entry.detail.isEmpty ? "No description" : entry.detail)
                 }
-                .navigationTitle("Due on \(formattedDate(day))")
+                .navigationTitle("Due on \(formattedDate(selection.date))")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -137,6 +137,11 @@ public struct CalendarMonthView: View {
         formatter.dateStyle = .long
         return formatter.string(from: date)
     }
+}
+
+private struct SelectedDay: Identifiable {
+    let id = UUID()
+    let date: Date
 }
 
 fileprivate extension Date {
