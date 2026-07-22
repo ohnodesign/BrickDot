@@ -269,7 +269,10 @@ struct HomeView: View {
     private var starredEntries: [Entry] { allEntries.filter { $0.isImportant && ($0.status == .todo || $0.status == .inProgress) }.sorted(by: importantFirst) }
     private var todoEntries: [Entry] { allEntries.filter { $0.status == .todo }.sorted(by: importantFirst) }
     private var inProgressEntries: [Entry] { allEntries.filter { $0.status == .inProgress }.sorted(by: importantFirst) }
-    private var doneEntries: [Entry] { allEntries.filter { $0.status == .done }.sorted { $0.serviceDate > $1.serviceDate } }
+    private var doneEntries: [Entry] {
+        allEntries.filter { $0.status == .done }
+            .sorted { ($0.completedAt ?? $0.serviceDate) > ($1.completedAt ?? $1.serviceDate) }
+    }
     private var recentEntries: [Entry] { Array(allEntries.sorted(by: importantFirst).prefix(max(0, recentCount))) }
     private var todayEntries: [Entry] { allEntries.filter { $0.status == .done && Calendar.current.isDateInToday(($0.completedAt ?? $0.serviceDate)) } }
 

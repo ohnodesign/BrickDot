@@ -15,6 +15,7 @@ final class Entry {
     var status: EntryStatus
     var timerStartedAt: Date?
     var isImportant: Bool = false
+    var isQuickCapture: Bool = false
 
     // Timestamps
     var createdAt: Date = Date()
@@ -39,7 +40,8 @@ final class Entry {
          completedAt: Date? = nil,
          invoice: Invoice? = nil,
          isImportant: Bool = false,
-         notes: String = ""      // ← NEW: default empty
+         notes: String = "",     // ← NEW: default empty
+         isQuickCapture: Bool = false
     ) {
         self.serviceDate = serviceDate
         self.service = service
@@ -54,5 +56,6 @@ final class Entry {
         self.timerStartedAt = timerStartedAt
         self.invoice = invoice
         self.isImportant = isImportant
+        self.isQuickCapture = isQuickCapture
     }
 }

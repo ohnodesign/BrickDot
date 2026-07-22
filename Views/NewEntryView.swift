@@ -306,7 +306,9 @@ struct NewEntryView: View {
             status: status,              // keep order: status before timerStartedAt
             timerStartedAt: timerStartedAt,
             createdAt: Date(),
-            isImportant: isImportant     // ✅ persist it
+            completedAt: status == .done ? Date() : nil,
+            isImportant: isImportant,    // ✅ persist it
+            isQuickCapture: true
         )
         entry.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
 

@@ -28,6 +28,7 @@ struct EditEntryView: View {
                         if let c = newVal {
                             entry.client = c
                             entry.rate = c.rate
+                            clearQuickCaptureFlag()
                         }
                     }
                 ),
@@ -64,6 +65,7 @@ struct EditEntryView: View {
                         get: { entry.completedAt ?? Date() },
                         set: { newVal in
                             entry.completedAt = newVal
+                            clearQuickCaptureFlag()
                             try? ctx.save()
                         }
                     ), displayedComponents: .date)
@@ -90,7 +92,10 @@ struct EditEntryView: View {
                     }
                     TextEditor(text: $entry.notes)
                         .frame(minHeight: 120)
-                        .onChange(of: entry.notes) { _, _ in try? ctx.save() }
+                        .onChange(of: entry.notes) { _, _ in
+                            clearQuickCaptureFlag()
+                            try? ctx.save()
+                        }
                         .accessibilityLabel("Notes")
                 }
                 HStack {
@@ -117,6 +122,7 @@ struct EditEntryView: View {
                                     let delta = newVal - log.hours
                                     log.hours = newVal
                                     entry.hours += delta
+                                    clearQuickCaptureFlag()
                                     try? ctx.save()
                                 }
                             ), in: 0.0...24, step: 0.25) {
@@ -137,6 +143,7 @@ struct EditEntryView: View {
                                         let delta = rounded - log.hours
                                         log.hours = rounded
                                         entry.hours += delta
+                                        clearQuickCaptureFlag()
                                         try? ctx.save()
                                     }
                                 ), format: .number.precision(.fractionLength(2)))
@@ -150,14 +157,16 @@ struct EditEntryView: View {
                                 get: { log.note },
                                 set: { newVal in
                                     log.note = newVal
+                                    clearQuickCaptureFlag()
                                     try? ctx.save()
                                 }
                             ))
-                            
+
                             DatePicker("Date", selection: Binding(
                                 get: { log.addedAt },
                                 set: { newVal in
                                     log.addedAt = newVal
+                                    clearQuickCaptureFlag()
                                     try? ctx.save()
                                 }
                             ), displayedComponents: [.date, .hourAndMinute])
@@ -185,6 +194,7 @@ struct EditEntryView: View {
                                     let doomed = entry.timeLogs[idx]
                                     entry.timeLogs.remove(at: idx)
                                     ctx.delete(doomed)
+                                    clearQuickCaptureFlag()
                                     try? ctx.save()
                                 }
                             } label: {
@@ -208,6 +218,7 @@ struct EditEntryView: View {
                         let log = TimeLog(hours: hours, note: note, entry: entry)
                         entry.timeLogs.append(log)
                         entry.hours += hours
+                        clearQuickCaptureFlag()
                         try? ctx.save()
                     }
                 } label: {
@@ -223,6 +234,7 @@ struct EditEntryView: View {
                 Button {
                     let new = Subtask(title: "", parent: entry)
                     entry.subtasks.append(new)
+                    clearQuickCaptureFlag()
                     try? ctx.save()
                     focusedSubtaskID = new.persistentModelID
                 } label: {
@@ -246,6 +258,7 @@ struct EditEntryView: View {
                             get: { st.isDone },
                             set: { newVal in
                                 st.isDone = newVal
+                                clearQuickCaptureFlag()
                                 try? ctx.save()
                             }
                         )) {
@@ -254,6 +267,7 @@ struct EditEntryView: View {
                                         get: { st.title },
                                         set: { newTitle in
                                             st.title = newTitle
+                                            clearQuickCaptureFlag()
                                             try? ctx.save()
                                         }
                                       )
@@ -331,11 +345,18 @@ struct EditEntryView: View {
             if selectedClient == nil { selectedClient = entry.client }
         }
         .onChange(of: entry.status) { _, newStatus in
+            clearQuickCaptureFlag()
             if newStatus == .done && entry.completedAt == nil {
                 entry.completedAt = Date()
                 try? ctx.save()
             }
         }
+        .onChange(of: entry.service) { _, _ in clearQuickCaptureFlag() }
+        .onChange(of: entry.serviceDate) { _, _ in clearQuickCaptureFlag() }
+        .onChange(of: entry.detail) { _, _ in clearQuickCaptureFlag() }
+        .onChange(of: entry.hours) { _, _ in clearQuickCaptureFlag() }
+        .onChange(of: entry.rate) { _, _ in clearQuickCaptureFlag() }
+        .onChange(of: entry.isImportant) { _, _ in clearQuickCaptureFlag() }
     }
 
     private func applyRounding(_ hours: Double) -> Double {
@@ -355,7 +376,15 @@ struct EditEntryView: View {
         if let idx = entry.subtasks.firstIndex(where: { $0.id == st.id }) {
             let doomed = entry.subtasks[idx]
             ctx.delete(doomed)
+            clearQuickCaptureFlag()
             try? ctx.save()
+        }
+    }
+
+    /// Any manual edit to an entry means it's no longer a raw, unreviewed Quick Capture.
+    private func clearQuickCaptureFlag() {
+        if entry.isQuickCapture {
+            entry.isQuickCapture = false
         }
     }
 }

@@ -29,6 +29,7 @@ struct EntryDTO: Codable {
     // NEW: optional so old files still decode
     var status: EntryStatus?
     var starred: Bool?  // Added to support legacy starred detection
+    var isQuickCapture: Bool?  // Optional so old files still decode
 }
 
 enum BackupError: Error, LocalizedError {
@@ -84,7 +85,8 @@ enum Backup {
                 isInProgress: ($0.status == .inProgress),   // derive for old readers
                 timerStartedAt: $0.timerStartedAt,
                 status: $0.status,                           // NEW
-                starred: $0.isImportant                      // export the starred flag
+                starred: $0.isImportant,                     // export the starred flag
+                isQuickCapture: $0.isQuickCapture
             )
         }
 
@@ -180,7 +182,8 @@ enum Backup {
                 rate: e.rate,
                 client: client,
                 status: inferredStatus,
-                timerStartedAt: e.timerStartedAt
+                timerStartedAt: e.timerStartedAt,
+                isQuickCapture: e.isQuickCapture ?? false
             )
             model.isImportant = e.starred ?? false
             ctx.insert(model)
@@ -238,7 +241,8 @@ enum Backup {
                 rate: e.rate,
                 client: client,
                 status: inferredStatus,                 // ← pass status
-                timerStartedAt: e.timerStartedAt
+                timerStartedAt: e.timerStartedAt,
+                isQuickCapture: e.isQuickCapture ?? false
             )
             ctx.insert(model)
         }
