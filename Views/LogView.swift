@@ -6,7 +6,7 @@ struct LogView: View {
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
     @State private var searchText: String = ""
-    @State private var statusFilter: EntryStatus? = nil   // nil = All
+    @State private var filter: LogFilter = .all
     @State private var showNewEntry = false
 
     var body: some View {
@@ -14,7 +14,7 @@ struct LogView: View {
             List {
                 // Filter controls
                 Section("Filter") {
-                    StatusFilterBar(selection: $statusFilter)
+                    StatusFilterBar(selection: $filter)
                 }
 
                 // Entries
@@ -65,8 +65,13 @@ struct LogView: View {
     private var filteredEntries: [Entry] {
         var result = allEntries
 
-        if let f = statusFilter {
-            result = result.filter { $0.status == f }
+        switch filter {
+        case .all:
+            break
+        case .status(let s):
+            result = result.filter { $0.status == s }
+        case .quickCapture:
+            result = result.filter { $0.isQuickCapture }
         }
 
         let q = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -161,24 +166,33 @@ private struct StatusMark: View {
     }
 }
 
+// MARK: - Log filter (status, or unreviewed Quick Captures)
+
+enum LogFilter: Hashable {
+    case all
+    case status(EntryStatus)
+    case quickCapture
+}
+
 // MARK: - Status filter bar (chips with dots)
 
 private struct StatusFilterBar: View {
-    @Binding var selection: EntryStatus?
+    @Binding var selection: LogFilter
 
     private struct Chip: Identifiable {
         let id = UUID()
         let label: String
         let color: Color?   // nil for "All"
-        let value: EntryStatus?
+        let value: LogFilter
     }
 
     private var chips: [Chip] {
         [
-            Chip(label: "All",         color: nil,       value: nil),
-            Chip(label: "To Do",       color: .orange,   value: .todo),
-            Chip(label: "In Progress", color: .brick,    value: .inProgress),
-            Chip(label: "Done",        color: .green,    value: .done)
+            Chip(label: "All",            color: nil,       value: .all),
+            Chip(label: "To Do",          color: .orange,   value: .status(.todo)),
+            Chip(label: "In Progress",    color: .brick,    value: .status(.inProgress)),
+            Chip(label: "Done",           color: .green,    value: .status(.done)),
+            Chip(label: "Quick Capture",  color: .purple,   value: .quickCapture)
         ]
     }
 
