@@ -100,26 +100,11 @@ struct HomeView: View {
                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                 }
 
-                // MARK: - Quick Captures (pinned)
-                if !quickCaptureEntries.isEmpty {
-                    let quickCapCap = 3
-                    let quickCapExpanded = isExpanded("quickcaptures")
-                    Section {
-                        ForEach(quickCapExpanded ? quickCaptureEntries : Array(quickCaptureEntries.prefix(quickCapCap)), id: \.persistentModelID) { entry in
-                            NavigationLink { EditEntryView(entry: entry) } label: {
-                                QuickCaptureRow(entry: entry)
-                            }
-                        }
-                    } header: {
-                        sectionHeader("Quick Captures", count: quickCaptureEntries.count, cap: quickCapCap, key: "quickcaptures")
-                    }
-                }
-
-                // MARK: - Filtered List (filter pills, sort bar, unified list, done)
-                if mainListEntries.isEmpty && quickCaptureEntries.isEmpty && allEntries.isEmpty && showGettingStarted {
+                // MARK: - Filtered List (category, filter pills, sort bar, date/client, unified list)
+                if mainListEntries.isEmpty && allEntries.isEmpty && showGettingStarted {
                     // Brand-new user: the Getting Started card is the empty state.
                     EmptyView()
-                } else if mainListEntries.isEmpty && quickCaptureEntries.isEmpty {
+                } else if mainListEntries.isEmpty {
                     Section {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.seal.fill")
@@ -266,13 +251,8 @@ struct HomeView: View {
         }.count
     }
 
-    private var quickCaptureEntries: [Entry] {
-        allEntries.filter { $0.isQuickAdd && matchesSearch($0) }
-            .sorted { $0.createdAt > $1.createdAt }
-    }
-
-    // Everything else shown below Today's Focus: filter pills + sort bar +
-    // unified list + collapsed Done, via the shared EntryListView.
+    // Everything else shown below Today's Focus: category + filter pills +
+    // sort bar + date/client + unified list, via the shared EntryListView.
     private var mainListEntries: [Entry] {
         let focusIDs = Set(todayFocusEntries.map(\.persistentModelID))
         return allEntries.filter { !focusIDs.contains($0.persistentModelID) && matchesSearch($0) }

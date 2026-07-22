@@ -4,6 +4,21 @@ import SwiftData
 
 // MARK: - Filter & Sort Types
 
+/// Single-select base category. Replaces the old "always exclude Quick
+/// Captures, always append a collapsed Done section" behavior - Quick
+/// Captures and Done are now just two more views onto the same list.
+enum EntryCategory: CaseIterable, Hashable {
+    case all, quickCaptures, done
+
+    var label: String {
+        switch self {
+        case .all:           return "All"
+        case .quickCaptures: return "Quick Captures"
+        case .done:          return "Done"
+        }
+    }
+}
+
 enum FilterType: CaseIterable, Hashable {
     case starred, inProgress, overdue, todo
 
@@ -23,26 +38,44 @@ enum SortOption: String, CaseIterable {
     case client   = "Client"
 }
 
+enum DateQuickPick: CaseIterable, Hashable {
+    case today, thisWeek, thisMonth
+
+    var label: String {
+        switch self {
+        case .today:     return "Today"
+        case .thisWeek:  return "This Week"
+        case .thisMonth: return "This Month"
+        }
+    }
+}
+
 // MARK: - EntryListView (shared between Home screen & Client detail)
 
 /// Unified filter/sort entry list, used on both the home screen and client
 /// detail pages. Callers are responsible for excluding entries that are
-/// already shown elsewhere (e.g. Today's Focus on the home screen) — this
-/// view itself only ever excludes Quick Captures (never shown here) and
-/// handles Done entries via its own collapsed section.
+/// already shown elsewhere (e.g. Today's Focus on the home screen). A
+/// single-select category (All / Quick Captures / Done) picks the base set;
+/// status pills, date range, and client all further narrow within it.
 struct EntryListView: View {
     let entries: [Entry]
     var isClientScoped: Bool = false
 
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
+    @Query(sort: \Client.name) private var allClients: [Client]
 
+    @State private var activeCategory: EntryCategory = .all
     // Empty = no constraint (show everything). Each active pill ANDs in an
     // additional requirement — e.g. Starred + Overdue narrows to entries
     // that are both, not the union of the two.
     @State private var activeFilters: Set<FilterType> = []
     @State private var activeSort: SortOption = .recent
-    @State private var doneExpanded = false
+    @State private var dateQuickPick: DateQuickPick? = nil
+    @State private var customDateRange: ClosedRange<Date>? = nil
+    @State private var showDateRangePicker = false
+    @State private var selectedClientFilter: Client? = nil
+    @State private var showAllEntries = false
 
     private var cal: Calendar { Calendar.current }
     private var todayStart: Date { cal.startOfDay(for: Date()) }
@@ -51,10 +84,15 @@ struct EntryListView: View {
         isClientScoped ? [.recent, .dueDate] : SortOption.allCases
     }
 
-    // Entries eligible for this component at all — Quick Captures are pinned
-    // in their own section elsewhere and never appear here.
-    private var eligibleEntries: [Entry] {
-        entries.filter { !$0.isQuickAdd }
+    // Base set for the active category. All/Quick Captures/Done are now
+    // just three views onto the same list, not separate always-shown
+    // sections.
+    private var categoryEntries: [Entry] {
+        switch activeCategory {
+        case .all:           return entries.filter { $0.status != .done }
+        case .quickCaptures: return entries.filter { $0.isQuickAdd }
+        case .done:          return entries.filter { $0.status == .done }
+        }
     }
 
     private func isOverdue(_ entry: Entry) -> Bool {
@@ -71,53 +109,91 @@ struct EntryListView: View {
         }
     }
 
+    /// The date used for sorting/range-filtering an entry: completion date
+    /// for Done, service date otherwise.
+    private func relevantDate(_ entry: Entry) -> Date {
+        activeCategory == .done ? (entry.completedAt ?? entry.serviceDate) : entry.serviceDate
+    }
+
+    private var effectiveDateRange: ClosedRange<Date>? {
+        if let custom = customDateRange { return custom }
+        guard let pick = dateQuickPick else { return nil }
+        switch pick {
+        case .today:
+            let end = cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? todayStart
+            return todayStart...end
+        case .thisWeek:
+            let now = Date()
+            return now.bdStartOfWeek...now.bdEndOfWeek
+        case .thisMonth:
+            let now = Date()
+            return now.bdStartOfMonth...now.bdEndOfMonth
+        }
+    }
+
+    private func matchesDate(_ entry: Entry) -> Bool {
+        guard let range = effectiveDateRange else { return true }
+        return range.contains(relevantDate(entry))
+    }
+
+    private func matchesClient(_ entry: Entry) -> Bool {
+        guard let client = selectedClientFilter else { return true }
+        return entry.client?.persistentModelID == client.persistentModelID
+    }
+
     private var filteredEntries: [Entry] {
-        eligibleEntries.filter { entry in
-            guard entry.status != .done else { return false }
-            guard !activeFilters.isEmpty else { return true }
-            return activeFilters.allSatisfy { matches(entry, $0) }
+        categoryEntries.filter { entry in
+            (activeFilters.isEmpty || activeFilters.allSatisfy { matches(entry, $0) })
+                && matchesDate(entry)
+                && matchesClient(entry)
         }
     }
 
     private var sortedFlatEntries: [Entry] {
         switch activeSort {
         case .recent:
-            return filteredEntries.sorted { $0.serviceDate > $1.serviceDate }
+            return filteredEntries.sorted { relevantDate($0) > relevantDate($1) }
         case .dueDate:
             return filteredEntries.sorted { a, b in
                 switch (a.dueDate, b.dueDate) {
                 case let (ad?, bd?): return ad < bd
                 case (_?, nil): return true
                 case (nil, _?): return false
-                default: return a.serviceDate > b.serviceDate
+                default: return relevantDate(a) > relevantDate(b)
                 }
             }
         case .client:
-            return filteredEntries.sorted { $0.serviceDate > $1.serviceDate }
+            return filteredEntries.sorted { relevantDate($0) > relevantDate($1) }
         }
     }
 
     private var groupedByClient: [(client: String, entries: [Entry])] {
         let grouped = Dictionary(grouping: filteredEntries) { $0.displayClientName }
         return grouped.keys.sorted().map { key in
-            (client: key, entries: grouped[key]!.sorted { $0.serviceDate > $1.serviceDate })
+            (client: key, entries: grouped[key]!.sorted { relevantDate($0) > relevantDate($1) })
         }
     }
 
-    private var doneEntries: [Entry] {
-        eligibleEntries
-            .filter { $0.status == .done }
-            .sorted { ($0.completedAt ?? $0.serviceDate) > ($1.completedAt ?? $1.serviceDate) }
+    // Default to the first 20, with a "More" button to reveal the rest.
+    private var displayedFlatEntries: [Entry] {
+        showAllEntries ? sortedFlatEntries : Array(sortedFlatEntries.prefix(20))
     }
 
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
+                categoryRow
                 filterPillsRow
                 sortBarRow
+                dateAndClientRow
             }
             .padding(.vertical, 4)
             .listRowSeparator(.hidden)
+            .onChange(of: activeCategory) { _, _ in showAllEntries = false }
+            .onChange(of: activeFilters) { _, _ in showAllEntries = false }
+            .onChange(of: dateQuickPick) { _, _ in showAllEntries = false }
+            .onChange(of: customDateRange) { _, _ in showAllEntries = false }
+            .onChange(of: selectedClientFilter) { _, _ in showAllEntries = false }
         } header: {
             Text("ENTRIES")
                 .font(.caption.weight(.bold))
@@ -129,7 +205,7 @@ struct EntryListView: View {
             ForEach(groupedByClient, id: \.client) { group in
                 Section(group.client) {
                     ForEach(group.entries, id: \.persistentModelID) { entry in
-                        entryRow(entry)
+                        row(for: entry)
                     }
                 }
             }
@@ -140,44 +216,123 @@ struct EntryListView: View {
                         .foregroundStyle(.secondary)
                         .listRowSeparator(.hidden)
                 } else {
-                    ForEach(sortedFlatEntries, id: \.persistentModelID) { entry in
-                        entryRow(entry)
+                    ForEach(displayedFlatEntries, id: \.persistentModelID) { entry in
+                        row(for: entry)
+                    }
+                    if sortedFlatEntries.count > 20 {
+                        Button {
+                            withAnimation { showAllEntries.toggle() }
+                        } label: {
+                            HStack {
+                                Spacer()
+                                Text(showAllEntries ? "Show Less" : "More (\(sortedFlatEntries.count - 20))")
+                                    .font(.footnote)
+                                    .foregroundStyle(theme.secondaryText)
+                                Spacer()
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .listRowSeparator(.hidden)
                     }
                 }
-            }
-        }
-
-        if !doneEntries.isEmpty {
-            Section {
-                if doneExpanded {
-                    ForEach(doneEntries, id: \.persistentModelID) { entry in
-                        doneRow(entry)
-                    }
-                }
-            } header: {
-                Button {
-                    withAnimation { doneExpanded.toggle() }
-                } label: {
-                    HStack {
-                        Text("DONE")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(theme.secondaryText)
-                            .tracking(0.5)
-                        Spacer()
-                        Text("\(doneEntries.count)")
-                            .font(.caption)
-                            .foregroundStyle(theme.mutedText)
-                        Image(systemName: doneExpanded ? "chevron.down" : "chevron.right")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(theme.mutedText)
-                    }
-                }
-                .buttonStyle(.plain)
             }
         }
     }
 
+    @ViewBuilder
+    private func row(for entry: Entry) -> some View {
+        if activeCategory == .done {
+            doneRow(entry)
+        } else {
+            entryRow(entry)
+        }
+    }
+
     // MARK: - Controls
+
+    private var categoryRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(EntryCategory.allCases, id: \.self) { category in
+                    let isActive = activeCategory == category
+                    Button {
+                        activeCategory = category
+                    } label: {
+                        Text(category.label)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(isActive ? theme.accent : Color.clear))
+                            .overlay(Capsule().strokeBorder(isActive ? Color.clear : theme.divider, lineWidth: 1))
+                            .foregroundStyle(isActive ? .white : theme.secondaryText)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private var dateAndClientRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(DateQuickPick.allCases, id: \.self) { pick in
+                    let isActive = dateQuickPick == pick && customDateRange == nil
+                    Button {
+                        if isActive {
+                            dateQuickPick = nil
+                        } else {
+                            dateQuickPick = pick
+                            customDateRange = nil
+                        }
+                    } label: {
+                        Text(pick.label)
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Capsule().fill(isActive ? theme.accent : Color.clear))
+                            .overlay(Capsule().strokeBorder(isActive ? Color.clear : theme.divider, lineWidth: 1))
+                            .foregroundStyle(isActive ? .white : theme.secondaryText)
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    showDateRangePicker = true
+                } label: {
+                    Image(systemName: "calendar")
+                        .font(.caption.weight(.semibold))
+                        .padding(6)
+                        .background(Circle().fill(customDateRange != nil ? theme.accent : Color.clear))
+                        .overlay(Circle().strokeBorder(customDateRange != nil ? Color.clear : theme.divider, lineWidth: 1))
+                        .foregroundStyle(customDateRange != nil ? .white : theme.secondaryText)
+                }
+                .buttonStyle(.plain)
+
+                if !isClientScoped {
+                    Menu {
+                        Button("All Clients") { selectedClientFilter = nil }
+                        ForEach(allClients, id: \.persistentModelID) { c in
+                            Button(c.name) { selectedClientFilter = c }
+                        }
+                    } label: {
+                        HStack(spacing: 4) {
+                            Text(selectedClientFilter?.name ?? "All Clients")
+                            Image(systemName: "chevron.down")
+                        }
+                        .font(.caption.weight(.semibold))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Capsule().fill(selectedClientFilter != nil ? theme.accent : Color.clear))
+                        .overlay(Capsule().strokeBorder(selectedClientFilter != nil ? Color.clear : theme.divider, lineWidth: 1))
+                        .foregroundStyle(selectedClientFilter != nil ? .white : theme.secondaryText)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showDateRangePicker) {
+            DateRangePickerSheet(range: $customDateRange, onApply: { dateQuickPick = nil })
+        }
+    }
 
     private var filterPillsRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -242,7 +397,11 @@ struct EntryListView: View {
                 .buttonStyle(.plain)
             } else {
                 NavigationLink { EditEntryView(entry: entry) } label: {
-                    EntryListRow(entry: entry, isOverdue: isOverdue(entry))
+                    if activeCategory == .quickCaptures {
+                        QuickCaptureRow(entry: entry)
+                    } else {
+                        EntryListRow(entry: entry, isOverdue: isOverdue(entry))
+                    }
                 }
             }
         }
@@ -342,6 +501,57 @@ struct EntryListView: View {
         e.completedAt = Date()
         e.markModified()
         try? ctx.save()
+    }
+}
+
+// MARK: - Custom Date Range Picker
+
+private struct DateRangePickerSheet: View {
+    @Binding var range: ClosedRange<Date>?
+    var onApply: () -> Void = {}
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var start: Date
+    @State private var end: Date
+
+    init(range: Binding<ClosedRange<Date>?>, onApply: @escaping () -> Void = {}) {
+        self._range = range
+        self.onApply = onApply
+        let now = Date()
+        self._start = State(initialValue: range.wrappedValue?.lowerBound ?? now)
+        self._end = State(initialValue: range.wrappedValue?.upperBound ?? now)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                DatePicker("From", selection: $start, displayedComponents: .date)
+                DatePicker("To", selection: $end, displayedComponents: .date)
+            }
+            .navigationTitle("Date Range")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .destructiveAction) {
+                    Button("Clear") {
+                        range = nil
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply") {
+                        let cal = Calendar.current
+                        let s = cal.startOfDay(for: start)
+                        let e = cal.date(byAdding: DateComponents(day: 1, second: -1), to: cal.startOfDay(for: end)) ?? end
+                        range = min(s, e)...max(s, e)
+                        onApply()
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
