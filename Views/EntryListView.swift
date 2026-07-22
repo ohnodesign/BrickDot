@@ -50,6 +50,54 @@ enum DateQuickPick: CaseIterable, Hashable {
     }
 }
 
+// MARK: - Flow Layout (wrapping chip grid)
+
+/// Lays out subviews left-to-right, wrapping to a new line when a subview
+/// would overflow the available width — used for the filter sheet's chip
+/// grids (Status, Date) so they wrap instead of scrolling horizontally.
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let maxWidth = proposal.width ?? .infinity
+        var width: CGFloat = 0
+        var height: CGFloat = 0
+        var lineWidth: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if lineWidth + size.width > maxWidth, lineWidth > 0 {
+                width = max(width, lineWidth)
+                height += lineHeight + spacing
+                lineWidth = 0
+                lineHeight = 0
+            }
+            lineWidth += size.width + (lineWidth > 0 ? spacing : 0)
+            lineHeight = max(lineHeight, size.height)
+        }
+        width = max(width, lineWidth)
+        height += lineHeight
+        return CGSize(width: width, height: height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX
+        var y = bounds.minY
+        var lineHeight: CGFloat = 0
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > bounds.maxX, x > bounds.minX {
+                x = bounds.minX
+                y += lineHeight + spacing
+                lineHeight = 0
+            }
+            subview.place(at: CGPoint(x: x, y: y), anchor: .topLeading, proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+        }
+    }
+}
+
 // MARK: - EntryListView (shared between Home screen & Client detail)
 
 /// Unified filter/sort entry list, used on both the home screen and client
@@ -73,9 +121,10 @@ struct EntryListView: View {
     @State private var activeSort: SortOption = .recent
     @State private var dateQuickPick: DateQuickPick? = nil
     @State private var customDateRange: ClosedRange<Date>? = nil
-    @State private var showDateRangePicker = false
+    @State private var showCustomRangePicker = false
     @State private var selectedClientFilter: Client? = nil
     @State private var showAllEntries = false
+    @State private var showFilterSheet = false
 
     private var cal: Calendar { Calendar.current }
     private var todayStart: Date { cal.startOfDay(for: Date()) }
@@ -88,7 +137,11 @@ struct EntryListView: View {
     // just three views onto the same list, not separate always-shown
     // sections.
     private var categoryEntries: [Entry] {
-        switch activeCategory {
+        entries(in: activeCategory)
+    }
+
+    private func entries(in category: EntryCategory) -> [Entry] {
+        switch category {
         case .all:           return entries.filter { $0.status != .done }
         case .quickCaptures: return entries.filter { $0.isQuickAdd }
         case .done:          return entries.filter { $0.status == .done }
@@ -174,6 +227,35 @@ struct EntryListView: View {
         }
     }
 
+    // Number of independent filter dimensions currently narrowing the list —
+    // drives the badge on the Filter button.
+    private var activeFilterCount: Int {
+        activeFilters.count
+            + (effectiveDateRange != nil ? 1 : 0)
+            + (selectedClientFilter != nil ? 1 : 0)
+    }
+
+    private var customRangeLabel: String {
+        guard let range = customDateRange else { return "Custom…" }
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        return "\(f.string(from: range.lowerBound))–\(f.string(from: range.upperBound))"
+    }
+
+    private var summaryText: String {
+        let count = sortedFlatEntries.count
+        var parts = ["\(count) \(count == 1 ? "entry" : "entries")"]
+        if customDateRange != nil {
+            parts.append(customRangeLabel)
+        } else if let pick = dateQuickPick {
+            parts.append(pick.label)
+        }
+        if let client = selectedClientFilter {
+            parts.append(client.name)
+        }
+        return parts.joined(separator: " · ")
+    }
+
     // Default to the first 20, with a "More" button to reveal the rest.
     private var displayedFlatEntries: [Entry] {
         showAllEntries ? sortedFlatEntries : Array(sortedFlatEntries.prefix(20))
@@ -182,10 +264,8 @@ struct EntryListView: View {
     var body: some View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
-                categoryRow
-                filterPillsRow
-                sortBarRow
-                dateAndClientRow
+                categorySegmented
+                toolbarRow
             }
             .padding(.vertical, 4)
             .listRowSeparator(.hidden)
@@ -194,6 +274,7 @@ struct EntryListView: View {
             .onChange(of: dateQuickPick) { _, _ in showAllEntries = false }
             .onChange(of: customDateRange) { _, _ in showAllEntries = false }
             .onChange(of: selectedClientFilter) { _, _ in showAllEntries = false }
+            .sheet(isPresented: $showFilterSheet) { filterSheet }
         } header: {
             Text("ENTRIES")
                 .font(.caption.weight(.bold))
@@ -250,130 +331,228 @@ struct EntryListView: View {
 
     // MARK: - Controls
 
-    private var categoryRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(EntryCategory.allCases, id: \.self) { category in
-                    let isActive = activeCategory == category
-                    Button {
-                        activeCategory = category
-                    } label: {
+    /// Single-select category, always fully visible — this is the one
+    /// decision that changes what universe of entries you're looking at,
+    /// so it gets a segmented control instead of being one pill among many.
+    private var categorySegmented: some View {
+        HStack(spacing: 2) {
+            ForEach(EntryCategory.allCases, id: \.self) { category in
+                let isActive = activeCategory == category
+                Button {
+                    activeCategory = category
+                } label: {
+                    HStack(spacing: 4) {
                         Text(category.label)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(isActive ? theme.accent : Color.clear))
-                            .overlay(Capsule().strokeBorder(isActive ? Color.clear : theme.divider, lineWidth: 1))
-                            .foregroundStyle(isActive ? .white : theme.secondaryText)
+                        Text("\(entries(in: category).count)")
+                            .foregroundStyle(isActive ? theme.accent : theme.mutedText)
                     }
-                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background(isActive ? theme.cardBackground : Color.clear)
+                    .foregroundStyle(isActive ? theme.primaryText : theme.secondaryText)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .shadow(color: isActive ? .black.opacity(0.08) : .clear, radius: 2, y: 1)
                 }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(3)
+        .background(theme.sidebarBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+
+    /// A legible summary of the current state, plus the two entry points
+    /// for everything else: a Filter button (badged with how many
+    /// dimensions are active) opening one sheet, and a Sort menu.
+    private var toolbarRow: some View {
+        HStack(spacing: 8) {
+            Text(summaryText)
+                .font(.caption)
+                .foregroundStyle(theme.secondaryText)
+                .lineLimit(1)
+                .layoutPriority(-1)
+
+            Spacer(minLength: 8)
+
+            Button {
+                showFilterSheet = true
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "line.3.horizontal.decrease")
+                    Text("Filter")
+                    if activeFilterCount > 0 {
+                        Text("\(activeFilterCount)")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Circle().fill(theme.accent))
+                    }
+                }
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(activeFilterCount > 0 ? theme.accentLight : theme.sidebarBackground)
+                .foregroundStyle(activeFilterCount > 0 ? theme.accent : theme.secondaryText)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+            .buttonStyle(.plain)
+
+            Menu {
+                ForEach(sortOptions, id: \.self) { option in
+                    Button {
+                        activeSort = option
+                    } label: {
+                        if activeSort == option {
+                            Label(option.rawValue, systemImage: "checkmark")
+                        } else {
+                            Text(option.rawValue)
+                        }
+                    }
+                }
+            } label: {
+                HStack(spacing: 5) {
+                    Image(systemName: "arrow.up.arrow.down")
+                    Text(activeSort.rawValue)
+                }
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 9)
+                .padding(.vertical, 6)
+                .background(theme.sidebarBackground)
+                .foregroundStyle(theme.secondaryText)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
     }
 
-    private var dateAndClientRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(DateQuickPick.allCases, id: \.self) { pick in
-                    let isActive = dateQuickPick == pick && customDateRange == nil
-                    Button {
-                        if isActive {
-                            dateQuickPick = nil
-                        } else {
-                            dateQuickPick = pick
-                            customDateRange = nil
-                        }
-                    } label: {
-                        Text(pick.label)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(isActive ? theme.accent : Color.clear))
-                            .overlay(Capsule().strokeBorder(isActive ? Color.clear : theme.divider, lineWidth: 1))
-                            .foregroundStyle(isActive ? .white : theme.secondaryText)
-                    }
-                    .buttonStyle(.plain)
-                }
+    // MARK: - Filter Sheet
 
-                Button {
-                    showDateRangePicker = true
-                } label: {
-                    Image(systemName: "calendar")
-                        .font(.caption.weight(.semibold))
-                        .padding(6)
-                        .background(Circle().fill(customDateRange != nil ? theme.accent : Color.clear))
-                        .overlay(Circle().strokeBorder(customDateRange != nil ? Color.clear : theme.divider, lineWidth: 1))
-                        .foregroundStyle(customDateRange != nil ? .white : theme.secondaryText)
-                }
-                .buttonStyle(.plain)
-
-                if !isClientScoped {
-                    Menu {
-                        Button("All Clients") { selectedClientFilter = nil }
-                        ForEach(allClients, id: \.persistentModelID) { c in
-                            Button(c.name) { selectedClientFilter = c }
+    private var filterSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    if activeCategory != .done {
+                        filterGroup("Status") {
+                            FlowLayout(spacing: 8) {
+                                ForEach(FilterType.allCases, id: \.self) { filter in
+                                    chip(filter.label, isOn: activeFilters.contains(filter)) {
+                                        if activeFilters.contains(filter) {
+                                            activeFilters.remove(filter)
+                                        } else {
+                                            activeFilters.insert(filter)
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(selectedClientFilter?.name ?? "All Clients")
-                            Image(systemName: "chevron.down")
-                        }
-                        .font(.caption.weight(.semibold))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(selectedClientFilter != nil ? theme.accent : Color.clear))
-                        .overlay(Capsule().strokeBorder(selectedClientFilter != nil ? Color.clear : theme.divider, lineWidth: 1))
-                        .foregroundStyle(selectedClientFilter != nil ? .white : theme.secondaryText)
                     }
+
+                    filterGroup("Date") {
+                        FlowLayout(spacing: 8) {
+                            ForEach(DateQuickPick.allCases, id: \.self) { pick in
+                                let isActive = dateQuickPick == pick && customDateRange == nil
+                                chip(pick.label, isOn: isActive) {
+                                    if isActive {
+                                        dateQuickPick = nil
+                                    } else {
+                                        dateQuickPick = pick
+                                        customDateRange = nil
+                                    }
+                                }
+                            }
+                            chip(customRangeLabel, isOn: customDateRange != nil) {
+                                showCustomRangePicker = true
+                            }
+                        }
+                    }
+
+                    if !isClientScoped {
+                        filterGroup("Client") {
+                            VStack(spacing: 0) {
+                                clientRow("All Clients", isOn: selectedClientFilter == nil) {
+                                    selectedClientFilter = nil
+                                }
+                                ForEach(allClients, id: \.persistentModelID) { c in
+                                    clientRow(c.name, isOn: selectedClientFilter?.persistentModelID == c.persistentModelID) {
+                                        selectedClientFilter = c
+                                    }
+                                }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(theme.divider, lineWidth: 1))
+                        }
+                    }
+                }
+                .padding(16)
+            }
+            .navigationTitle("Filters")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Clear All") {
+                        activeFilters.removeAll()
+                        dateQuickPick = nil
+                        customDateRange = nil
+                        selectedClientFilter = nil
+                    }
+                    .disabled(activeFilterCount == 0)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showFilterSheet = false }
                 }
             }
         }
-        .sheet(isPresented: $showDateRangePicker) {
+        .sheet(isPresented: $showCustomRangePicker) {
             DateRangePickerSheet(range: $customDateRange, onApply: { dateQuickPick = nil })
         }
     }
 
-    private var filterPillsRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(FilterType.allCases, id: \.self) { filter in
-                    let isActive = activeFilters.contains(filter)
-                    Button {
-                        if isActive { activeFilters.remove(filter) } else { activeFilters.insert(filter) }
-                    } label: {
-                        Text(filter.label)
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(Capsule().fill(isActive ? theme.accent : Color.clear))
-                            .overlay(Capsule().strokeBorder(isActive ? Color.clear : theme.divider, lineWidth: 1))
-                            .foregroundStyle(isActive ? .white : theme.secondaryText)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+    @ViewBuilder
+    private func filterGroup<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased())
+                .font(.caption.weight(.bold))
+                .foregroundStyle(theme.mutedText)
+                .tracking(0.5)
+            content()
         }
     }
 
-    private var sortBarRow: some View {
-        HStack(spacing: 16) {
-            ForEach(sortOptions, id: \.self) { option in
-                Button {
-                    activeSort = option
-                } label: {
-                    VStack(spacing: 3) {
-                        Text(option.rawValue)
-                            .font(.caption.weight(activeSort == option ? .bold : .regular))
-                            .foregroundStyle(activeSort == option ? theme.primaryText : theme.secondaryText)
-                        Rectangle()
-                            .fill(activeSort == option ? theme.accent : Color.clear)
-                            .frame(height: 2)
-                    }
+    private func chip(_ label: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(Capsule().fill(isOn ? theme.accent : Color.clear))
+                .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.divider, lineWidth: 1))
+                .foregroundStyle(isOn ? .white : theme.secondaryText)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func clientRow(_ name: String, isOn: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(name)
+                    .foregroundStyle(isOn ? theme.accent : theme.primaryText)
+                    .fontWeight(isOn ? .semibold : .regular)
+                Spacer()
+                if isOn {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(theme.accent)
                 }
-                .buttonStyle(.plain)
             }
-            Spacer()
+            .padding(.horizontal, 13)
+            .padding(.vertical, 11)
+            .background(theme.cardBackground)
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .bottom) {
+            Divider()
         }
     }
 
