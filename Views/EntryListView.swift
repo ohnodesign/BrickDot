@@ -795,31 +795,20 @@ private struct EntryListRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 8) {
-                HStack(spacing: 5) {
-                    if entry.isImportant {
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(theme.overdue)
-                    }
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption2)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(headlineText)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
+            HStack(spacing: 5) {
+                if entry.isImportant {
+                    Image(systemName: "star.fill")
+                        .font(.caption2)
+                        .foregroundStyle(theme.overdue)
                 }
-                Spacer(minLength: 6)
-                Text(pillLabel)
-                    .font(.caption2.weight(.bold))
+                if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
+                    Image(systemName: icon)
+                        .font(.caption2)
+                        .foregroundStyle(theme.accent)
+                }
+                Text(headlineText)
+                    .font(.body.weight(.semibold))
                     .lineLimit(1)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
-                    .background(pillBackground)
-                    .foregroundStyle(pillForeground)
-                    .clipShape(Capsule())
             }
 
             HStack(spacing: 6) {
@@ -832,6 +821,17 @@ private struct EntryListRow: View {
                 Text(entry.displayClientName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                Spacer(minLength: 6)
+
+                Text(pillLabel)
+                    .font(.caption2.weight(.bold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(pillBackground)
+                    .foregroundStyle(pillForeground)
+                    .clipShape(Capsule())
             }
 
             HStack {
