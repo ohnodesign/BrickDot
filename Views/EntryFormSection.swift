@@ -227,7 +227,7 @@ private struct ProjectSection: View {
 
 // MARK: - Communication Details
 
-private struct CommunicationDetailsSection: View {
+struct CommunicationDetailsSection: View {
     @Binding var channel: String
     @Binding var direction: String
     @Binding var contact: String
