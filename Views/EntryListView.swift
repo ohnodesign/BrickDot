@@ -576,11 +576,7 @@ struct EntryListView: View {
                 .buttonStyle(.plain)
             } else {
                 NavigationLink { EditEntryView(entry: entry) } label: {
-                    if activeCategory == .quickCaptures {
-                        QuickCaptureRow(entry: entry)
-                    } else {
-                        EntryListRow(entry: entry, isOverdue: isOverdue(entry))
-                    }
+                    EntryListRow(entry: entry, isOverdue: isOverdue(entry))
                 }
             }
         }
@@ -591,7 +587,7 @@ struct EntryListView: View {
     @ViewBuilder
     private func doneRow(_ entry: Entry) -> some View {
         NavigationLink { EditEntryView(entry: entry) } label: {
-            EntryListDoneRow(entry: entry)
+            EntryListRow(entry: entry, isOverdue: false)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) { leadingSwipe(entry) }
     }
@@ -734,182 +730,117 @@ private struct DateRangePickerSheet: View {
     }
 }
 
-// MARK: - Row Bullet
-
-/// Isolated subview so the repeating pulse animation only re-renders this
-/// bullet, not the whole row / list.
-private struct OverdueStarView: View {
-    @State private var animate = false
-
-    var body: some View {
-        Image(systemName: "star.fill")
-            .foregroundStyle(.red)
-            .font(.system(size: 12))
-            .opacity(animate ? 0.4 : 1.0)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                    animate = true
-                }
-            }
-    }
-}
-
-private struct EntryListBullet: View {
-    let isImportant: Bool
-    let isOverdue: Bool
-
-    var body: some View {
-        if isImportant {
-            if isOverdue {
-                OverdueStarView()
-            } else {
-                Image(systemName: "star.fill")
-                    .foregroundStyle(.red)
-                    .font(.system(size: 12))
-            }
-        } else {
-            Circle()
-                .fill(Color(.systemGray3))
-                .frame(width: 8, height: 8)
-        }
-    }
-}
-
 // MARK: - Rows
 
+/// One row format for every state an entry can be in — a status pill
+/// (Overdue / Quick Capture / Done / In Progress / On Deck) replaces the
+/// old three separate row types (plain / done / quick-capture) that each
+/// used a different colored dot or bullet.
 private struct EntryListRow: View {
     let entry: Entry
     let isOverdue: Bool
     @Environment(\.appTheme) private var theme
 
-    var body: some View {
-        HStack(spacing: 10) {
-            EntryListBullet(isImportant: entry.isImportant, isOverdue: isOverdue)
+    /// Amber, matching the app's established "unreviewed capture" color
+    /// (the same hue used elsewhere for Quick Capture, independent of theme).
+    private static let captureColor = Color(red: 0.71, green: 0.325, blue: 0.035)
 
-            VStack(alignment: .leading, spacing: 3) {
+    private var headlineText: String {
+        entry.detail.isEmpty ? entry.service : entry.detail
+    }
+
+    private var pillLabel: String {
+        if isOverdue { return "Overdue" }
+        if entry.isQuickAdd { return "Quick Capture" }
+        switch entry.status {
+        case .done:       return "Done"
+        case .inProgress: return "In Progress"
+        case .todo:       return "On Deck"
+        }
+    }
+
+    private var pillForeground: Color {
+        if isOverdue { return theme.overdue }
+        if entry.isQuickAdd { return Self.captureColor }
+        switch entry.status {
+        case .done:       return theme.success
+        case .inProgress: return theme.running
+        case .todo:       return theme.secondaryText
+        }
+    }
+
+    private var pillBackground: Color {
+        if isOverdue { return theme.overdueLight }
+        if entry.isQuickAdd { return Self.captureColor.opacity(0.15) }
+        switch entry.status {
+        case .done:       return theme.successLight
+        case .inProgress: return theme.runningLight
+        case .todo:       return theme.sidebarBackground
+        }
+    }
+
+    private func shortDate(_ date: Date) -> String {
+        date.formatted(.dateTime.month(.abbreviated).day())
+    }
+
+    private var dateLine: String {
+        let created = "Created \(shortDate(entry.createdAt))"
+        if entry.status == .done, let completed = entry.completedAt {
+            return "\(created) · Completed \(shortDate(completed))"
+        } else if let due = entry.dueDate {
+            return "\(created) · Due \(shortDate(due))"
+        }
+        return created
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 8) {
                 HStack(spacing: 5) {
                     if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
                         Image(systemName: icon)
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(theme.accent)
                     }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
+                    Text(headlineText)
                         .font(.body.weight(.semibold))
                         .lineLimit(1)
                 }
-                HStack(spacing: 6) {
+                Spacer(minLength: 6)
+                Text(pillLabel)
+                    .font(.caption2.weight(.bold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 2)
+                    .background(pillBackground)
+                    .foregroundStyle(pillForeground)
+                    .clipShape(Capsule())
+            }
+
+            HStack(spacing: 6) {
+                if !entry.detail.isEmpty {
                     Text(entry.service.uppercased())
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(theme.accent)
                     Text("·").foregroundStyle(.secondary)
-                    Text(entry.displayClientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
-            }
-
-            Spacer()
-
-            if let due = entry.dueDate {
-                Text(due, format: .dateTime.month(.abbreviated).day())
-                    .font(.subheadline)
-                    .foregroundStyle(isOverdue ? theme.overdue : .secondary)
-            } else {
-                Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
-                    .font(.subheadline)
+                Text(entry.displayClientName)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
             }
-        }
-        .padding(.vertical, 2)
-    }
-}
 
-private struct EntryListDoneRow: View {
-    let entry: Entry
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Circle()
-                .fill(.green)
-                .frame(width: 8, height: 8)
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-                }
-                HStack(spacing: 6) {
-                    Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(theme.accent)
-                    Text("·").foregroundStyle(.secondary)
-                    Text(entry.displayClientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+            HStack {
+                Text(dateLine)
+                    .font(.caption2)
+                    .foregroundStyle(theme.mutedText)
+                Spacer()
+                if entry.hours > 0 {
+                    Text("\(entry.hours, specifier: "%.1f")h")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(theme.secondaryText)
                 }
             }
-
-            Spacer()
-
-            if let completed = entry.completedAt {
-                Text(completed, format: .dateTime.month(.abbreviated).day())
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
         }
-        .padding(.vertical, 2)
-    }
-}
-
-// MARK: - Quick Capture Row (yellow triangle bullet)
-
-/// Pinned "Quick Captures" rows on the home screen — not part of the
-/// filtered/sorted list, always shown regardless of active filters.
-struct QuickCaptureRow: View {
-    let entry: Entry
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "triangle.fill")
-                .foregroundStyle(Color(.systemYellow))
-                .font(.system(size: 10))
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-                }
-                HStack(spacing: 6) {
-                    Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(theme.accent)
-                    Text("·").foregroundStyle(.secondary)
-                    Text(entry.displayClientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
     }
 }
