@@ -50,6 +50,13 @@ struct EditEntryView: View {
 
     private var currencyCode: String { Locale.current.currency?.identifier ?? "USD" }
 
+    /// The task itself is the headline; fall back to the service name when
+    /// there's no description yet (and skip the redundant service tag below
+    /// it in that case, rather than showing "DESIGN" twice).
+    private var headlineText: String {
+        entry.detail.isEmpty ? entry.service : entry.detail
+    }
+
     var body: some View {
         Form {
             Section {
@@ -190,47 +197,47 @@ struct EditEntryView: View {
     private var summaryHeaderCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
+                // Order of importance: Task (the headline) → Service → Company.
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.clientName)
+                    Text(headlineText)
                         .font(.title3.weight(.bold))
-                    if !entry.service.isEmpty {
-                        Text(entry.service)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(theme.accent)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 2)
-                            .background(theme.accentLight)
-                            .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .lineLimit(2)
+                    HStack(spacing: 6) {
+                        if !entry.detail.isEmpty && !entry.service.isEmpty {
+                            Text(entry.service)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(theme.accent)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 2)
+                                .background(theme.accentLight)
+                                .clipShape(RoundedRectangle(cornerRadius: 5))
+                        }
+                        Text(entry.clientName)
+                            .font(.caption)
+                            .foregroundStyle(theme.secondaryText)
                     }
                 }
-                Spacer()
-                Button {
-                    entry.isImportant.toggle()
-                    entry.markModified()
-                    try? ctx.save()
-                } label: {
-                    Image(systemName: entry.isImportant ? "star.fill" : "star")
-                        .foregroundStyle(entry.isImportant ? theme.overdue : theme.mutedText)
-                        .font(.title3)
-                }
-                .buttonStyle(.plain)
-            }
+                Spacer(minLength: 8)
+                VStack(alignment: .trailing, spacing: 8) {
+                    Button {
+                        entry.isImportant.toggle()
+                        entry.markModified()
+                        try? ctx.save()
+                    } label: {
+                        Image(systemName: entry.isImportant ? "star.fill" : "star")
+                            .foregroundStyle(entry.isImportant ? theme.overdue : theme.mutedText)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
 
-            HStack(alignment: .firstTextBaseline) {
-                if !entry.detail.isEmpty {
-                    Text(entry.detail)
-                        .font(.caption)
-                        .foregroundStyle(theme.secondaryText)
-                        .lineLimit(2)
-                }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 1) {
-                    Text(entry.hours * entry.rate + entry.expenseTotal, format: .currency(code: currencyCode))
-                        .font(.title3.weight(.heavy))
-                        .foregroundStyle(theme.primaryText)
-                    Text("\(entry.hours, specifier: "%.1f")h · \(entry.rate, format: .currency(code: currencyCode))/hr")
-                        .font(.caption2)
-                        .foregroundStyle(theme.mutedText)
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(entry.hours * entry.rate + entry.expenseTotal, format: .currency(code: currencyCode))
+                            .font(.title3.weight(.heavy))
+                            .foregroundStyle(theme.primaryText)
+                        Text("\(entry.hours, specifier: "%.1f")h · \(entry.rate, format: .currency(code: currencyCode))/hr")
+                            .font(.caption2)
+                            .foregroundStyle(theme.mutedText)
+                    }
                 }
             }
 
