@@ -797,6 +797,11 @@ private struct EntryListRow: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .top, spacing: 8) {
                 HStack(spacing: 5) {
+                    if entry.isImportant {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(theme.overdue)
+                    }
                     if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
                         Image(systemName: icon)
                             .font(.caption2)
