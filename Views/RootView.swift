@@ -275,6 +275,7 @@ private enum SidebarDestination: Hashable {
     case newEntry
     case allClients
     case client(PersistentIdentifier)
+    case savedSearch(PersistentIdentifier)
     case coach
     case profile
     case settings
@@ -285,6 +286,7 @@ private struct iPadRootView: View {
     @Environment(\.appTheme) private var theme
     @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @Query(sort: \Client.name) private var allClients: [Client]
+    @Query(sort: \SavedSearch.createdAt) private var savedSearches: [SavedSearch]
     @Query private var profiles: [UserProfile]
     private var profile: UserProfile? { profiles.first }
 
@@ -336,6 +338,42 @@ private struct iPadRootView: View {
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray6)))
                     .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
+                }
+
+                // Saved Searches — one-tap shortcuts to a saved EntryListView
+                // filter combination, created from the Filter row on Home.
+                if !savedSearches.isEmpty {
+                    Section {
+                        ForEach(savedSearches, id: \.persistentModelID) { search in
+                            Button {
+                                selection = .savedSearch(search.persistentModelID)
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "bookmark.fill")
+                                        .foregroundStyle(theme.accent)
+                                        .frame(width: 20)
+                                    Text(search.name)
+                                        .foregroundStyle(theme.primaryText)
+                                        .lineLimit(1)
+                                    Spacer()
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .buttonStyle(.plain)
+                            .swipeActions(edge: .trailing) {
+                                Button(role: .destructive) {
+                                    ctx.delete(search)
+                                    try? ctx.save()
+                                } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                    } header: {
+                        Text("SAVED SEARCHES")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(theme.secondaryText)
+                    }
                 }
 
                 // Navigation
@@ -471,6 +509,12 @@ private struct iPadRootView: View {
                 ClientDetailView(client: client)
             } else {
                 Text("Client not found").foregroundStyle(.secondary)
+            }
+        case .savedSearch(let id):
+            if let search = savedSearches.first(where: { $0.persistentModelID == id }) {
+                EntriesListView(title: search.name, entries: search.matchingEntries(in: allEntries))
+            } else {
+                Text("Saved search not found").foregroundStyle(.secondary)
             }
         case .coach:
             CoachView()

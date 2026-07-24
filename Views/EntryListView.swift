@@ -7,7 +7,7 @@ import SwiftData
 /// Single-select base category. Replaces the old "always exclude Quick
 /// Captures, always append a collapsed Done section" behavior - Quick
 /// Captures and Done are now just two more views onto the same list.
-enum EntryCategory: CaseIterable, Hashable {
+enum EntryCategory: String, CaseIterable, Hashable {
     case all, quickCaptures, done
 
     var label: String {
@@ -19,7 +19,7 @@ enum EntryCategory: CaseIterable, Hashable {
     }
 }
 
-enum FilterType: CaseIterable, Hashable {
+enum FilterType: String, CaseIterable, Hashable {
     case starred, inProgress, overdue, todo
 
     var label: String {
@@ -38,7 +38,7 @@ enum SortOption: String, CaseIterable {
     case client   = "Client"
 }
 
-enum DateQuickPick: CaseIterable, Hashable {
+enum DateQuickPick: String, CaseIterable, Hashable {
     case today, thisWeek, thisMonth
 
     var label: String {
@@ -112,6 +112,7 @@ struct EntryListView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
     @Query(sort: \Client.name) private var allClients: [Client]
+    @Query(sort: \SavedSearch.createdAt) private var savedSearches: [SavedSearch]
 
     @State private var activeCategory: EntryCategory = .all
     // Empty = no constraint (show everything). Each active pill ANDs in an
@@ -125,6 +126,8 @@ struct EntryListView: View {
     @State private var selectedClientFilter: Client? = nil
     @State private var showAllEntries = false
     @State private var showFilterSheet = false
+    @State private var showSaveSearchAlert = false
+    @State private var newSearchName = ""
 
     private var cal: Calendar { Calendar.current }
     private var todayStart: Date { cal.startOfDay(for: Date()) }
@@ -242,18 +245,56 @@ struct EntryListView: View {
         return "\(f.string(from: range.lowerBound))–\(f.string(from: range.upperBound))"
     }
 
-    private var summaryText: String {
-        let count = sortedFlatEntries.count
-        var parts = ["\(count) \(count == 1 ? "entry" : "entries")"]
+    /// "Cobblestone Homes, All, Starred" — a legible readout of every active
+    /// filter dimension, shown as a title above the list so it's always
+    /// obvious what's currently narrowing it down.
+    private var activeFilterTitle: String {
+        var parts: [String] = []
+        if let client = selectedClientFilter { parts.append(client.name) }
+        parts.append(activeCategory.label)
+        parts.append(contentsOf: FilterType.allCases.filter(activeFilters.contains).map(\.label))
         if customDateRange != nil {
             parts.append(customRangeLabel)
         } else if let pick = dateQuickPick {
             parts.append(pick.label)
         }
-        if let client = selectedClientFilter {
-            parts.append(client.name)
-        }
-        return parts.joined(separator: " · ")
+        return parts.joined(separator: ", ")
+    }
+
+    private var entryCountText: String {
+        let count = sortedFlatEntries.count
+        return "\(count) \(count == 1 ? "entry" : "entries")"
+    }
+
+    private func apply(_ search: SavedSearch) {
+        activeCategory = search.category
+        activeFilters = search.filters
+        dateQuickPick = search.dateQuickPick
+        customDateRange = search.customDateRange
+        selectedClientFilter = search.client
+        activeSort = search.sort
+    }
+
+    private func saveCurrentSearch() {
+        let name = newSearchName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        let search = SavedSearch(
+            name: name,
+            category: activeCategory,
+            filters: activeFilters,
+            dateQuickPick: dateQuickPick,
+            customDateRange: customDateRange,
+            client: selectedClientFilter,
+            sort: activeSort
+        )
+        ctx.insert(search)
+        try? ctx.save()
+        newSearchName = ""
+    }
+
+    private func deleteSavedSearch(_ search: SavedSearch) {
+        ctx.delete(search)
+        try? ctx.save()
     }
 
     // Default to the first 20, with a "More" button to reveal the rest.
@@ -265,6 +306,13 @@ struct EntryListView: View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
                 categorySegmented
+                if !isClientScoped {
+                    savedSearchRow
+                }
+                Text(activeFilterTitle)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(theme.primaryText)
+                    .lineLimit(1)
                 toolbarRow
             }
             .padding(.vertical, 4)
@@ -275,6 +323,13 @@ struct EntryListView: View {
             .onChange(of: customDateRange) { _, _ in showAllEntries = false }
             .onChange(of: selectedClientFilter) { _, _ in showAllEntries = false }
             .sheet(isPresented: $showFilterSheet) { filterSheet }
+            .alert("Save Search", isPresented: $showSaveSearchAlert) {
+                TextField("Name", text: $newSearchName)
+                Button("Save") { saveCurrentSearch() }
+                Button("Cancel", role: .cancel) { newSearchName = "" }
+            } message: {
+                Text("Save the current filters so you can apply them again with one tap.")
+            }
         } header: {
             Text("ENTRIES")
                 .font(.caption.weight(.bold))
@@ -364,12 +419,64 @@ struct EntryListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    /// A legible summary of the current state, plus the two entry points
-    /// for everything else: a Filter button (badged with how many
-    /// dimensions are active) opening one sheet, and a Sort menu.
+    /// One-tap saved-search chips, plus a trailing chip to save the current
+    /// filter combination under a name. Hidden on client-scoped lists,
+    /// where the client dimension is already fixed by the caller.
+    private var savedSearchRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(savedSearches, id: \.persistentModelID) { search in
+                    Button {
+                        apply(search)
+                    } label: {
+                        HStack(spacing: 5) {
+                            Image(systemName: "bookmark.fill")
+                            Text(search.name)
+                        }
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(theme.sidebarBackground)
+                        .foregroundStyle(theme.secondaryText)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            deleteSavedSearch(search)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                }
+
+                Button {
+                    showSaveSearchAlert = true
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "plus")
+                        Text("Save Search")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(theme.accentLight)
+                    .foregroundStyle(theme.accent)
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    /// The entry count, plus the two entry points for everything else: a
+    /// Filter button (badged with how many dimensions are active) opening
+    /// one sheet, and a Sort menu.
     private var toolbarRow: some View {
         HStack(spacing: 8) {
-            Text(summaryText)
+            Text(entryCountText)
                 .font(.caption)
                 .foregroundStyle(theme.secondaryText)
                 .lineLimit(1)

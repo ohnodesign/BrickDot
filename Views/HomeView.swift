@@ -27,11 +27,6 @@ struct HomeView: View {
         !onboardingDismissed && (onboardingStarted || !onboardingStepsComplete)
     }
 
-    @State private var expandedSections: Set<String> = []
-
-    private func isExpanded(_ key: String) -> Bool { expandedSections.contains(key) }
-    private func toggleExpanded(_ key: String) { if expandedSections.contains(key) { expandedSections.remove(key) } else { expandedSections.insert(key) } }
-
     var body: some View {
             List {
                 // MARK: - Search bar (iPhone)
@@ -56,7 +51,7 @@ struct HomeView: View {
                     .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                 }
 
-                // MARK: - Greeting & Today's Focus
+                // MARK: - Greeting
                 if searchText.isEmpty {
                     Section {
                         GreetingText(name: profile?.displayName ?? "")
@@ -73,18 +68,6 @@ struct HomeView: View {
                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
                     }
 
-                    if !todayFocusEntries.isEmpty {
-                        Section {
-                            ForEach(Array(todayFocusEntries.prefix(3).enumerated()), id: \.element.persistentModelID) { index, entry in
-                                NavigationLink { EditEntryView(entry: entry) } label: {
-                                    FocusRow(index: index, entry: entry)
-                                }
-                                .listRowSeparator(.hidden)
-                            }
-                        } header: {
-                            sectionHeader("Today's Focus", count: todayFocusEntries.count, cap: 3, key: "focus")
-                        }
-                    }
                 }
 
                 // MARK: - Dashboard (iPhone only — iPad shows this in the sidebar)
@@ -193,31 +176,6 @@ struct HomeView: View {
             }
     }
 
-    // MARK: - Section Header (Today's Focus)
-
-    @ViewBuilder
-    private func sectionHeader(_ title: String, count: Int, cap: Int, key: String) -> some View {
-        HStack {
-            Text(title.uppercased())
-                .font(.caption.weight(.bold))
-                .foregroundStyle(theme.secondaryText)
-                .tracking(0.5)
-            Spacer()
-            if count > cap {
-                Button {
-                    withAnimation { toggleExpanded(key) }
-                } label: {
-                    Text(isExpanded(key) ? "Show less" : "View all")
-                        .font(.subheadline.weight(.medium))
-                        .foregroundStyle(theme.accent)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.top, 12)
-        .padding(.bottom, 4)
-    }
-
     // MARK: - Entry Sorting & Filtering
 
     private var cal: Calendar { Calendar.current }
@@ -251,52 +209,10 @@ struct HomeView: View {
         }.count
     }
 
-    // Everything else shown below Today's Focus: category + filter pills +
-    // sort bar + date/client + unified list, via the shared EntryListView.
+    // Everything shown below: category + filter pills + sort bar + date/client
+    // + unified list, via the shared EntryListView.
     private var mainListEntries: [Entry] {
-        let focusIDs = Set(todayFocusEntries.map(\.persistentModelID))
-        return allEntries.filter { !focusIDs.contains($0.persistentModelID) && matchesSearch($0) }
-    }
-
-    // Today's Focus: top 5 most urgent entries (overdue → due today → in progress → starred)
-    private var todayFocusEntries: [Entry] {
-        var focus: [Entry] = []
-        // Overdue first (ignore search filter for focus)
-        let allOpen = allEntries.filter { $0.status != .done }
-        let overdue = allOpen.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due < todayStart
-        }.sorted(by: prioritySort)
-        focus.append(contentsOf: overdue)
-
-        // Due today
-        let today = allOpen.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due >= todayStart && due <= todayEnd
-        }.sorted(by: prioritySort)
-        focus.append(contentsOf: today)
-
-        // In progress with timers
-        let running = allOpen.filter { $0.status == .inProgress && $0.timerStartedAt != nil }
-        for e in running where !focus.contains(where: { $0.persistentModelID == e.persistentModelID }) {
-            focus.append(e)
-        }
-
-        // Starred (only if due today, overdue, or no due date — not future)
-        let starred = allOpen.filter { e in
-            guard e.isImportant else { return false }
-            if let due = e.dueDate { return due <= todayEnd }
-            return true
-        }.sorted(by: prioritySort)
-        for e in starred where !focus.contains(where: { $0.persistentModelID == e.persistentModelID }) {
-            focus.append(e)
-        }
-
-        return Array(focus.prefix(5))
-    }
-
-    private var todayFocusRevenue: Double {
-        todayFocusEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
+        allEntries.filter { matchesSearch($0) }
     }
 
     private var timersRunningCount: Int {
@@ -391,7 +307,7 @@ private struct DashboardPill: View {
     }
 }
 
-// MARK: - Greeting & Focus Components
+// MARK: - Greeting
 
 private struct GreetingText: View {
     let name: String
@@ -460,51 +376,5 @@ private struct GreetingText: View {
         }
     }
 }
-
-private struct FocusRow: View {
-    let index: Int
-    let entry: Entry
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Text("\(index + 1)")
-                .font(.headline)
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
-                .background(Circle().strokeBorder(Color(.systemGray4), lineWidth: 1))
-
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 5) {
-                    if entry.service == "COMM", let icon = commChannelIcon(for: entry.commChannel) {
-                        Image(systemName: icon)
-                            .font(.caption)
-                            .foregroundStyle(theme.accent)
-                    }
-                    Text(entry.detail.isEmpty ? entry.service : entry.detail)
-                        .font(.body.weight(.semibold))
-                        .lineLimit(1)
-                }
-                HStack(spacing: 6) {
-                    Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(theme.accent)
-                    Text("·").foregroundStyle(.secondary)
-                    Text(entry.displayClientName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
-            Spacer()
-
-            Text(entry.serviceDate, format: .dateTime.month(.abbreviated).day())
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 2)
-    }
-}
-
 
 
