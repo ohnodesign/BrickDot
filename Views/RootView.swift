@@ -325,10 +325,10 @@ private struct iPadRootView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 6) {
                             Image(systemName: "sun.max.fill")
-                                .font(.subheadline)
+                                .font(macSized(Font.subheadline, .body))
                                 .foregroundStyle(theme.overdue)
                             Text("TODAY")
-                                .font(.subheadline.weight(.bold))
+                                .font(macSized(Font.subheadline, .body).weight(.bold))
                                 .foregroundStyle(theme.overdue)
                         }
 

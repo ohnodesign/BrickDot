@@ -310,7 +310,7 @@ struct EntryListView: View {
                     savedSearchRow
                 }
                 Text(activeFilterTitle)
-                    .font(.subheadline.weight(.semibold))
+                    .font(macSized(Font.subheadline, .title3).weight(.semibold))
                     .foregroundStyle(theme.primaryText)
                     .lineLimit(1)
                 toolbarRow
@@ -401,11 +401,11 @@ struct EntryListView: View {
                         Text("\(entries(in: category).count)")
                             .foregroundStyle(isActive ? theme.accent : theme.mutedText)
                     }
-                    .font(.caption.weight(.semibold))
+                    .font(macSized(Font.caption, .subheadline).weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 7)
+                    .padding(.vertical, macSized(7, 10))
                     .background(isActive ? theme.cardBackground : Color.clear)
                     .foregroundStyle(isActive ? theme.primaryText : theme.secondaryText)
                     .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -433,10 +433,10 @@ struct EntryListView: View {
                             Image(systemName: "bookmark.fill")
                             Text(search.name)
                         }
-                        .font(.caption.weight(.semibold))
+                        .font(macSized(Font.caption, .subheadline).weight(.semibold))
                         .lineLimit(1)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
+                        .padding(.horizontal, macSized(10, 13))
+                        .padding(.vertical, macSized(6, 9))
                         .background(theme.sidebarBackground)
                         .foregroundStyle(theme.secondaryText)
                         .clipShape(Capsule())
@@ -458,10 +458,10 @@ struct EntryListView: View {
                         Image(systemName: "plus")
                         Text("Save Search")
                     }
-                    .font(.caption.weight(.semibold))
+                    .font(macSized(Font.caption, .subheadline).weight(.semibold))
                     .lineLimit(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, macSized(10, 13))
+                    .padding(.vertical, macSized(6, 9))
                     .background(theme.accentLight)
                     .foregroundStyle(theme.accent)
                     .clipShape(Capsule())
@@ -477,7 +477,7 @@ struct EntryListView: View {
     private var toolbarRow: some View {
         HStack(spacing: 8) {
             Text(entryCountText)
-                .font(.caption)
+                .font(macSized(Font.caption, .subheadline))
                 .foregroundStyle(theme.secondaryText)
                 .lineLimit(1)
                 .layoutPriority(-1)
@@ -492,16 +492,16 @@ struct EntryListView: View {
                     Text("Filter")
                     if activeFilterCount > 0 {
                         Text("\(activeFilterCount)")
-                            .font(.caption2.weight(.bold))
+                            .font(macSized(Font.caption2, .caption).weight(.bold))
                             .foregroundStyle(.white)
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
                             .background(Circle().fill(theme.accent))
                     }
                 }
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
+                .font(macSized(Font.caption, .subheadline).weight(.semibold))
+                .padding(.horizontal, macSized(9, 12))
+                .padding(.vertical, macSized(6, 9))
                 .background(activeFilterCount > 0 ? theme.accentLight : theme.sidebarBackground)
                 .foregroundStyle(activeFilterCount > 0 ? theme.accent : theme.secondaryText)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -525,9 +525,9 @@ struct EntryListView: View {
                     Image(systemName: "arrow.up.arrow.down")
                     Text(activeSort.rawValue)
                 }
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 9)
-                .padding(.vertical, 6)
+                .font(macSized(Font.caption, .subheadline).weight(.semibold))
+                .padding(.horizontal, macSized(9, 12))
+                .padding(.vertical, macSized(6, 9))
                 .background(theme.sidebarBackground)
                 .foregroundStyle(theme.secondaryText)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -631,9 +631,9 @@ struct EntryListView: View {
     private func chip(_ label: String, isOn: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 7)
+                .font(macSized(Font.caption, .subheadline).weight(.semibold))
+                .padding(.horizontal, macSized(12, 15))
+                .padding(.vertical, macSized(7, 10))
                 .background(Capsule().fill(isOn ? theme.accent : Color.clear))
                 .overlay(Capsule().strokeBorder(isOn ? Color.clear : theme.divider, lineWidth: 1))
                 .foregroundStyle(isOn ? .white : theme.secondaryText)
@@ -921,21 +921,21 @@ private struct EntryListRow: View {
             HStack(spacing: 6) {
                 if !entry.detail.isEmpty {
                     Text(entry.service.uppercased())
-                        .font(.caption2.weight(.bold))
+                        .font(macSized(Font.caption2, .caption).weight(.bold))
                         .foregroundStyle(theme.accent)
                     Text("·").foregroundStyle(.secondary)
                 }
                 Text(entry.displayClientName)
-                    .font(.caption)
+                    .font(macSized(Font.caption, .subheadline))
                     .foregroundStyle(.secondary)
 
                 Spacer(minLength: 6)
 
                 Text(pillLabel)
-                    .font(.caption2.weight(.bold))
+                    .font(macSized(Font.caption2, .caption).weight(.bold))
                     .lineLimit(1)
-                    .padding(.horizontal, 7)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, macSized(7, 9))
+                    .padding(.vertical, macSized(2, 3))
                     .background(pillBackground)
                     .foregroundStyle(pillForeground)
                     .clipShape(Capsule())
@@ -943,16 +943,16 @@ private struct EntryListRow: View {
 
             HStack {
                 Text(dateLine)
-                    .font(.caption2)
+                    .font(macSized(Font.caption2, .caption))
                     .foregroundStyle(theme.mutedText)
                 Spacer()
                 if entry.hours > 0 {
                     Text("\(entry.hours, specifier: "%.1f")h")
-                        .font(.caption.weight(.semibold))
+                        .font(macSized(Font.caption, .subheadline).weight(.semibold))
                         .foregroundStyle(theme.secondaryText)
                 }
             }
         }
-        .padding(.vertical, 3)
+        .padding(.vertical, macSized(3, 5))
     }
 }
