@@ -134,9 +134,20 @@ All three enums are `String`-backed so `SavedSearch` can persist them.
 - Avoid complex `#Predicate` macro expressions (iOS 17.x bugs are noted
   elsewhere in this codebase) — filter in Swift instead, as every existing
   view does.
-- CloudKit sync is on by default with an automatic local-only fallback;
-  don't assume `try? ctx.save()` failures are silent no-ops during testing
-  — check `cloudkit.fallbackToLocal` in `UserDefaults`.
+- **Every `@Relationship` must declare an inverse.** CloudKit refuses to
+  load the *entire store* if even one relationship lacks one — the app
+  then silently falls back to local-only and nothing syncs, app-wide.
+  The console error is
+  `CloudKit integration requires that all relationships have an inverse`.
+  When adding a model with a reference to another model, add the matching
+  inverse property on the other side (see `Client.savedSearches` ↔
+  `SavedSearch.client`).
+- Related CloudKit requirements: every property needs a default value, and
+  relationships must be optional.
+- CloudKit sync is on by default with an automatic local-only fallback.
+  `cloudkit.fallbackToLocal` in `UserDefaults` is true whenever the app is
+  running in that degraded mode, and is only cleared by an actual CloudKit
+  success — check it before debugging "X doesn't sync" reports.
 
 ### View Patterns
 - `@Environment(\.modelContext)` for the SwiftData context,

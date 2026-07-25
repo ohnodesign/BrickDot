@@ -33,12 +33,17 @@ struct BrickDotApp: App {
 
         // Try CloudKit-enabled store first
         if let container = try? ModelContainer(for: schema, configurations: [cloudConfig]) {
+            UserDefaults.standard.set(false, forKey: "cloudkit.fallbackToLocal")
             return container
         }
 
         // CloudKit init failed — fall back to local-only storage.
         // Do NOT delete the store; the data is still there and may sync
         // once the CloudKit issue resolves on next launch.
+        //
+        // A schema mistake (e.g. a relationship with no inverse) lands here
+        // and silently disables sync app-wide, so the flag is only cleared
+        // by an actual CloudKit success above — never blindly on launch.
         let localConfig = ModelConfiguration(cloudKitDatabase: .none)
         if let container = try? ModelContainer(for: schema, configurations: [localConfig]) {
             UserDefaults.standard.set(true, forKey: "cloudkit.fallbackToLocal")
@@ -58,9 +63,6 @@ struct BrickDotApp: App {
                 .preferredColorScheme(colorScheme(from: appearanceRaw))
                 .tint(currentTheme.accent)
                 .onAppear {
-                    if UserDefaults.standard.bool(forKey: "cloudkit.fallbackToLocal") {
-                        UserDefaults.standard.set(false, forKey: "cloudkit.fallbackToLocal")
-                    }
                     #if targetEnvironment(macCatalyst)
                     if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                         scene.sizeRestrictions?.minimumSize = CGSize(width: 900, height: 600)

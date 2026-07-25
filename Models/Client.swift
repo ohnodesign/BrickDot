@@ -17,6 +17,11 @@ final class Client {
     var templates: [EntryTemplate]? = []
     @Relationship(deleteRule: .cascade, inverse: \Invoice.client)
     var invoices: [Invoice]? = []
+    // Inverse for SavedSearch.client. CloudKit refuses to load the store if
+    // any relationship lacks one. Cascade: a saved search scoped to a
+    // deleted client no longer describes anything.
+    @Relationship(deleteRule: .cascade, inverse: \SavedSearch.client)
+    var savedSearches: [SavedSearch]? = []
     var entriesList: [Entry] {
         get { entries ?? [] }
         set { entries = newValue }
@@ -28,6 +33,10 @@ final class Client {
     var invoicesList: [Invoice] {
         get { invoices ?? [] }
         set { invoices = newValue }
+    }
+    var savedSearchesList: [SavedSearch] {
+        get { savedSearches ?? [] }
+        set { savedSearches = newValue }
     }
     init(name: String = "", rate: Double = 0, colorIndex: Int = 0) {
         self.name = name

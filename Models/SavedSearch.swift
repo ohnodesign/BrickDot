@@ -12,6 +12,8 @@ final class SavedSearch {
     var dateQuickPickRaw: String? = nil
     var customDateStart: Date? = nil
     var customDateEnd: Date? = nil
+    /// Inverse lives on `Client.savedSearches` — CloudKit fails to load the
+    /// whole store (not just this model) if a relationship has no inverse.
     var client: Client? = nil
     var sortRaw: String = SortOption.recent.rawValue
     var createdAt: Date = Date()
