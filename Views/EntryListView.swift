@@ -19,8 +19,13 @@ enum EntryCategory: String, CaseIterable, Hashable {
     }
 }
 
+/// Raw values are persisted by SavedSearch — keep them stable once shipped.
+/// `dueToday` and `running` exist because neither can be expressed with the
+/// other filters: DateQuickPick ranges match on serviceDate/completedAt
+/// rather than dueDate, and `inProgress` matches status without regard to
+/// whether a timer is actually running.
 enum FilterType: String, CaseIterable, Hashable {
-    case starred, inProgress, overdue, todo
+    case starred, inProgress, overdue, todo, dueToday, running
 
     var label: String {
         switch self {
@@ -28,6 +33,8 @@ enum FilterType: String, CaseIterable, Hashable {
         case .inProgress: return "In Progress"
         case .overdue:    return "Overdue"
         case .todo:       return EntryStatus.todo.displayLabel
+        case .dueToday:   return "Due Today"
+        case .running:    return "Running"
         }
     }
 }
@@ -110,6 +117,8 @@ struct EntryListView: View {
 
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.entryViewRequest) private var viewRequest
     @Query(sort: \Client.name) private var allClients: [Client]
     @Query(sort: \SavedSearch.createdAt) private var savedSearches: [SavedSearch]
 
@@ -161,12 +170,20 @@ struct EntryListView: View {
         return due < todayStart
     }
 
+    private func isDueToday(_ entry: Entry) -> Bool {
+        guard entry.status != .done, let due = entry.dueDate else { return false }
+        let end = cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? todayStart
+        return due >= todayStart && due <= end
+    }
+
     private func matches(_ entry: Entry, _ filter: FilterType) -> Bool {
         switch filter {
         case .starred:    return entry.isImportant
         case .inProgress: return entry.status == .inProgress
         case .overdue:    return isOverdue(entry)
         case .todo:       return entry.status == .todo
+        case .dueToday:   return isDueToday(entry)
+        case .running:    return entry.status == .inProgress && entry.timerStartedAt != nil
         }
     }
 
@@ -280,6 +297,38 @@ struct EntryListView: View {
         activeSort = search.sort
     }
 
+    /// Built-ins replace the whole filter state rather than narrowing within
+    /// it, so tapping "Overdue" always shows every overdue entry regardless
+    /// of what was filtered before.
+    private func apply(_ view: BuiltInView) {
+        activeCategory = .all
+        activeFilters = [view.filter]
+        dateQuickPick = nil
+        customDateRange = nil
+        selectedClientFilter = nil
+        activeSort = .recent
+    }
+
+    /// Handles a request posted from outside this view (Mac sidebar, iPhone
+    /// dashboard) and clears it so the same tap can be repeated.
+    private func consumeViewRequest() {
+        // Requests target the Home list. The client-scoped copy inside
+        // ClientDetailView must not swallow one — a saved search carries its
+        // own client filter, which is meaningless when the caller already
+        // fixed the client.
+        guard !isClientScoped, let target = viewRequest.pending else { return }
+        switch target {
+        case .builtIn(let view):
+            apply(view)
+        case .saved(let id):
+            if let search = savedSearches.first(where: { $0.persistentModelID == id }) {
+                apply(search)
+            }
+        }
+        showAllEntries = false
+        viewRequest.pending = nil
+    }
+
     private func saveCurrentSearch() {
         let name = newSearchName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
@@ -311,7 +360,9 @@ struct EntryListView: View {
         Section {
             VStack(alignment: .leading, spacing: 10) {
                 categorySegmented
-                if !isClientScoped {
+                // Compact only: on iPad/Mac the sidebar owns saved searches,
+                // so a chip row here would be the same list in two places.
+                if !isClientScoped && sizeClass == .compact {
                     savedSearchRow
                 }
                 Text(activeFilterTitle)
@@ -327,6 +378,8 @@ struct EntryListView: View {
             .onChange(of: dateQuickPick) { _, _ in showAllEntries = false }
             .onChange(of: customDateRange) { _, _ in showAllEntries = false }
             .onChange(of: selectedClientFilter) { _, _ in showAllEntries = false }
+            .onChange(of: viewRequest.pending) { _, _ in consumeViewRequest() }
+            .onAppear { consumeViewRequest() }
             .sheet(isPresented: $showFilterSheet) { filterSheet }
             .alert("Save Search", isPresented: $showSaveSearchAlert) {
                 TextField("Name", text: $newSearchName)
@@ -424,9 +477,9 @@ struct EntryListView: View {
         .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 
-    /// One-tap saved-search chips, plus a trailing chip to save the current
-    /// filter combination under a name. Hidden on client-scoped lists,
-    /// where the client dimension is already fixed by the caller.
+    /// One-tap saved-search chips (compact width only — the sidebar owns
+    /// these on iPad/Mac). Saving lives in the filter sheet, next to the
+    /// filters being saved.
     private var savedSearchRow: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
@@ -456,22 +509,6 @@ struct EntryListView: View {
                     }
                 }
 
-                Button {
-                    showSaveSearchAlert = true
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: "plus")
-                        Text("Save Search")
-                    }
-                    .font(macSized(Font.caption, .subheadline).weight(.semibold))
-                    .lineLimit(1)
-                    .padding(.horizontal, macSized(10, 13))
-                    .padding(.vertical, macSized(6, 9))
-                    .background(theme.accentLight)
-                    .foregroundStyle(theme.accent)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
             }
         }
     }
@@ -596,6 +633,25 @@ struct EntryListView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(theme.divider, lineWidth: 1))
                         }
+                    }
+
+                    // Saving lives here, alongside the filters being saved,
+                    // rather than as a chip in the list header.
+                    if !isClientScoped {
+                        Button {
+                            showFilterSheet = false
+                            showSaveSearchAlert = true
+                        } label: {
+                            Label("Save as Search…", systemImage: "bookmark")
+                                .font(.subheadline.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(theme.accentLight)
+                                .foregroundStyle(theme.accent)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(activeFilterCount == 0)
                     }
                 }
                 .padding(16)

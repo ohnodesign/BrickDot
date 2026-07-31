@@ -73,12 +73,7 @@ struct HomeView: View {
                 // MARK: - Dashboard (iPhone only — iPad shows this in the sidebar)
                 if sizeClass == .compact {
                     Section {
-                        DashboardRow(
-                            overdueCount: overdueEntries.count,
-                            dueTodayCount: allDueTodayCount,
-                            timersRunning: timersRunningCount,
-                            weekAmount: thisWeekAmount
-                        )
+                        DashboardRow(entries: allEntries, weekAmount: thisWeekAmount)
                     }
                     .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 8, trailing: 12))
                 }
@@ -178,10 +173,6 @@ struct HomeView: View {
 
     // MARK: - Entry Sorting & Filtering
 
-    private var cal: Calendar { Calendar.current }
-    private var todayStart: Date { cal.startOfDay(for: Date()) }
-    private var todayEnd: Date { cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? Date() }
-
     private func matchesSearch(_ entry: Entry) -> Bool {
         guard !searchText.isEmpty else { return true }
         let q = searchText.lowercased()
@@ -191,32 +182,11 @@ struct HomeView: View {
             || entry.notes.lowercased().contains(q)
     }
 
-    private var openEntries: [Entry] {
-        allEntries.filter { $0.status != .done && matchesSearch($0) }
-    }
-
-    private var overdueEntries: [Entry] {
-        openEntries.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due < todayStart
-        }.sorted(by: prioritySort)
-    }
-
-    private var allDueTodayCount: Int {
-        openEntries.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due >= todayStart && due <= todayEnd
-        }.count
-    }
-
     // Everything shown below: category + filter pills + sort bar + date/client
-    // + unified list, via the shared EntryListView.
+    // + unified list, via the shared EntryListView. The dashboard's counts come
+    // from BuiltInView so a badge and its filtered result can't disagree.
     private var mainListEntries: [Entry] {
         allEntries.filter { matchesSearch($0) }
-    }
-
-    private var timersRunningCount: Int {
-        allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }.count
     }
 
     private var thisWeekAmount: Double {
@@ -227,58 +197,41 @@ struct HomeView: View {
             .reduce(0) { $0 + ($1.hours * $1.rate) }
     }
 
-    private func prioritySort(_ a: Entry, _ b: Entry) -> Bool {
-        // Starred first
-        if a.isImportant != b.isImportant { return a.isImportant }
-        // Then by due date (soonest first), nil last
-        switch (a.dueDate, b.dueDate) {
-        case let (ad?, bd?): return ad < bd
-        case (_?, nil): return true
-        case (nil, _?): return false
-        default: return a.serviceDate > b.serviceDate
-        }
-    }
-
 }
 
 // MARK: - Dashboard Row
 
+/// Each stat is a filter you can act on: the three counts apply their
+/// built-in view to the entries list below, and This Week — a revenue
+/// figure rather than a filter — opens Stats.
 private struct DashboardRow: View {
-    let overdueCount: Int
-    let dueTodayCount: Int
-    let timersRunning: Int
+    let entries: [Entry]
     let weekAmount: Double
     @Environment(\.appTheme) private var theme
+    @Environment(\.entryViewRequest) private var viewRequest
 
     var body: some View {
         HStack(spacing: 0) {
-            DashboardPill(
-                icon: "exclamationmark.triangle.fill",
-                tint: theme.overdue,
-                value: "\(overdueCount)",
-                label: "Overdue"
-            )
-            Divider().frame(height: 36)
-            DashboardPill(
-                icon: "sun.max.fill",
-                tint: theme.dueToday,
-                value: "\(dueTodayCount)",
-                label: "Today"
-            )
-            Divider().frame(height: 36)
-            DashboardPill(
-                icon: "timer",
-                tint: theme.running,
-                value: "\(timersRunning)",
-                label: "Running"
-            )
+            ForEach(Array(BuiltInView.allCases.enumerated()), id: \.element) { index, view in
+                if index > 0 { Divider().frame(height: 36) }
+                DashboardPill(
+                    icon: view.icon,
+                    tint: view.tint(theme),
+                    value: "\(view.count(in: entries))",
+                    label: view.label
+                ) {
+                    viewRequest.request(.builtIn(view))
+                }
+            }
             Divider().frame(height: 36)
             DashboardPill(
                 icon: "dollarsign.circle.fill",
                 tint: theme.revenue,
                 value: weekAmount.shortCurrency,
                 label: "This Week"
-            )
+            ) {
+                NotificationCenter.default.post(name: .showStats, object: nil)
+            }
         }
     }
 }
@@ -288,22 +241,28 @@ private struct DashboardPill: View {
     let tint: Color
     let value: String
     let label: String
+    let action: () -> Void
 
     var body: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.caption)
-                    .foregroundStyle(tint)
-                Text(value)
-                    .font(.subheadline.weight(.bold))
-                    .monospacedDigit()
+        Button(action: action) {
+            VStack(spacing: 4) {
+                HStack(spacing: 4) {
+                    Image(systemName: icon)
+                        .font(.caption)
+                        .foregroundStyle(tint)
+                    Text(value)
+                        .font(.subheadline.weight(.bold))
+                        .monospacedDigit()
+                }
+                Text(label)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity)
+            .contentShape(Rectangle())
         }
-        .frame(maxWidth: .infinity)
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(value) \(label)")
     }
 }
 

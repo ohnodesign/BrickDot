@@ -57,12 +57,19 @@ final class SavedSearch {
             guard entry.status != .done, let due = entry.dueDate else { return false }
             return due < todayStart
         }
+        func isDueToday(_ entry: Entry) -> Bool {
+            guard entry.status != .done, let due = entry.dueDate else { return false }
+            let end = cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? todayStart
+            return due >= todayStart && due <= end
+        }
         func matchesFilter(_ entry: Entry, _ filter: FilterType) -> Bool {
             switch filter {
             case .starred:    return entry.isImportant
             case .inProgress: return entry.status == .inProgress
             case .overdue:    return isOverdue(entry)
             case .todo:       return entry.status == .todo
+            case .dueToday:   return isDueToday(entry)
+            case .running:    return entry.status == .inProgress && entry.timerStartedAt != nil
             }
         }
         func relevantDate(_ entry: Entry) -> Date {

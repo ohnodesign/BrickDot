@@ -30,6 +30,7 @@ private struct iPhoneRootView: View {
     @State private var showingHome = true
     @State private var showQuickCapture = false
     @State private var morePath = NavigationPath()
+    @State private var viewRequest = EntryViewRequest()
 
     /// The BrickDot brand red, used for the Quick Capture button and the
     /// selected tab-bar tint.
@@ -121,6 +122,7 @@ private struct iPhoneRootView: View {
                         HomeView()
                     }
                     .environment(\.modelContext, ctx)
+                    .environment(\.entryViewRequest, viewRequest)
 
                     RunningTimerBar()
                         .padding(.horizontal, 12)
@@ -139,6 +141,9 @@ private struct iPhoneRootView: View {
             // with nothing to dismiss it.
             dismissKeyboard()
             withAnimation { showingHome = true }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .showStats)) { _ in
+            go(.stats)
         }
         .onReceive(NotificationCenter.default.publisher(for: .navigateToSection)) { note in
             guard let raw = note.userInfo?["action"] as? String,
@@ -265,17 +270,12 @@ private struct MoreListView: View {
 
 private enum SidebarDestination: Hashable {
     case home
-    case overdue
-    case dueToday
-    case running
-    case thisWeek
     case stats
     case log
     case export
     case newEntry
     case allClients
     case client(PersistentIdentifier)
-    case savedSearch(PersistentIdentifier)
     case coach
     case profile
     case settings
@@ -295,6 +295,16 @@ private struct iPadRootView: View {
     @State private var showFullNewEntry = false
     @State private var detailPath = NavigationPath()
     @State private var showSearch = false
+    @State private var viewRequest = EntryViewRequest()
+
+    /// Built-ins and saved searches both filter the Home list in place —
+    /// they never navigate to a parallel read-only list, so the category
+    /// tabs, filter sheet, and sort control stay available.
+    private func showHomeFiltered(by target: EntryViewRequest.Target) {
+        detailPath = NavigationPath()
+        selection = .home
+        viewRequest.request(target)
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -320,7 +330,8 @@ private struct iPadRootView: View {
                     .buttonStyle(.plain)
                 }
 
-                // Today summary card
+                // Today summary card. Every row is a built-in view — tapping
+                // one filters the Home list, exactly like a saved search.
                 Section {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(spacing: 6) {
@@ -332,8 +343,27 @@ private struct iPadRootView: View {
                                 .foregroundStyle(theme.overdue)
                         }
 
-                        SidebarStatRow(icon: "calendar", tint: theme.dueToday, value: "\(dueTodayCount)", label: "Due Today")
-                        SidebarStatRow(icon: "timer", tint: theme.running, value: "\(timersRunning)", label: "Running")
+                        ForEach(BuiltInView.allCases) { view in
+                            SidebarStatRow(
+                                icon: view.icon,
+                                tint: view.tint(theme),
+                                value: "\(view.count(in: allEntries))",
+                                label: view.label
+                            ) {
+                                showHomeFiltered(by: .builtIn(view))
+                            }
+                        }
+
+                        Divider()
+
+                        SidebarStatRow(
+                            icon: "dollarsign.circle.fill",
+                            tint: theme.revenue,
+                            value: weekAmount.shortCurrency,
+                            label: "This Week"
+                        ) {
+                            selection = .stats
+                        }
                     }
                     .padding(14)
                     .background(RoundedRectangle(cornerRadius: 12).fill(Color(.systemGray6)))
@@ -346,7 +376,7 @@ private struct iPadRootView: View {
                     Section {
                         ForEach(savedSearches, id: \.persistentModelID) { search in
                             Button {
-                                selection = .savedSearch(search.persistentModelID)
+                                showHomeFiltered(by: .saved(search.persistentModelID))
                             } label: {
                                 HStack(spacing: 10) {
                                     Image(systemName: "bookmark.fill")
@@ -413,6 +443,7 @@ private struct iPadRootView: View {
         } detail: {
             detailView
                 .environment(\.modelContext, ctx)
+                .environment(\.entryViewRequest, viewRequest)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button { showFullNewEntry = true } label: {
@@ -486,14 +517,6 @@ private struct iPadRootView: View {
         switch selection {
         case .home, .none:
             NavigationStack(path: $detailPath) { HomeView() }
-        case .overdue:
-            EntriesListView(title: "Overdue", entries: overdueEntries)
-        case .dueToday:
-            EntriesListView(title: "Due Today", entries: dueTodayEntries)
-        case .running:
-            EntriesListView(title: "Running Timers", entries: runningEntries)
-        case .thisWeek:
-            EntriesListView(title: "This Week", entries: thisWeekEntries)
         case .stats:
             StatsPageView()
         case .log:
@@ -509,12 +532,6 @@ private struct iPadRootView: View {
                 ClientDetailView(client: client)
             } else {
                 Text("Client not found").foregroundStyle(.secondary)
-            }
-        case .savedSearch(let id):
-            if let search = savedSearches.first(where: { $0.persistentModelID == id }) {
-                EntriesListView(title: search.name, entries: search.matchingEntries(in: allEntries))
-            } else {
-                Text("Saved search not found").foregroundStyle(.secondary)
             }
         case .coach:
             CoachView()
@@ -551,54 +568,10 @@ private struct iPadRootView: View {
     }
 
     // MARK: - Sidebar Data
-
-    private var cal: Calendar { Calendar.current }
-    private var todayStart: Date { cal.startOfDay(for: Date()) }
-    private var todayEnd: Date { cal.date(byAdding: DateComponents(day: 1, second: -1), to: todayStart) ?? Date() }
-
-    private var openEntries: [Entry] {
-        allEntries.filter { $0.status != .done }
-    }
-
-    private var overdueCount: Int {
-        openEntries.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due < todayStart
-        }.count
-    }
-
-    private var overdueEntries: [Entry] {
-        openEntries.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due < todayStart
-        }
-    }
-
-    private var dueTodayCount: Int {
-        openEntries.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due >= todayStart && due <= todayEnd
-        }.count
-    }
-
-    private var dueTodayEntries: [Entry] {
-        openEntries.filter { e in
-            guard let due = e.dueDate else { return false }
-            return due >= todayStart && due <= todayEnd
-        }
-    }
-
-    private var timersRunning: Int {
-        allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }.count
-    }
-
-    private var runningEntries: [Entry] {
-        allEntries.filter { $0.status == .inProgress && $0.timerStartedAt != nil }
-    }
-
-    private var potentialRevenue: Double {
-        dueTodayEntries.reduce(0) { $0 + ($1.hours * $1.rate) }
-    }
+    //
+    // The Today card's counts come from BuiltInView.count(in:), so a badge
+    // and the list you get after tapping it can't drift apart. Only the
+    // revenue figure — which isn't a filter — is computed here.
 
     private var weekAmount: Double {
         let start = Date().bdStartOfWeek
@@ -607,16 +580,6 @@ private struct iPadRootView: View {
             .filter { $0.status == .done && ($0.completedAt ?? $0.serviceDate) >= start && ($0.completedAt ?? $0.serviceDate) <= end }
             .reduce(0) { $0 + ($1.hours * $1.rate) }
     }
-
-    private var thisWeekEntries: [Entry] {
-        let start = Date().bdStartOfWeek
-        let end = Date().bdEndOfWeek
-        return allEntries.filter { e in
-            let d = e.completedAt ?? e.serviceDate
-            return e.status == .done && d >= start && d <= end
-        }
-    }
-
 }
 
 // MARK: - Sidebar Stat Row
@@ -626,21 +589,27 @@ private struct SidebarStatRow: View {
     let tint: Color
     let value: String
     let label: String
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.subheadline)
-                .foregroundStyle(tint)
-                .frame(width: 22)
-            Text(value)
-                .font(.title3.weight(.bold))
-                .monospacedDigit()
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-            Spacer()
+        Button(action: action) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.subheadline)
+                    .foregroundStyle(tint)
+                    .frame(width: 22)
+                Text(value)
+                    .font(.title3.weight(.bold))
+                    .monospacedDigit()
+                Text(label)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(value) \(label)")
     }
 }
 
