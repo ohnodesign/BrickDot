@@ -406,12 +406,12 @@ struct NewEntryView: View {
             }
         }
         .onAppear {
-            if let pre = prefillClient {
+            if let pre = prefillClient.live {
                 selectedClient = pre
                 rate = pre.rate
             } else {
-                if selectedClient == nil { selectedClient = clients.first }
-                if let c = selectedClient { rate = c.rate }
+                if selectedClient.live == nil { selectedClient = clients.first }
+                if let c = selectedClient.live { rate = c.rate }
             }
             // Apply Quick Add prefills
             if let s = prefillService { service = s }
@@ -465,12 +465,12 @@ struct NewEntryView: View {
     }
 
     private var canSave: Bool {
-        selectedClient != nil &&
+        selectedClient.live != nil &&
         !service.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private func save() {
-        guard !isSaving, let client = selectedClient else { return }
+        guard !isSaving, let client = selectedClient.live else { return }
         isSaving = true
 
         let entry = Entry(
@@ -538,7 +538,7 @@ struct NewEntryView: View {
         serviceDate    = .now
         detail         = ""
         hours          = 0
-        rate           = selectedClient?.rate ?? 0
+        rate           = selectedClient.live?.rate ?? 0
         status         = .todo
         timerStartedAt = nil
         isImportant    = false

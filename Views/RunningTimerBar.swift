@@ -92,7 +92,14 @@ struct RunningTimerBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Timer running on \(primary.clientName)")
             .sheet(item: $editingEntry) { entry in
-                NavigationStack { EditEntryView(entry: entry) }
+                if entry.isAlive {
+                    NavigationStack { EditEntryView(entry: entry) }
+                } else {
+                    // Deleted while the sheet was open (from another device
+                    // via CloudKit, or elsewhere in the app). Close instead
+                    // of leaving an empty sheet the user can't act on.
+                    Color.clear.onAppear { editingEntry = nil }
+                }
             }
             .sheet(isPresented: $showRunningList) {
                 RunningTimersListSheet(

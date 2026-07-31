@@ -10,7 +10,7 @@ struct ProfileView: View {
     @State private var showRemoveLogoAlert = false
 
     private func saveBinding<T>(_ keyPath: ReferenceWritableKeyPath<UserProfile, T>) -> Binding<T>? {
-        guard let profile else { return nil }
+        guard let profile = profile.live else { return nil }
         return Binding(
             get: { profile[keyPath: keyPath] },
             set: { profile[keyPath: keyPath] = $0; try? ctx.save() }

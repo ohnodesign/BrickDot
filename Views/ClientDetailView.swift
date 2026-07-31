@@ -117,9 +117,7 @@ struct ClientDetailView: View {
     /// deleted model, and this body reads `client.name` in several places —
     /// including the navigation title and the delete alert — so it has to
     /// tolerate the client being gone rather than assume it's still there.
-    private var clientIsGone: Bool {
-        client.isDeleted || client.modelContext == nil
-    }
+    private var clientIsGone: Bool { !client.isAlive }
 
     var body: some View {
         if clientIsGone {
@@ -372,7 +370,7 @@ struct ClientDetailView: View {
             InvoiceReorderSheet(invoices: clientInvoicesSorted)
         }
         .sheet(isPresented: $showNewEntry) {
-            if let template = selectedTemplate {
+            if let template = selectedTemplate.live {
                 NavigationStack {
                     NewEntryView(
                         onSaved: { showNewEntry = false; selectedTemplate = nil },
@@ -399,13 +397,18 @@ struct ClientDetailView: View {
             }
         }
         .fullScreenCover(item: $templateToEdit) { template in
-            NavigationStack {
-                EntryTemplateEditorView(template: template)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            Button("Close") { templateToEdit = nil }
+            if template.isAlive {
+                NavigationStack {
+                    EntryTemplateEditorView(template: template)
+                        .toolbar {
+                            ToolbarItem(placement: .topBarLeading) {
+                                Button("Close") { templateToEdit = nil }
+                            }
                         }
-                    }
+                }
+            } else {
+                // Deleted while open (client cascade, or another device).
+                Color.clear.onAppear { templateToEdit = nil }
             }
         }
         .alert("Delete \(client.name)?", isPresented: $showDeleteConfirm) {
@@ -423,14 +426,16 @@ struct ClientDetailView: View {
         }
         .alert("Delete Invoice?", isPresented: $showInvoiceDeleteConfirm) {
             Button("Delete", role: .destructive) {
-                if let inv = invoiceToDelete {
-                    deleteInvoice(inv)
-                }
+                // Drop the reference before deleting: the message below reads
+                // inv.title, so leaving it set past the delete leaves a
+                // deleted model in view state.
+                let doomed = invoiceToDelete
                 invoiceToDelete = nil
+                if let inv = doomed { deleteInvoice(inv) }
             }
             Button("Cancel", role: .cancel) { invoiceToDelete = nil }
         } message: {
-            if let inv = invoiceToDelete {
+            if let inv = invoiceToDelete.live {
                 Text("Delete \(inv.title)? The \(inv.entriesList.count) entries on this invoice will be kept but unlinked.")
             }
         }

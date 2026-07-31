@@ -90,7 +90,7 @@ struct ClientListView: View {
         }
         .sheet(isPresented: $showNewEntry) {
             QuickAddView(
-                prefillClient: newEntryPrefillClient,
+                prefillClient: newEntryPrefillClient.live,
                 onSaved: { showNewEntry = false }
             )
             .presentationDetents([.medium])
@@ -110,7 +110,7 @@ struct ClientListView: View {
             }
             Button("Cancel", role: .cancel) { clientToDelete = nil }
         } message: {
-            if let c = clientToDelete {
+            if let c = clientToDelete.live {
                 Text("This will permanently delete \(c.name) and all associated entries, invoices, and templates.")
             }
         }

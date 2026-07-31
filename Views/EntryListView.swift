@@ -133,12 +133,9 @@ struct EntryListView: View {
 
     /// `selectedClientFilter` holds a strong reference, so a client deleted
     /// on the Clients tab — or synced away by CloudKit from another device —
-    /// leaves a dangling model behind. Reading any property off it traps, so
-    /// every read goes through here and a deleted client reads as "no filter".
-    private var liveClientFilter: Client? {
-        guard let c = selectedClientFilter, !c.isDeleted, c.modelContext != nil else { return nil }
-        return c
-    }
+    /// leaves a dangling model behind. Every read goes through here, so a
+    /// deleted client reads as "no filter" instead of trapping.
+    private var liveClientFilter: Client? { selectedClientFilter.live }
 
     private var sortOptions: [SortOption] {
         isClientScoped ? [.recent, .dueDate] : SortOption.allCases

@@ -195,7 +195,7 @@ struct QuickAddView: View {
                 }
             }
             .onAppear {
-                if let pre = prefillClient {
+                if let pre = prefillClient.live {
                     selectedClient = pre
                 } else if let last = clients.first(where: { $0.name == lastClientName }) {
                     selectedClient = last
@@ -379,7 +379,7 @@ struct QuickAddView: View {
 
     // MARK: - Effective values
 
-    private var effectiveClient: Client? { parsedPreview?.client ?? selectedClient }
+    private var effectiveClient: Client? { parsedPreview?.client.live ?? selectedClient.live }
     private var effectiveService: String { parsedPreview?.service ?? service }
     private var effectiveDetail: String {
         if let parsed = parsedPreview, !parsed.description.isEmpty { return parsed.description }
@@ -473,7 +473,7 @@ private struct ManualPickerSheet: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { dismiss(); onSave() }
-                        .disabled(selectedClient == nil)
+                        .disabled(selectedClient.live == nil)
                 }
             }
         }

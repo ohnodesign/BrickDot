@@ -137,7 +137,7 @@ private struct ProjectSection: View {
     // only opens the alert; the selection stays on the current client.
     private var pickerClient: Binding<PickerClient> {
         Binding(
-            get: { .existing(selectedClient) },
+            get: { .existing(selectedClient.live) },
             set: { newValue in
                 switch newValue {
                 case .newClient:
@@ -155,7 +155,7 @@ private struct ProjectSection: View {
         Section("Project") {
             // Client
             Picker("Client", selection: pickerClient) {
-                if selectedClient == nil {
+                if selectedClient.live == nil {
                     Text("Select Client…").tag(PickerClient.existing(nil))
                 }
                 Text("＋ New Client…").tag(PickerClient.newClient)

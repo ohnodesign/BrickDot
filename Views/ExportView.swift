@@ -152,21 +152,21 @@ struct ExportView: View {
                         Label(useQuickBooksHeaders ? "Export QuickBooks CSV" : "Export CSV",
                               systemImage: "tablecells")
                     }
-                    .disabled(currentEntries.isEmpty || selectedClient == nil)
+                    .disabled(currentEntries.isEmpty || selectedClient.live == nil)
 
                     Button {
                         exportPDFInvoice(saveToFiles: false)
                     } label: {
                         Label("Share PDF Invoice", systemImage: "square.and.arrow.up")
                     }
-                    .disabled(currentEntries.isEmpty || selectedClient == nil)
+                    .disabled(currentEntries.isEmpty || selectedClient.live == nil)
 
                     Button {
                         exportPDFInvoice(saveToFiles: true)
                     } label: {
                         Label("Save PDF to Files", systemImage: "folder")
                     }
-                    .disabled(currentEntries.isEmpty || selectedClient == nil)
+                    .disabled(currentEntries.isEmpty || selectedClient.live == nil)
                 }
 
                 // Client
@@ -197,7 +197,7 @@ struct ExportView: View {
                         Label("Export Agenda", systemImage: "list.bullet.rectangle.portrait")
                     }
                     .disabled({
-                        agendaScopeRaw == "selectedClient" && selectedClient == nil
+                        agendaScopeRaw == "selectedClient" && selectedClient.live == nil
                     }())
 
                     Button {
@@ -206,7 +206,7 @@ struct ExportView: View {
                         Label("Copy Agenda", systemImage: "doc.on.clipboard")
                     }
                     .disabled({
-                        agendaScopeRaw == "selectedClient" && selectedClient == nil
+                        agendaScopeRaw == "selectedClient" && selectedClient.live == nil
                     }())
                 } header: {
                     Text("Agenda Export")
@@ -356,7 +356,7 @@ struct ExportView: View {
             .navigationTitle("Export")
             .onAppear {
                 InvoiceNumberManager.setInitialIfNeeded("2025-1001")
-                if selectedClient == nil { selectedClient = clients.first }
+                if selectedClient.live == nil { selectedClient = clients.first }
                 if monthEnd < monthStart { monthEnd = monthStart }
                 showServices = !selectedServices.isEmpty
 
@@ -513,14 +513,14 @@ struct ExportView: View {
     }
 
     private var entriesForSingleMonth: [Entry] {
-        guard let c = selectedClient else { return [] }
+        guard let c = selectedClient.live else { return [] }
         let range = monthStart.bdStartOfMonth ... monthStart.bdEndOfMonth
         let base = allEntries.filter { $0.client?.persistentModelID == c.persistentModelID && range.contains($0.serviceDate) }
         return applyingServiceFilter(base)
     }
 
     private var entriesForMultiMonth: [Entry] {
-        guard let c = selectedClient else { return [] }
+        guard let c = selectedClient.live else { return [] }
         let start = min(monthStart.bdStartOfMonth, monthEnd.bdStartOfMonth)
         let end   = max(monthStart.bdEndOfMonth, monthEnd.bdEndOfMonth)
         let base = allEntries.filter { $0.client?.persistentModelID == c.persistentModelID && $0.serviceDate >= start && $0.serviceDate <= end }
@@ -528,7 +528,7 @@ struct ExportView: View {
     }
 
     private var entriesForRange: [Entry] {
-        guard let c = selectedClient else { return [] }
+        guard let c = selectedClient.live else { return [] }
         let start = min(rangeStart, rangeEnd)
         let end   = max(rangeStart, rangeEnd)
         let base = allEntries.filter { $0.client?.persistentModelID == c.persistentModelID && $0.serviceDate >= start && $0.serviceDate <= end }
@@ -538,7 +538,7 @@ struct ExportView: View {
     // MARK: - CSV Exports (also create Invoice records) + include notes
 
     private func exportSingleMonth() {
-        guard let c = selectedClient else { return }
+        guard let c = selectedClient.live else { return }
         let entries = entriesForSingleMonth
 
         withNotesTemporarilyAppended(to: includeNotes ? entries : []) {
@@ -564,7 +564,7 @@ struct ExportView: View {
     }
 
     private func exportMultiMonth() {
-        guard let c = selectedClient else { return }
+        guard let c = selectedClient.live else { return }
         let entries = entriesForMultiMonth
 
         withNotesTemporarilyAppended(to: includeNotes ? entries : []) {
@@ -610,7 +610,7 @@ struct ExportView: View {
     }
 
     private func exportRange() {
-        guard let c = selectedClient else { return }
+        guard let c = selectedClient.live else { return }
         let entries = entriesForRange
 
         withNotesTemporarilyAppended(to: includeNotes ? entries : []) {
@@ -641,7 +641,7 @@ struct ExportView: View {
     // MARK: - PDF Invoice Export
 
     private func exportPDFInvoice(saveToFiles: Bool) {
-        guard let c = selectedClient else { return }
+        guard let c = selectedClient.live else { return }
         let entries = currentEntries
         guard !entries.isEmpty else { return }
 
@@ -744,7 +744,7 @@ struct ExportView: View {
         let ext = (format == "markdown") ? "md" : "txt"
 
         if agendaScopeRaw == "selectedClient" {
-            guard let c = selectedClient else { return }
+            guard let c = selectedClient.live else { return }
             let text = agendaText(for: c, format: format)
             let url  = writeText(text, suggestedName: "\(safeFilename(c.name))_Agenda.\(ext)")
             sharePayload = SharePayload(items: [url])
@@ -767,7 +767,7 @@ struct ExportView: View {
         let format = agendaFormatRaw
         var text = ""
         if agendaScopeRaw == "selectedClient" {
-            if let c = selectedClient { text = agendaText(for: c, format: format) }
+            if let c = selectedClient.live { text = agendaText(for: c, format: format) }
         } else {
             let sorted = clients.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
             var blocks: [String] = []

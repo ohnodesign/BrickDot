@@ -62,9 +62,7 @@ struct EditEntryView: View {
     /// deleted model, and SwiftUI re-evaluates this body at least once
     /// during the navigation pop that follows a delete — so the body has to
     /// tolerate the entry being gone rather than assume it's still there.
-    private var entryIsGone: Bool {
-        entry.isDeleted || entry.modelContext == nil
-    }
+    private var entryIsGone: Bool { !entry.isAlive }
 
     var body: some View {
         if entryIsGone {
@@ -189,7 +187,7 @@ struct EditEntryView: View {
             Text("You have unsaved changes. Would you like to save before leaving?")
         }
         .onAppear {
-            if selectedClient == nil { selectedClient = entry.client }
+            if selectedClient.live == nil { selectedClient = entry.client }
             // Load comm fields from entry
             commChannel = entry.commChannel ?? "email"
             commDirection = entry.commDirection ?? "needsReply"
@@ -354,7 +352,7 @@ struct EditEntryView: View {
     private var detailsSection: some View {
         Section("Details") {
             Picker("Client", selection: clientPickerBinding) {
-                if selectedClient == nil {
+                if selectedClient.live == nil {
                     Text("Select Client…").tag(PickerClient.existing(nil))
                 }
                 Text("＋ New Client…").tag(PickerClient.newClient)
@@ -454,8 +452,7 @@ struct EditEntryView: View {
                 // the relationship array for a beat (own delete swipe, entry
                 // cascade delete, or a CloudKit delete from another device),
                 // and reading .addedAt off one traps.
-                let logs = entry.timeLogsList
-                    .filter { !$0.isDeleted && $0.modelContext != nil }
+                let logs = entry.timeLogsList.liveOnly
                     .sorted { $0.addedAt > $1.addedAt }
                 if logs.isEmpty {
                     Text("No time logged yet").foregroundStyle(.secondary)
