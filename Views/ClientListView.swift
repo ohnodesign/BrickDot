@@ -98,11 +98,15 @@ struct ClientListView: View {
         }
         .alert("Delete \(clientToDelete?.name ?? "Client")?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
-                if let c = clientToDelete {
+                // Drop the reference before deleting: the alert's title and
+                // message both read clientToDelete?.name, so leaving it set
+                // past the delete leaves a deleted model in view state.
+                let doomed = clientToDelete
+                clientToDelete = nil
+                if let c = doomed {
                     ctx.delete(c)
                     try? ctx.save()
                 }
-                clientToDelete = nil
             }
             Button("Cancel", role: .cancel) { clientToDelete = nil }
         } message: {

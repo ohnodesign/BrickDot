@@ -45,17 +45,6 @@ final class SavedSearch {
         return start...end
     }
 
-    /// A short "Client, Category, Filters" label matching the title shown
-    /// above the entries list, used as the chip/row label everywhere this
-    /// saved search is listed.
-    var summaryLabel: String {
-        var parts: [String] = []
-        if let client { parts.append(client.name) }
-        parts.append(category.label)
-        parts.append(contentsOf: FilterType.allCases.filter(filters.contains).map(\.label))
-        return parts.joined(separator: ", ")
-    }
-
     /// Applies this saved search's filters to `allEntries`, mirroring the
     /// predicate EntryListView builds from its own live @State — used by
     /// the iPad/Mac sidebar to show a saved search's results without going

@@ -131,6 +131,15 @@ struct EntryListView: View {
     private var cal: Calendar { Calendar.current }
     private var todayStart: Date { cal.startOfDay(for: Date()) }
 
+    /// `selectedClientFilter` holds a strong reference, so a client deleted
+    /// on the Clients tab — or synced away by CloudKit from another device —
+    /// leaves a dangling model behind. Reading any property off it traps, so
+    /// every read goes through here and a deleted client reads as "no filter".
+    private var liveClientFilter: Client? {
+        guard let c = selectedClientFilter, !c.isDeleted, c.modelContext != nil else { return nil }
+        return c
+    }
+
     private var sortOptions: [SortOption] {
         isClientScoped ? [.recent, .dueDate] : SortOption.allCases
     }
@@ -192,7 +201,7 @@ struct EntryListView: View {
     }
 
     private func matchesClient(_ entry: Entry) -> Bool {
-        guard let client = selectedClientFilter else { return true }
+        guard let client = liveClientFilter else { return true }
         return entry.client?.persistentModelID == client.persistentModelID
     }
 
@@ -234,7 +243,7 @@ struct EntryListView: View {
     private var activeFilterCount: Int {
         activeFilters.count
             + (effectiveDateRange != nil ? 1 : 0)
-            + (selectedClientFilter != nil ? 1 : 0)
+            + (liveClientFilter != nil ? 1 : 0)
     }
 
     private var customRangeLabel: String {
@@ -249,7 +258,7 @@ struct EntryListView: View {
     /// obvious what's currently narrowing it down.
     private var activeFilterTitle: String {
         var parts: [String] = []
-        if let client = selectedClientFilter { parts.append(client.name) }
+        if let client = liveClientFilter { parts.append(client.name) }
         parts.append(activeCategory.label)
         parts.append(contentsOf: FilterType.allCases.filter(activeFilters.contains).map(\.label))
         if customDateRange != nil {
@@ -283,7 +292,7 @@ struct EntryListView: View {
             filters: activeFilters,
             dateQuickPick: dateQuickPick,
             customDateRange: customDateRange,
-            client: selectedClientFilter,
+            client: liveClientFilter,
             sort: activeSort
         )
         ctx.insert(search)
@@ -578,11 +587,11 @@ struct EntryListView: View {
                     if !isClientScoped {
                         filterGroup("Client") {
                             VStack(spacing: 0) {
-                                clientRow("All Clients", isOn: selectedClientFilter == nil) {
+                                clientRow("All Clients", isOn: liveClientFilter == nil) {
                                     selectedClientFilter = nil
                                 }
                                 ForEach(allClients, id: \.persistentModelID) { c in
-                                    clientRow(c.name, isOn: selectedClientFilter?.persistentModelID == c.persistentModelID) {
+                                    clientRow(c.name, isOn: liveClientFilter?.persistentModelID == c.persistentModelID) {
                                         selectedClientFilter = c
                                     }
                                 }

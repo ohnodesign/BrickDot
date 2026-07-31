@@ -112,7 +112,26 @@ struct ClientDetailView: View {
         return Set(all.map { $0.persistentModelID })
     }
 
+    /// True once this client has been deleted (locally, or by a CloudKit sync
+    /// from another device). SwiftData traps on any property access to a
+    /// deleted model, and this body reads `client.name` in several places —
+    /// including the navigation title and the delete alert — so it has to
+    /// tolerate the client being gone rather than assume it's still there.
+    private var clientIsGone: Bool {
+        client.isDeleted || client.modelContext == nil
+    }
+
     var body: some View {
+        if clientIsGone {
+            // Dismissal is already in flight; render nothing rather than
+            // reading properties off a deleted model.
+            Color.clear
+        } else {
+            clientBody
+        }
+    }
+
+    private var clientBody: some View {
         List {
             // Client summary
             Section("Client") {
@@ -391,9 +410,12 @@ struct ClientDetailView: View {
         }
         .alert("Delete \(client.name)?", isPresented: $showDeleteConfirm) {
             Button("Delete", role: .destructive) {
+                // Pop first, then delete: starting the dismissal while the
+                // view tree is still valid keeps the delete from racing the
+                // navigation transition's body re-evaluation.
+                dismiss()
                 ctx.delete(client)
                 try? ctx.save()
-                dismiss()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
