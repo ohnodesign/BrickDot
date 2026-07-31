@@ -101,8 +101,7 @@ private struct FlowLayout: Layout {
 // MARK: - EntryListView (shared between Home screen & Client detail)
 
 /// Unified filter/sort entry list, used on both the home screen and client
-/// detail pages. Callers are responsible for excluding entries that are
-/// already shown elsewhere (e.g. Today's Focus on the home screen). A
+/// detail pages. Callers pass in the set of entries to display. A
 /// single-select category (All / Quick Captures / Done) picks the base set;
 /// status pills, date range, and client all further narrow within it.
 struct EntryListView: View {

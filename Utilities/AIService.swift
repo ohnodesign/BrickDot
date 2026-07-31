@@ -124,23 +124,23 @@ actor AIService {
 
         // --- ID-based bulk-capable tools ---
         [
-            "name": "moveTaskToFocus",
-            "description": "Surface one or more tasks in Today's Focus by starring them (high priority). The app has no manual focus flag; starring is how a task earns its place in the focus list.",
+            "name": "starTasks",
+            "description": "Star one or more tasks, marking them high priority. Starred tasks show a star in the entry list and can be isolated with the Starred filter.",
             "input_schema": [
                 "type": "object",
                 "properties": [
                     "taskIds": [
                         "type": "array",
                         "items": ["type": "string"] as [String: Any],
-                        "description": "Array of task ids (UUIDs) to star for Today's Focus"
+                        "description": "Array of task ids (UUIDs) to star"
                     ] as [String: Any]
                 ],
                 "required": ["taskIds"]
             ] as [String: Any]
         ] as [String: Any],
         [
-            "name": "removeFromFocus",
-            "description": "Remove one or more tasks from Today's Focus by unstarring them. Does not change task status.",
+            "name": "unstarTasks",
+            "description": "Unstar one or more tasks, returning them to normal priority. Does not change task status.",
             "input_schema": [
                 "type": "object",
                 "properties": [
@@ -207,8 +207,8 @@ actor AIService {
                             "type": "object",
                             "properties": [
                                 "taskId": ["type": "string"] as [String: Any],
-                                "moveToFocus": ["type": "boolean"] as [String: Any],
-                                "removeFromFocus": ["type": "boolean"] as [String: Any],
+                                "star": ["type": "boolean"] as [String: Any],
+                                "unstar": ["type": "boolean"] as [String: Any],
                                 "dueDate": ["type": "string"] as [String: Any],
                                 "shift": [
                                     "type": "string",
@@ -268,12 +268,9 @@ actor AIService {
 
         Task identification:
         - For start_timer, stop_timer, mark_done, add_time, and set_priority, match task_description to the closest matching task in the data.
-        - moveTaskToFocus, removeFromFocus, updateDueDate, updateTaskStatus, and bulkUpdate reference tasks by their "id" (a UUID) from the data. Use bulkUpdate when different tasks need different changes in the same request.
+        - starTasks, unstarTasks, updateDueDate, updateTaskStatus, and bulkUpdate reference tasks by their "id" (a UUID) from the data. Use bulkUpdate when different tasks need different changes in the same request.
 
-        Today's Focus is the app's prioritized short list. There is no manual focus flag — a task earns its place by being starred (high priority), overdue, due today, or actively timed. So:
-        - moveTaskToFocus stars the given tasks so they surface in Today's Focus.
-        - removeFromFocus unstars them.
-        - A task with a future due date may not appear in focus until that date even when starred — mention this if it's relevant.
+        Starring marks a task high priority. A starred task shows a star in the entry list, and the user can isolate starred work with the Starred filter. Use starTasks / unstarTasks, or the "star" / "unstar" flags in bulkUpdate.
 
         Status values are "to_do", "in_progress", and "done". For updateDueDate, use shift="tomorrow"/"nextWeek"/"clear" for relative changes, or dueDate (yyyy-MM-dd) for an absolute date.
 

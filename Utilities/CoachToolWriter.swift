@@ -68,17 +68,17 @@ enum CoachToolExecutor {
         switch call.name {
 
         // --- ID-based tools ---
-        case "moveTaskToFocus":
+        case "starTasks":
             let es = resolver.entries(call.stringArray("taskIds"))
             guard !es.isEmpty else { return "Couldn't find those tasks." }
             es.forEach { $0.isImportant = true }
-            return "Starred \(label(es)) for Today's Focus."
+            return "Starred \(label(es))."
 
-        case "removeFromFocus":
+        case "unstarTasks":
             let es = resolver.entries(call.stringArray("taskIds"))
             guard !es.isEmpty else { return "Couldn't find those tasks." }
             es.forEach { $0.isImportant = false }
-            return "Removed \(label(es)) from Today's Focus."
+            return "Unstarred \(label(es))."
 
         case "updateDueDate":
             let es = resolver.entries(call.stringArray("taskIds"))
@@ -106,8 +106,8 @@ enum CoachToolExecutor {
             var count = 0
             for u in call.objectArray("updates") {
                 guard let tid = u["taskId"] as? String, let e = resolver.entry(tid) else { continue }
-                if let v = u["moveToFocus"] as? Bool, v { e.isImportant = true }
-                if let v = u["removeFromFocus"] as? Bool, v { e.isImportant = false }
+                if let v = u["star"] as? Bool, v { e.isImportant = true }
+                if let v = u["unstar"] as? Bool, v { e.isImportant = false }
                 if let st = u["status"] as? String, let s = CoachToolFormat.statusFrom(st) { apply(s, to: e) }
                 if let sh = u["shift"] as? String {
                     e.dueDate = CoachToolFormat.resolveShift(sh)

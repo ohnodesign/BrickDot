@@ -318,10 +318,10 @@ struct CoachView: View {
         }
 
         switch call.name {
-        case "moveTaskToFocus":
-            return "Star \(names("taskIds")) for Today's Focus"
-        case "removeFromFocus":
-            return "Remove \(names("taskIds")) from Today's Focus"
+        case "starTasks":
+            return "Star \(names("taskIds"))"
+        case "unstarTasks":
+            return "Unstar \(names("taskIds"))"
         case "updateDueDate":
             if let shift = call.string("shift") {
                 return "Move due date for \(names("taskIds")) to \(CoachToolFormat.shiftLabel(shift))"
