@@ -379,7 +379,13 @@ struct QuickAddView: View {
 
     // MARK: - Effective values
 
-    private var effectiveClient: Client? { parsedPreview?.client.live ?? selectedClient.live }
+    // Written out rather than `parsedPreview?.client.live`: in that form the
+    // optional chain makes .client non-optional, so .live binds to Client
+    // instead of Client? and doesn't compile.
+    private var effectiveClient: Client? {
+        if let parsed = parsedPreview, parsed.client.isAlive { return parsed.client }
+        return selectedClient.live
+    }
     private var effectiveService: String { parsedPreview?.service ?? service }
     private var effectiveDetail: String {
         if let parsed = parsedPreview, !parsed.description.isEmpty { return parsed.description }
