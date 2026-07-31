@@ -57,7 +57,26 @@ struct EditEntryView: View {
         entry.detail.isEmpty ? entry.service : entry.detail
     }
 
+    /// True once the entry has been deleted (locally, or by a CloudKit sync
+    /// from another device). SwiftData traps on any property access to a
+    /// deleted model, and SwiftUI re-evaluates this body at least once
+    /// during the navigation pop that follows a delete — so the body has to
+    /// tolerate the entry being gone rather than assume it's still there.
+    private var entryIsGone: Bool {
+        entry.isDeleted || entry.modelContext == nil
+    }
+
     var body: some View {
+        if entryIsGone {
+            // Dismissal is already in flight; render nothing rather than
+            // reading properties off a deleted model.
+            Color.clear
+        } else {
+            formBody
+        }
+    }
+
+    private var formBody: some View {
         Form {
             Section {
                 summaryHeaderCard
@@ -102,9 +121,12 @@ struct EditEntryView: View {
         .navigationTitle("Edit Entry")
         .alert("Delete Entry?", isPresented: $showDeleteAlert) {
             Button("Delete", role: .destructive) {
+                // Pop first, then delete: starting the dismissal while the
+                // view tree is still valid keeps the delete from racing the
+                // navigation transition's body re-evaluation.
+                dismiss()
                 ctx.delete(entry)
                 try? ctx.save()
-                dismiss()
             }
             Button("Cancel", role: .cancel) { }
         } message: {
@@ -428,7 +450,13 @@ struct EditEntryView: View {
             }
 
             DisclosureGroup {
-                let logs = entry.timeLogsList.sorted { $0.addedAt > $1.addedAt }
+                // Filter before sorting: a deleted TimeLog can still be in
+                // the relationship array for a beat (own delete swipe, entry
+                // cascade delete, or a CloudKit delete from another device),
+                // and reading .addedAt off one traps.
+                let logs = entry.timeLogsList
+                    .filter { !$0.isDeleted && $0.modelContext != nil }
+                    .sorted { $0.addedAt > $1.addedAt }
                 if logs.isEmpty {
                     Text("No time logged yet").foregroundStyle(.secondary)
                 } else {
