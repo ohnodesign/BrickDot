@@ -148,6 +148,18 @@ All three enums are `String`-backed so `SavedSearch` can persist them.
   `cloudkit.fallbackToLocal` in `UserDefaults` is true whenever the app is
   running in that degraded mode, and is only cleared by an actual CloudKit
   success — check it before debugging "X doesn't sync" reports.
+- **Never render a child collection from a parent's relationship array.**
+  `entry.timeLogsList` / `entry.subtasksList` are cached on the parent and
+  can still contain a child whose row is gone, because a delete that
+  arrived from another device via CloudKit *invalidates* the object rather
+  than marking it deleted: `isDeleted` is false, `modelContext` is non-nil,
+  and the next stored-property read traps with
+  `EXC_BREAKPOINT in <Model>.<property>.getter`. `Utilities/ModelLiveness.swift`
+  (`isAlive` / `.live`) cannot see this state — it is only good for
+  references the user deletes in this app. Instead take a `@Query` of the
+  child type and filter it in Swift on `parent?.persistentModelID`, as
+  `EditEntryView` does; a query refetches on the merge that removed the row.
+  Mutating the relationship array (`append`, `remove(at:)`) stays fine.
 
 ### View Patterns
 - `@Environment(\.modelContext)` for the SwiftData context,

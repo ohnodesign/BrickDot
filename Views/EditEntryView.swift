@@ -10,6 +10,16 @@ struct EditEntryView: View {
     @Bindable var entry: Entry
     @Query(sort: \Client.name) private var clients: [Client]
 
+    // The children are read from the store, not from entry.timeLogsList /
+    // entry.subtasksList. Those relationship arrays are cached on the Entry
+    // and can still hold a child whose row is already gone — deleted on
+    // another device and merged in by CloudKit. Such a model passes the
+    // isAlive check (it is neither isDeleted nor detached) but is
+    // *invalidated*, and reading addedAt/createdAt off it traps. A @Query
+    // refetches on that same merge, so every child it hands back exists.
+    @Query(sort: \TimeLog.addedAt, order: .reverse) private var allTimeLogs: [TimeLog]
+    @Query(sort: \Subtask.createdAt) private var allSubtasks: [Subtask]
+
     @State private var selectedClient: Client?
     @State private var showDeleteAlert = false
     @State private var showUnsavedAlert = false
@@ -63,6 +73,20 @@ struct EditEntryView: View {
     /// during the navigation pop that follows a delete — so the body has to
     /// tolerate the entry being gone rather than assume it's still there.
     private var entryIsGone: Bool { !entry.isAlive }
+
+    /// This entry's time logs, newest first. Filtered in Swift rather than in
+    /// a #Predicate (see CLAUDE.md); the comparison is an identity read, which
+    /// stays safe even if the parent it points at has been invalidated.
+    private var entryTimeLogs: [TimeLog] {
+        let id = entry.persistentModelID
+        return allTimeLogs.filter { $0.entry?.persistentModelID == id }
+    }
+
+    /// This entry's subtasks, oldest first.
+    private var entrySubtasks: [Subtask] {
+        let id = entry.persistentModelID
+        return allSubtasks.filter { $0.parent?.persistentModelID == id }
+    }
 
     var body: some View {
         if entryIsGone {
@@ -432,7 +456,7 @@ struct EditEntryView: View {
     // MARK: - Time & Billing
 
     private var timeLoggedSummary: String {
-        let count = entry.timeLogsList.count
+        let count = entryTimeLogs.count
         return "\(String(format: "%.1f", entry.hours))h across \(count) \(count == 1 ? "entry" : "entries")"
     }
 
@@ -448,12 +472,7 @@ struct EditEntryView: View {
             }
 
             DisclosureGroup {
-                // Filter before sorting: a deleted TimeLog can still be in
-                // the relationship array for a beat (own delete swipe, entry
-                // cascade delete, or a CloudKit delete from another device),
-                // and reading .addedAt off one traps.
-                let logs = entry.timeLogsList.liveOnly
-                    .sorted { $0.addedAt > $1.addedAt }
+                let logs = entryTimeLogs
                 if logs.isEmpty {
                     Text("No time logged yet").foregroundStyle(.secondary)
                 } else {
@@ -630,7 +649,7 @@ struct EditEntryView: View {
 
     private var subtasksSection: some View {
         Section("Subtasks") {
-            let items = entry.subtasksList.sorted { $0.createdAt < $1.createdAt }
+            let items = entrySubtasks
 
             if items.isEmpty {
                 Button {
