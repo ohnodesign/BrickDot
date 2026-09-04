@@ -203,6 +203,24 @@ final class CoachSession {
             return "Mark subtask \"\(call.string("title") ?? "")\" on \(one("taskId")) as \(done)"
         case "createTask":
             return "Create \"\(call.string("description") ?? "")\" for \(call.string("client") ?? "a client")"
+        case "createClient":
+            return "Add a new client \"\(call.string("name") ?? "")\""
+        case "createInvoice":
+            let client = call.string("client") ?? "a client"
+            let ids = call.stringArray("taskIds")
+            if !ids.isEmpty {
+                return "Invoice \(ids.count) item\(ids.count == 1 ? "" : "s") for \(client) — takes the next invoice number"
+            }
+            let since = call.string("since")
+            let until = call.string("until")
+            let range: String
+            switch (since, until) {
+            case let (s?, u?): range = " from \(s) to \(u)"
+            case let (s?, nil): range = " since \(s)"
+            case let (nil, u?): range = " up to \(u)"
+            default: range = " (all uninvoiced)"
+            }
+            return "Invoice \(client)\(range) — takes the next invoice number"
         case "startTimer":      return "Start timer on \(one("taskId"))"
         case "stopTimer":       return "Stop timer on \(one("taskId"))"
         default:                return call.name

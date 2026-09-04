@@ -29,6 +29,10 @@ enum CoachToolPolicy {
         // Mixed-intent batches are hard to summarise in one line — always ask.
         if call.name == "bulkUpdate" { return true }
 
+        // Creating an invoice consumes a number from the sequence and marks
+        // work billed. Neither is quietly undoable, so it always waits.
+        if CoachToolSchema.appOnlyToolNames.contains(call.name) { return true }
+
         let ids = targetIDs(call)
 
         // A wide edit from one fuzzy match is the expensive mistake. Ask.
@@ -38,6 +42,11 @@ enum CoachToolPolicy {
         if resolver.entries(ids).contains(where: { $0.invoice != nil }) { return true }
 
         return false
+    }
+
+    /// False for tools that must never run unattended over the bridge.
+    static func isBridgeSafe(_ call: CoachToolCall) -> Bool {
+        !CoachToolSchema.appOnlyToolNames.contains(call.name)
     }
 
     /// Splits a batch into (autoApply, needsConfirmation).

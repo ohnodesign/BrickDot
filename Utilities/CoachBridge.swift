@@ -238,6 +238,11 @@ final class CoachBridgeServer: ObservableObject {
             if CoachToolPolicy.isRead(call) {
                 return (200, Self.json(["ok": true, "result": CoachToolReader.execute(call, context: ctx)]))
             }
+            guard CoachToolPolicy.isBridgeSafe(call) else {
+                return (403, Self.json([
+                    "error": "\(name) can only be run inside BrickDot, where it stops for confirmation. Ask the user to do it on the Export screen."
+                ]))
+            }
             guard !CoachBridge.isReadOnly else {
                 return (403, Self.json(["error": "The bridge is in read-only mode. Turn it off in BrickDot Settings."]))
             }

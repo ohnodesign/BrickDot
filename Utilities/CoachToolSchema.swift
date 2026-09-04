@@ -206,14 +206,49 @@ enum CoachToolSchema {
         required: ["updates"]
     )
 
+    private static let createClient = tool(
+        "createClient",
+        "Add a new client. Check the existing client list first — never create a near-duplicate of one that already exists under a slightly different name.",
+        [
+            "name": prop("string", "Client name as it should appear on invoices."),
+            "rate": prop("number", "Default hourly rate. Defaults to the app's standard rate."),
+            "contactName": prop("string", "Main contact person."),
+            "email": prop("string", "Contact email."),
+            "phone": prop("string", "Contact phone."),
+            "address": prop("string", "Billing address."),
+            "shortcode": prop("string", "Short label used in lists, e.g. CS for Cobblestone.")
+        ],
+        required: ["name"]
+    )
+
+    private static let createInvoice = tool(
+        "createInvoice",
+        """
+        Draw uninvoiced work for a client into a new invoice record and assign it         the next sequential invoice number. Marks those entries as billed. Give         either a date range or explicit taskIds. This does NOT render a PDF or         send anything — it creates the record the app's Export screen then works         from. The invoice number is consumed permanently, so confirm the client         and the range before calling.
+        """,
+        [
+            "client": prop("string", "Client name. Must match an existing client."),
+            "since": prop("string", "Earliest service date to include, yyyy-MM-dd."),
+            "until": prop("string", "Latest service date to include, yyyy-MM-dd."),
+            "taskIds": idArray("Specific task ids to invoice instead of a date range."),
+            "title": prop("string", "Invoice title. Defaults to a label built from the date range.")
+        ],
+        required: ["client"]
+    )
+
     // MARK: - Exposed set
 
     /// Read tools run without confirmation and never mutate the store.
     static let readToolNames: Set<String> = ["findTasks", "getTaskDetail", "getClientSummary"]
 
+    /// Refused over the Claude bridge. In the app these stop for a tap; the
+    /// bridge has no confirmation UI, and burning an invoice number — or marking
+    /// work billed — with nobody looking is not a mistake you can quietly undo.
+    static let appOnlyToolNames: Set<String> = ["createInvoice"]
+
     static let all: [[String: Any]] = [
         findTasks, getTaskDetail, getClientSummary,
-        addTime, addSubtask, updateSubtask, createTask,
+        addTime, addSubtask, updateSubtask, createTask, createClient, createInvoice,
         updateTaskStatus, starTasks, unstarTasks, updateDueDate,
         startTimer, stopTimer, bulkUpdate
     ]

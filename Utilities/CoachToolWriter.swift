@@ -155,6 +155,72 @@ enum CoachToolExecutor {
             }
             return "Created \"\(detail)\" for \(client.name)\(minutes > 0 ? " with \(CoachToolFormat.duration(minutes)) logged" : "")."
 
+        case "createClient":
+            let name = (call.string("name") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !name.isEmpty else { return "A client needs a name." }
+            let existing = (try? context.fetch(FetchDescriptor<Client>())) ?? []
+            if let clash = existing.first(where: { $0.name.lowercased() == name.lowercased() }) {
+                return "\"\(clash.name)\" already exists — use it rather than creating a second one."
+            }
+            let client = Client(name: name,
+                                rate: call.double("rate") ?? Constants.defaultRate,
+                                colorIndex: existing.count % 8)
+            client.shortcode = call.string("shortcode") ?? ""
+            client.contactName = call.string("contactName") ?? ""
+            client.email = call.string("email") ?? ""
+            client.phone = call.string("phone") ?? ""
+            client.address = call.string("address") ?? ""
+            context.insert(client)
+            return "Created client \"\(client.name)\" at \(CoachToolFormat.money(client.rate))/hr."
+
+        case "createInvoice":
+            let wanted = (call.string("client") ?? "").lowercased()
+            let clients = (try? context.fetch(FetchDescriptor<Client>())) ?? []
+            guard let client = clients.first(where: { $0.name.lowercased() == wanted })
+                    ?? clients.first(where: { !wanted.isEmpty && $0.name.lowercased().contains(wanted) }) else {
+                return "No client matching \"\(call.string("client") ?? "")\"."
+            }
+
+            // Fetch and filter by id rather than walking client.entriesList — the
+            // relationship array can hold rows CloudKit has already removed.
+            let clientID = client.persistentModelID
+            let all = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
+            var billable: [Entry]
+
+            let ids = call.stringArray("taskIds")
+            if !ids.isEmpty {
+                billable = resolver.entries(ids).filter { $0.invoice == nil }
+            } else {
+                billable = all.filter { $0.client?.persistentModelID == clientID && $0.invoice == nil }
+                if let since = call.string("since").flatMap(CoachToolFormat.parseDate) {
+                    billable = billable.filter { $0.serviceDate >= since }
+                }
+                if let until = call.string("until").flatMap(CoachToolFormat.parseDate),
+                   let end = Calendar.current.date(byAdding: .day, value: 1, to: until) {
+                    billable = billable.filter { $0.serviceDate < end }
+                }
+            }
+
+            guard !billable.isEmpty else {
+                return "Nothing uninvoiced for \(client.name) in that range."
+            }
+
+            let base = call.string("title") ?? CoachToolFormat.invoiceTitle(for: billable)
+            let invoices = (try? context.fetch(FetchDescriptor<Invoice>())) ?? []
+            let sameClient = invoices.filter { $0.client?.persistentModelID == clientID }
+            let clashes = sameClient.filter { $0.title.hasPrefix(base) }.count
+            let title = clashes == 0 ? base : "\(base) \(clashes + 1)"
+
+            // Consumes the next number in the sequence — not reversible.
+            let number = InvoiceNumberManager.nextAndAdvance()
+            let invoice = Invoice(title: title, number: number, client: client)
+            context.insert(invoice)
+            invoice.entriesList.append(contentsOf: billable)
+
+            let hours = billable.reduce(0.0) { $0 + $1.hours }
+            let amount = billable.reduce(0.0) { $0 + ($1.hours * $1.rate) }
+            return "Created invoice \(number) for \(client.name) — \(billable.count) item\(billable.count == 1 ? "" : "s"), \(CoachToolFormat.duration(hours * 60)), \(CoachToolFormat.money(amount)). Render the PDF from the Export screen."
+
         case "startTimer":
             guard let e = resolver.entry(call.string("taskId") ?? "") else { return notFoundID }
             e.status = .inProgress
@@ -338,6 +404,26 @@ enum CoachToolFormat {
         if h == 0 { return "\(m) min" }
         if m == 0 { return "\(h)h" }
         return "\(h)h \(m)m"
+    }
+
+    static func money(_ value: Double) -> String {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.locale = Locale.current
+        return f.string(from: NSNumber(value: value)) ?? String(format: "%.2f", value)
+    }
+
+    /// Mirrors the Export screen's naming so invoices made here sit alongside
+    /// the ones made by hand without looking foreign.
+    static func invoiceTitle(for entries: [Entry]) -> String {
+        let dates = entries.map(\.serviceDate).sorted()
+        guard let first = dates.first, let last = dates.last else { return "Invoice" }
+        let month = DateFormatter()
+        month.dateFormat = "yyyy-MM"
+        month.locale = Locale(identifier: "en_US_POSIX")
+        let a = month.string(from: first)
+        let b = month.string(from: last)
+        return a == b ? "\(a) Invoice" : "\(a)-\(b) Invoice"
     }
 
     static func day(_ date: Date) -> String {
