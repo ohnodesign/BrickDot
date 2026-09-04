@@ -41,6 +41,7 @@
 		EE8E0B89304B710500830F85 /* CoachBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B85304B710500830F85 /* CoachBridge.swift */; };
 		EE8E0B8A304B710500830F85 /* CoachToolReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B87304B710500830F85 /* CoachToolReader.swift */; };
 		EE8E0B8B304B710500830F85 /* CoachToolSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B88304B710500830F85 /* CoachToolSchema.swift */; };
+		EE8E0BA1304B710500830F85 /* CoachSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0BA2304B710500830F85 /* CoachSession.swift */; };
 		EE8E0B8C304B710500830F85 /* CoachToolPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */; };
 		EE984E962E58DA08004A272F /* NewClientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE984E952E58DA08004A272F /* NewClientView.swift */; };
 		EEA142542E942FCF00ACB8DD /* Date+Bounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA142532E942FCF00ACB8DD /* Date+Bounds.swift */; };
@@ -115,6 +116,7 @@
 		EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolPolicy.swift; sourceTree = "<group>"; };
 		EE8E0B87304B710500830F85 /* CoachToolReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolReader.swift; sourceTree = "<group>"; };
 		EE8E0B88304B710500830F85 /* CoachToolSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolSchema.swift; sourceTree = "<group>"; };
+		EE8E0BA2304B710500830F85 /* CoachSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachSession.swift; sourceTree = "<group>"; };
 		EE984E952E58DA08004A272F /* NewClientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewClientView.swift; sourceTree = "<group>"; };
 		EEA142532E942FCF00ACB8DD /* Date+Bounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Bounds.swift"; sourceTree = "<group>"; };
 		EEA142552E9437B300ACB8DD /* DateBoundsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateBoundsTests.swift; sourceTree = "<group>"; };
@@ -266,6 +268,7 @@
 				EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */,
 				EE8E0B87304B710500830F85 /* CoachToolReader.swift */,
 				EE8E0B88304B710500830F85 /* CoachToolSchema.swift */,
+				EE8E0BA2304B710500830F85 /* CoachSession.swift */,
 				EEE727D32FDC462800B0FAD3 /* NotificationManager.swift */,
 				EEC46E7B2FD9C1BD0047ABBE /* CSVImporter.swift */,
 				EECB80BF2FCDE69E007252D5 /* AppTheme.swift */,
@@ -395,6 +398,7 @@
 				EE8E0B89304B710500830F85 /* CoachBridge.swift in Sources */,
 				EE8E0B8A304B710500830F85 /* CoachToolReader.swift in Sources */,
 				EE8E0B8B304B710500830F85 /* CoachToolSchema.swift in Sources */,
+				EE8E0BA1304B710500830F85 /* CoachSession.swift in Sources */,
 				EE8E0B8C304B710500830F85 /* CoachToolPolicy.swift in Sources */,
 				EEE835CF2E9C973300317915 /* SettingsView.swift in Sources */,
 				641EAE95C9BAC6DA7C66E2BC /* UserProfile.swift in Sources */,

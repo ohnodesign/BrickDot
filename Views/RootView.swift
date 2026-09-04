@@ -13,12 +13,21 @@ extension Notification.Name {
 struct RootView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
 
+    /// Held here, above both layouts, so the Coach conversation survives tab
+    /// switches and the iPhone/iPad split. CoachView reads it from the
+    /// environment; owning it in the view meant losing the transcript — and any
+    /// pending confirmation — every time you navigated away.
+    @State private var coachSession = CoachSession()
+
     var body: some View {
-        if sizeClass == .regular {
-            iPadRootView()
-        } else {
-            iPhoneRootView()
+        Group {
+            if sizeClass == .regular {
+                iPadRootView()
+            } else {
+                iPhoneRootView()
+            }
         }
+        .environment(coachSession)
     }
 }
 
