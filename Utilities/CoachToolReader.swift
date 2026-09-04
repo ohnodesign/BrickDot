@@ -30,6 +30,7 @@ enum CoachToolReader {
     private static func findTasks(_ call: CoachToolCall, _ context: ModelContext) -> String {
         let all = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
         let subtasksByParent = childSubtasks(context)
+        let names = clientNames(context)
 
         // Status filter — open work only unless asked otherwise.
         let statusRaw = (call.string("status") ?? "open").lowercased()
@@ -47,7 +48,7 @@ enum CoachToolReader {
         }
 
         if let client = call.string("client")?.lowercased(), !client.isEmpty {
-            candidates = candidates.filter { $0.clientName.lowercased().contains(client) }
+            candidates = candidates.filter { clientName($0, names).lowercased().contains(client) }
         }
         if let since = call.string("since").flatMap(CoachToolFormat.parseDate) {
             candidates = candidates.filter { $0.serviceDate >= since }
@@ -65,7 +66,7 @@ enum CoachToolReader {
         } else {
             let terms = query.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).map(String.init)
             let scored = candidates.compactMap { e -> (Entry, Int)? in
-                let value = matchScore(e, query: query, terms: terms)
+                let value = matchScore(e, query: query, terms: terms, client: clientName(e, names))
                 return value > 0 ? (e, value) : nil
             }
             ranked = scored
@@ -79,7 +80,7 @@ enum CoachToolReader {
         let rows: [[String: Any]] = hits.map { e in
             var row: [String: Any] = [
                 "id": e.coachID ?? "",
-                "client": e.displayClientName,
+                "client": clientName(e, names),
                 "description": CoachToolFormat.name(e),
                 "service": e.service,
                 "status": statusKey(e.status),
@@ -107,10 +108,10 @@ enum CoachToolReader {
     /// Higher is a better match. Whole-phrase hits beat scattered term hits, and
     /// the description beats the notes — "Cobblestone SW16" should not lose to a
     /// task that merely mentions Cobblestone somewhere in a note.
-    private static func matchScore(_ e: Entry, query: String, terms: [String]) -> Int {
+    private static func matchScore(_ e: Entry, query: String, terms: [String], client clientName: String) -> Int {
         let name = CoachToolFormat.name(e).lowercased()
         let service = e.service.lowercased()
-        let client = e.clientName.lowercased()
+        let client = clientName.lowercased()
         let notes = e.notes.lowercased()
 
         var score = 0
@@ -140,7 +141,7 @@ enum CoachToolReader {
 
         var out: [String: Any] = [
             "id": e.coachID ?? "",
-            "client": e.displayClientName,
+            "client": clientName(e, clientNames(context)),
             "description": CoachToolFormat.name(e),
             "service": e.service,
             "status": statusKey(e.status),
@@ -180,11 +181,12 @@ enum CoachToolReader {
         var entries = ((try? context.fetch(FetchDescriptor<Entry>())) ?? [])
             .filter { $0.serviceDate >= since && $0.serviceDate < end }
 
+        let names = clientNames(context)
         if let name = call.string("client")?.lowercased(), !name.isEmpty {
-            entries = entries.filter { $0.clientName.lowercased().contains(name) }
+            entries = entries.filter { clientName($0, names).lowercased().contains(name) }
         }
 
-        let grouped = Dictionary(grouping: entries, by: { $0.displayClientName })
+        let grouped = Dictionary(grouping: entries, by: { clientName($0, names) })
         let clients: [[String: Any]] = grouped
             .map { name, es in
                 let amount = es.reduce(0.0) { $0 + ($1.hours * $1.rate) }
@@ -208,7 +210,26 @@ enum CoachToolReader {
         ])
     }
 
-    // MARK: - Safe child access
+    // MARK: - Safe client + child access
+
+    /// Client names keyed by id, read from freshly fetched Clients.
+    ///
+    /// `entry.client?.name` is not safe: the relationship can hold a Client
+    /// whose backing row is gone (a delete merged in from another device, or a
+    /// mirroring delegate working from an expired history token), and reading
+    /// any stored property off it traps. Identity reads stay safe on such a
+    /// model, so we go through `persistentModelID` and look the name up here.
+    private static func clientNames(_ context: ModelContext) -> [PersistentIdentifier: String] {
+        let all = (try? context.fetch(FetchDescriptor<Client>())) ?? []
+        return Dictionary(all.map { ($0.persistentModelID, $0.name) },
+                          uniquingKeysWith: { first, _ in first })
+    }
+
+    private static func clientName(_ e: Entry, _ names: [PersistentIdentifier: String]) -> String {
+        if e.setupAction != nil { return "Getting Started" }
+        guard let id = e.client?.persistentModelID else { return "Unknown" }
+        return names[id] ?? "Unknown"
+    }
 
     private static func childSubtasks(_ context: ModelContext) -> [PersistentIdentifier: [Subtask]] {
         let all = (try? context.fetch(FetchDescriptor<Subtask>(sortBy: [SortDescriptor(\Subtask.createdAt)]))) ?? []

@@ -7,22 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		042B7D5CB7801AE5BC12D2B4 /* MacSizing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 634BEFF21FA2DD4A7D2E4810 /* MacSizing.swift */; };
 		39DBBEDBB80A424FBFE1045F /* AIService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308ADFE7164B4275830B6745 /* AIService.swift */; };
-		AABB11CC22DD33EE44FF5501 /* CoachToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11CC22DD33EE44FF5502 /* CoachToolModels.swift */; };
-		AABB11CC22DD33EE44FF5503 /* CoachToolWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11CC22DD33EE44FF5504 /* CoachToolWriter.swift */; };
+		3F10911D3601473036CF262B /* EntryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78253F17C58F942AE90C87A5 /* EntryListView.swift */; };
+		476456A31A1C1D55F7128893 /* SavedSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AD8EFC674C07A79C90BF778 /* SavedSearch.swift */; };
 		56449446042E4A99A0524855 /* InvoicePDFRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85F67452D64B466F96EAC824 /* InvoicePDFRenderer.swift */; };
 		641EAE95C9BAC6DA7C66E2BC /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4ACCA611E51643F69DDAC54 /* UserProfile.swift */; };
-		476456A31A1C1D55F7128893 /* SavedSearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AD8EFC674C07A79C90BF778 /* SavedSearch.swift */; };
-		042B7D5CB7801AE5BC12D2B4 /* MacSizing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 634BEFF21FA2DD4A7D2E4810 /* MacSizing.swift */; };
 		6450599E28D9FF06B5506024 /* ModelLiveness.swift in Sources */ = {isa = PBXBuildFile; fileRef = A43C37DA74A625789C80E780 /* ModelLiveness.swift */; };
 		80EBB0D0B8534DC8B6B2EE0C /* CoachView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E99887AC14A84BD1A61B3ECA /* CoachView.swift */; };
+		94C2D89C0D36DCB58F99FA63 /* EntryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D9ADCFCA41E72560F34C9A /* EntryViews.swift */; };
+		AABB11CC22DD33EE44FF5501 /* CoachToolModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11CC22DD33EE44FF5502 /* CoachToolModels.swift */; };
+		AABB11CC22DD33EE44FF5503 /* CoachToolWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB11CC22DD33EE44FF5504 /* CoachToolWriter.swift */; };
 		EB3A162D0B164E2F84430D72 /* TaskDataSerializer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA8EDC224D5497C8F236CA2 /* TaskDataSerializer.swift */; };
 		EE02CC682E4DB0D600173CC4 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC672E4DB0D600173CC4 /* RootView.swift */; };
 		EE02CC6C2E4E31F000173CC4 /* EditEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC6B2E4E31F000173CC4 /* EditEntryView.swift */; };
 		EE02CC702E4E373900173CC4 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE02CC6F2E4E373900173CC4 /* DocumentPicker.swift */; };
 		EE0C627E2E4F601C0008DDE4 /* ClientDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */; };
-		3F10911D3601473036CF262B /* EntryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78253F17C58F942AE90C87A5 /* EntryListView.swift */; };
-		94C2D89C0D36DCB58F99FA63 /* EntryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5D9ADCFCA41E72560F34C9A /* EntryViews.swift */; };
 		EE0E53772EA9CB4100C07E2E /* StatsSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */; };
 		EE0E53792EA9CC0C00C07E2E /* StatsComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */; };
 		EE0E537B2EA9CDE300C07E2E /* StatsPageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE0E537A2EA9CDE300C07E2E /* StatsPageView.swift */; };
@@ -38,6 +38,10 @@
 		EE854ACF2E58BC9000C776C6 /* EntryFormSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE854ACE2E58BC9000C776C6 /* EntryFormSection.swift */; };
 		EE854AD12E58C1A000C776C6 /* EntryStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE854AD02E58C1A000C776C6 /* EntryStatus.swift */; };
 		EE8CDECE2E78B9D20011B686 /* Subtask.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8CDECD2E78B9D20011B686 /* Subtask.swift */; };
+		EE8E0B89304B710500830F85 /* CoachBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B85304B710500830F85 /* CoachBridge.swift */; };
+		EE8E0B8A304B710500830F85 /* CoachToolReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B87304B710500830F85 /* CoachToolReader.swift */; };
+		EE8E0B8B304B710500830F85 /* CoachToolSchema.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B88304B710500830F85 /* CoachToolSchema.swift */; };
+		EE8E0B8C304B710500830F85 /* CoachToolPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */; };
 		EE984E962E58DA08004A272F /* NewClientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE984E952E58DA08004A272F /* NewClientView.swift */; };
 		EEA142542E942FCF00ACB8DD /* Date+Bounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA142532E942FCF00ACB8DD /* Date+Bounds.swift */; };
 		EEA142562E9437B300ACB8DD /* DateBoundsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA142552E9437B300ACB8DD /* DateBoundsTests.swift */; };
@@ -79,21 +83,21 @@
 
 /* Begin PBXFileReference section */
 		308ADFE7164B4275830B6745 /* AIService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIService.swift; sourceTree = "<group>"; };
-		AABB11CC22DD33EE44FF5502 /* CoachToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolModels.swift; sourceTree = "<group>"; };
-		AABB11CC22DD33EE44FF5504 /* CoachToolWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolWriter.swift; sourceTree = "<group>"; };
-		85F67452D64B466F96EAC824 /* InvoicePDFRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicePDFRenderer.swift; sourceTree = "<group>"; };
-		D4ACCA611E51643F69DDAC54 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		3AD8EFC674C07A79C90BF778 /* SavedSearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedSearch.swift; sourceTree = "<group>"; };
 		634BEFF21FA2DD4A7D2E4810 /* MacSizing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacSizing.swift; sourceTree = "<group>"; };
+		78253F17C58F942AE90C87A5 /* EntryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryListView.swift; sourceTree = "<group>"; };
+		85F67452D64B466F96EAC824 /* InvoicePDFRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InvoicePDFRenderer.swift; sourceTree = "<group>"; };
 		A43C37DA74A625789C80E780 /* ModelLiveness.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelLiveness.swift; sourceTree = "<group>"; };
+		A5D9ADCFCA41E72560F34C9A /* EntryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryViews.swift; sourceTree = "<group>"; };
+		AABB11CC22DD33EE44FF5502 /* CoachToolModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolModels.swift; sourceTree = "<group>"; };
+		AABB11CC22DD33EE44FF5504 /* CoachToolWriter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolWriter.swift; sourceTree = "<group>"; };
+		D4ACCA611E51643F69DDAC54 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 		E99887AC14A84BD1A61B3ECA /* CoachView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachView.swift; sourceTree = "<group>"; };
 		EE02CC662E4DB0D600173CC4 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 		EE02CC672E4DB0D600173CC4 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		EE02CC6B2E4E31F000173CC4 /* EditEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditEntryView.swift; sourceTree = "<group>"; };
 		EE02CC6F2E4E373900173CC4 /* DocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
 		EE0C627D2E4F601C0008DDE4 /* ClientDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientDetailView.swift; sourceTree = "<group>"; };
-		78253F17C58F942AE90C87A5 /* EntryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryListView.swift; sourceTree = "<group>"; };
-		A5D9ADCFCA41E72560F34C9A /* EntryViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryViews.swift; sourceTree = "<group>"; };
 		EE0E53762EA9CB4100C07E2E /* StatsSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsSectionView.swift; sourceTree = "<group>"; };
 		EE0E53782EA9CC0C00C07E2E /* StatsComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsComponents.swift; sourceTree = "<group>"; };
 		EE0E537A2EA9CDE300C07E2E /* StatsPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsPageView.swift; sourceTree = "<group>"; };
@@ -107,6 +111,10 @@
 		EE854ACE2E58BC9000C776C6 /* EntryFormSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryFormSection.swift; sourceTree = "<group>"; };
 		EE854AD02E58C1A000C776C6 /* EntryStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryStatus.swift; sourceTree = "<group>"; };
 		EE8CDECD2E78B9D20011B686 /* Subtask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subtask.swift; sourceTree = "<group>"; };
+		EE8E0B85304B710500830F85 /* CoachBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachBridge.swift; sourceTree = "<group>"; };
+		EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolPolicy.swift; sourceTree = "<group>"; };
+		EE8E0B87304B710500830F85 /* CoachToolReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolReader.swift; sourceTree = "<group>"; };
+		EE8E0B88304B710500830F85 /* CoachToolSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolSchema.swift; sourceTree = "<group>"; };
 		EE984E952E58DA08004A272F /* NewClientView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewClientView.swift; sourceTree = "<group>"; };
 		EEA142532E942FCF00ACB8DD /* Date+Bounds.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Bounds.swift"; sourceTree = "<group>"; };
 		EEA142552E9437B300ACB8DD /* DateBoundsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateBoundsTests.swift; sourceTree = "<group>"; };
@@ -254,6 +262,10 @@
 		EEDCD67B2E4D79D100C792C4 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				EE8E0B85304B710500830F85 /* CoachBridge.swift */,
+				EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */,
+				EE8E0B87304B710500830F85 /* CoachToolReader.swift */,
+				EE8E0B88304B710500830F85 /* CoachToolSchema.swift */,
 				EEE727D32FDC462800B0FAD3 /* NotificationManager.swift */,
 				EEC46E7B2FD9C1BD0047ABBE /* CSVImporter.swift */,
 				EECB80BF2FCDE69E007252D5 /* AppTheme.swift */,
@@ -380,6 +392,10 @@
 				EECB80BE2FCDCBEB007252D5 /* SpeechRecognizer.swift in Sources */,
 				EE205D8E2F1BE1F800E2B088 /* SubtasksSectionView.swift in Sources */,
 				EEC377962E921DCB0066C54E /* TimeFormatting.swift in Sources */,
+				EE8E0B89304B710500830F85 /* CoachBridge.swift in Sources */,
+				EE8E0B8A304B710500830F85 /* CoachToolReader.swift in Sources */,
+				EE8E0B8B304B710500830F85 /* CoachToolSchema.swift in Sources */,
+				EE8E0B8C304B710500830F85 /* CoachToolPolicy.swift in Sources */,
 				EEE835CF2E9C973300317915 /* SettingsView.swift in Sources */,
 				641EAE95C9BAC6DA7C66E2BC /* UserProfile.swift in Sources */,
 				476456A31A1C1D55F7128893 /* SavedSearch.swift in Sources */,
