@@ -85,7 +85,10 @@ final class CoachBridgeServer: ObservableObject {
 
         do {
             let params = NWParameters.tcp
-            params.allowLocalEndpointReuse = true
+            // Deliberately NOT allowing reuse: a second BrickDot binding this
+            // port would answer from its own (likely empty) store, and be
+            // indistinguishable from the real one.
+            params.allowLocalEndpointReuse = false
             // Loopback only. Never bind the LAN interface — this speaks for the
             // whole database and has no business being reachable off the machine.
             params.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback),
@@ -205,11 +208,30 @@ final class CoachBridgeServer: ObservableObject {
         switch (request.method, request.path) {
 
         case ("GET", "/health"):
-            return (200, Self.json([
+            // Reports what the store actually is, not just that the socket
+            // answered. An empty snapshot is ambiguous — no work, or a container
+            // that fell through to the in-memory fallback and came up blank —
+            // and guessing between those cost an evening.
+            var health: [String: Any] = [
                 "ok": true,
                 "app": "BrickDot",
-                "readOnly": CoachBridge.isReadOnly
-            ]))
+                "readOnly": CoachBridge.isReadOnly,
+                "fallbackToLocal": UserDefaults.standard.bool(forKey: "cloudkit.fallbackToLocal")
+            ]
+            if let config = container.configurations.first {
+                health["storeInMemoryOnly"] = config.isStoredInMemoryOnly
+                health["storePath"] = config.url.path
+            }
+            do {
+                health["entryCount"] = try ctx.fetchCount(FetchDescriptor<Entry>())
+                health["clientCount"] = try ctx.fetchCount(FetchDescriptor<Client>())
+            } catch {
+                // buildPayload swallows this with `try?` and returns an empty
+                // snapshot, which reads as "no work" instead of "broken".
+                health["ok"] = false
+                health["fetchError"] = error.localizedDescription
+            }
+            return (200, Self.json(health))
 
         case ("GET", "/snapshot"):
             return (200, TaskDataSerializer.buildPayload(context: ctx))
