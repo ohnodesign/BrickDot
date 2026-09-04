@@ -270,6 +270,9 @@ struct CoachView: View {
                     let response = try await service.send(messages: history)
 
                     guard !response.toolCalls.isEmpty else {
+                        #if DEBUG
+                        print("[Coach] loop ended — model returned text with no tool calls")
+                        #endif
                         history.append(AIService.Message(role: .assistant, content: response.text))
                         messages = history
                         isLoading = false
@@ -326,6 +329,13 @@ struct CoachView: View {
                 output = CoachToolExecutor.execute(call, context: ctx)
                 didWrite = true
             }
+            #if DEBUG
+            // The failure that matters here is the model *claiming* a change it
+            // never made, which is invisible from the transcript alone. This
+            // prints what was actually asked for and what actually came back.
+            print("[Coach] tool \(call.name) input=\(call.inputJSON)")
+            print("[Coach]   -> \(output)")
+            #endif
             blocks.append(ToolResultBlock(toolUseID: call.id, content: output))
         }
 

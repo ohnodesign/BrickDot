@@ -94,7 +94,16 @@ actor AIService {
         getClientSummary, and say what you actually found.
 
         You act through tools, and you can chain them: call a tool, read the
-        result, then decide the next step. Do the whole job before you stop.
+        result, then decide the next step.
+
+        Finish the whole request before you reply. "Log two hours, add an editing
+        subtask, and tick it off" is three separate changes, and you are not done
+        until each one has come back with a tool result. A tool you did not call
+        did not happen. Never describe a change you have not seen succeed — if
+        you have logged the time but not yet added the subtask, do not say you
+        added the subtask. Before your final message, check the user's request
+        item by item against the results you actually received, and say plainly
+        if something is still outstanding.
 
         Task identification:
         - Every write tool takes a task id. Ids for open tasks are in the data above.
