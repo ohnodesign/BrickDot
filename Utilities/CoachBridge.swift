@@ -85,10 +85,12 @@ final class CoachBridgeServer: ObservableObject {
 
         do {
             let params = NWParameters.tcp
-            // Deliberately NOT allowing reuse: a second BrickDot binding this
-            // port would answer from its own (likely empty) store, and be
-            // indistinguishable from the real one.
-            params.allowLocalEndpointReuse = false
+            // Required, not optional: without it a relaunch can't rebind while
+            // the previous socket sits in TIME_WAIT, and the bridge silently
+            // fails to start. The defence against a second instance serving a
+            // different store is /health reporting its row counts, not refusing
+            // to bind.
+            params.allowLocalEndpointReuse = true
             // Loopback only. Never bind the LAN interface — this speaks for the
             // whole database and has no business being reachable off the machine.
             params.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback),
