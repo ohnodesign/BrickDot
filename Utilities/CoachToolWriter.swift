@@ -43,6 +43,16 @@ struct EntryResolver {
         ids.compactMap { entry($0) }
     }
 
+    /// Live subtasks for an entry, fetched rather than read off
+    /// `entry.subtasksList`. The relationship array is cached on the Entry and
+    /// can still hold a row CloudKit has already deleted elsewhere; that model
+    /// is invalidated and reading `title` off it traps.
+    func subtasks(of entry: Entry) -> [Subtask] {
+        let all = (try? context.fetch(FetchDescriptor<Subtask>(sortBy: [SortDescriptor(\Subtask.createdAt)]))) ?? []
+        let id = entry.persistentModelID
+        return all.filter { $0.parent?.persistentModelID == id }
+    }
+
     func findByDescription(_ description: String) -> Entry? {
         let open = ((try? context.fetch(FetchDescriptor<Entry>())) ?? []).filter { $0.status != .done }
         let query = description.lowercased()
@@ -66,6 +76,102 @@ enum CoachToolExecutor {
         let resolver = EntryResolver(context)
 
         switch call.name {
+
+        // --- Single-task tools (the loop's bread and butter) ---
+        case "addTime":
+            guard let e = resolver.entry(call.string("taskId") ?? "") else { return notFoundID }
+            guard let minutes = call.double("minutes"), minutes != 0 else {
+                return "No amount of time was specified."
+            }
+            let hours = minutes / 60
+            let when = call.string("date").flatMap(CoachToolFormat.parseDate) ?? Date()
+            let log = TimeLog(addedAt: when, hours: hours, note: call.string("note") ?? "", entry: e)
+            context.insert(log)
+            e.timeLogsList.append(log)
+            e.hours += hours
+            // An explicit date means the work happened that day, so move the
+            // entry with it — otherwise it lands in the wrong week on reports.
+            if call.string("date") != nil { e.serviceDate = when }
+            e.markModified()
+            return "Logged \(CoachToolFormat.duration(minutes)) to \"\(CoachToolFormat.name(e))\" on \(CoachToolFormat.day(when)). Task total is now \(CoachToolFormat.duration(e.hours * 60))."
+
+        case "addSubtask":
+            guard let e = resolver.entry(call.string("taskId") ?? "") else { return notFoundID }
+            let title = (call.string("title") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { return "A subtask needs a title." }
+            let done = call.bool("done") ?? false
+            let sub = Subtask(title: title,
+                              parent: e,
+                              hours: (call.double("minutes") ?? 0) / 60,
+                              isDone: done,
+                              completedAt: done ? Date() : nil)
+            context.insert(sub)
+            e.subtasksList.append(sub)
+            e.markModified()
+            return "Added subtask \"\(title)\"\(done ? " (done)" : "") to \"\(CoachToolFormat.name(e))\"."
+
+        case "updateSubtask":
+            guard let e = resolver.entry(call.string("taskId") ?? "") else { return notFoundID }
+            let title = (call.string("title") ?? "").lowercased()
+            guard let sub = resolver.subtasks(of: e).first(where: {
+                $0.title.lowercased() == title || $0.title.lowercased().contains(title)
+            }) else {
+                return "No subtask matching \"\(call.string("title") ?? "")\" on that task."
+            }
+            let done = call.bool("done") ?? true
+            sub.isDone = done
+            sub.completedAt = done ? Date() : nil
+            e.markModified()
+            return "Marked subtask \"\(sub.title)\" as \(done ? "done" : "not done")."
+
+        case "createTask":
+            let name = (call.string("client") ?? "").lowercased()
+            let clients = (try? context.fetch(FetchDescriptor<Client>())) ?? []
+            guard let client = clients.first(where: { $0.name.lowercased() == name })
+                    ?? clients.first(where: { $0.name.lowercased().contains(name) && !name.isEmpty }) else {
+                let known = clients.map(\.name).sorted().joined(separator: ", ")
+                return "No client matching \"\(call.string("client") ?? "")\". Known clients: \(known)."
+            }
+            let detail = (call.string("description") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !detail.isEmpty else { return "A task needs a description." }
+            let status = call.string("status").flatMap(CoachToolFormat.statusFrom) ?? .todo
+            let minutes = call.double("minutes") ?? 0
+            let entry = Entry(
+                serviceDate: Date(),
+                service: call.string("service") ?? Constants.services.first ?? "",
+                detail: detail,
+                hours: minutes / 60,
+                rate: client.rate > 0 ? client.rate : Constants.defaultRate,
+                client: client,
+                status: status,
+                completedAt: status == .done ? Date() : nil,
+                dueDate: call.string("dueDate").flatMap(CoachToolFormat.parseDate)
+            )
+            context.insert(entry)
+            if minutes > 0 {
+                let log = TimeLog(hours: minutes / 60, entry: entry)
+                context.insert(log)
+                entry.timeLogsList.append(log)
+            }
+            return "Created \"\(detail)\" for \(client.name)\(minutes > 0 ? " with \(CoachToolFormat.duration(minutes)) logged" : "")."
+
+        case "startTimer":
+            guard let e = resolver.entry(call.string("taskId") ?? "") else { return notFoundID }
+            e.status = .inProgress
+            e.completedAt = nil
+            if e.timerStartedAt == nil { e.timerStartedAt = Date() }
+            return "Started the timer on \"\(CoachToolFormat.name(e))\"."
+
+        case "stopTimer":
+            guard let e = resolver.entry(call.string("taskId") ?? "") else { return notFoundID }
+            guard let started = e.timerStartedAt else { return "No timer is running on that task." }
+            let elapsed = Date().timeIntervalSince(started) / 3600
+            let log = TimeLog(hours: elapsed, entry: e)
+            context.insert(log)
+            e.timeLogsList.append(log)
+            e.hours += elapsed
+            e.timerStartedAt = nil
+            return "Stopped the timer on \"\(CoachToolFormat.name(e))\" — logged \(CoachToolFormat.duration(elapsed * 60))."
 
         // --- ID-based tools ---
         case "starTasks":
@@ -175,6 +281,10 @@ enum CoachToolExecutor {
         return "\(names.count) tasks"
     }
 
+    private static var notFoundID: String {
+        "Couldn't find that task. Use findTasks to look up its id first."
+    }
+
     private static func notFound(_ call: CoachToolCall) -> String {
         "Could not find a task matching \"\(call.string("task_description") ?? "")\"."
     }
@@ -218,6 +328,25 @@ enum CoachToolFormat {
         case "nextWeek": return cal.date(byAdding: .weekOfYear, value: 1, to: base)
         default: return nil   // "clear" or unknown → remove the due date
         }
+    }
+
+    /// "2h", "2h 30m", "45 min" — reads back naturally in a chat reply.
+    static func duration(_ minutes: Double) -> String {
+        let total = Int(minutes.rounded())
+        let h = total / 60
+        let m = total % 60
+        if h == 0 { return "\(m) min" }
+        if m == 0 { return "\(h)h" }
+        return "\(h)h \(m)m"
+    }
+
+    static func day(_ date: Date) -> String {
+        if Calendar.current.isDateInToday(date) { return "today" }
+        if Calendar.current.isDateInYesterday(date) { return "yesterday" }
+        let f = DateFormatter()
+        f.dateFormat = "MMM d"
+        f.locale = Locale(identifier: "en_US_POSIX")
+        return f.string(from: date)
     }
 
     static func parseDate(_ s: String) -> Date? {

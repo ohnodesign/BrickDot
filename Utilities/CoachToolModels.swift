@@ -43,6 +43,18 @@ struct CoachToolCall: Identifiable, Equatable {
 
     func bool(_ key: String) -> Bool? { input[key] as? Bool }
 
+    /// Numbers arrive as Int, Double or String depending on how the model
+    /// serialised them — accept all three rather than silently reading nil.
+    func double(_ key: String) -> Double? {
+        let value = input[key]
+        if let d = value as? Double { return d }
+        if let i = value as? Int { return Double(i) }
+        if let s = value as? String { return Double(s) }
+        return nil
+    }
+
+    func int(_ key: String) -> Int? { double(key).map { Int($0) } }
+
     func stringArray(_ key: String) -> [String] {
         let value = input[key]
         if let arr = value as? [String] { return arr }

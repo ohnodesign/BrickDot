@@ -29,6 +29,14 @@ actor AIService {
 
     // MARK: - API Key
 
+    /// Sonnet is the floor for the Coach: it runs a multi-step loop, and Haiku
+    /// was picking the wrong task out of thirty clients often enough to matter.
+    static let model = "claude-sonnet-5"
+
+    /// Safety net on the agentic loop — a model that keeps calling tools without
+    /// converging stops here rather than billing forever.
+    static let maxLoopTurns = 8
+
     private static let apiKeyKey = "ai.anthropicAPIKey"
 
     static var apiKey: String {
@@ -40,193 +48,9 @@ actor AIService {
 
     // MARK: - Tool Definitions
 
-    static let tools: [[String: Any]] = [
-        // --- Legacy, description-matched tools ---
-        [
-            "name": "start_timer",
-            "description": "Start the timer on a task. Use the task_description to identify which task.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "task_description": [
-                        "type": "string",
-                        "description": "The description or service name of the task to start"
-                    ]
-                ],
-                "required": ["task_description"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "stop_timer",
-            "description": "Stop/pause the currently running timer on a task and log the elapsed time.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "task_description": [
-                        "type": "string",
-                        "description": "The description or service name of the task to stop"
-                    ]
-                ],
-                "required": ["task_description"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "mark_done",
-            "description": "Mark a task as completed.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "task_description": [
-                        "type": "string",
-                        "description": "The description or service name of the task to complete"
-                    ]
-                ],
-                "required": ["task_description"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "add_time",
-            "description": "Add logged time to a task without starting a timer.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "task_description": [
-                        "type": "string",
-                        "description": "The description or service name of the task"
-                    ],
-                    "minutes": [
-                        "type": "string",
-                        "description": "Number of minutes to add"
-                    ]
-                ],
-                "required": ["task_description", "minutes"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "set_priority",
-            "description": "Set a task as high priority (starred) or normal priority.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "task_description": [
-                        "type": "string",
-                        "description": "The description or service name of the task"
-                    ],
-                    "priority": [
-                        "type": "string",
-                        "enum": ["high", "normal"],
-                        "description": "Priority level"
-                    ]
-                ],
-                "required": ["task_description", "priority"]
-            ] as [String: Any]
-        ] as [String: Any],
-
-        // --- ID-based bulk-capable tools ---
-        [
-            "name": "starTasks",
-            "description": "Star one or more tasks, marking them high priority. Starred tasks show a star in the entry list and can be isolated with the Starred filter.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "taskIds": [
-                        "type": "array",
-                        "items": ["type": "string"] as [String: Any],
-                        "description": "Array of task ids (UUIDs) to star"
-                    ] as [String: Any]
-                ],
-                "required": ["taskIds"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "unstarTasks",
-            "description": "Unstar one or more tasks, returning them to normal priority. Does not change task status.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "taskIds": [
-                        "type": "array",
-                        "items": ["type": "string"] as [String: Any]
-                    ] as [String: Any]
-                ],
-                "required": ["taskIds"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "updateDueDate",
-            "description": "Set or shift the due date on one or more tasks. Use dueDate for an absolute date, or shift for a relative change.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "taskIds": [
-                        "type": "array",
-                        "items": ["type": "string"] as [String: Any],
-                        "description": "Array of task ids (UUIDs) to update"
-                    ] as [String: Any],
-                    "dueDate": [
-                        "type": "string",
-                        "description": "Absolute due date in yyyy-MM-dd format, e.g. 2026-07-31"
-                    ] as [String: Any],
-                    "shift": [
-                        "type": "string",
-                        "enum": ["tomorrow", "nextWeek", "clear"],
-                        "description": "Relative shift: tomorrow, nextWeek, or clear to remove the due date"
-                    ] as [String: Any]
-                ],
-                "required": ["taskIds"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "updateTaskStatus",
-            "description": "Change the status of one or more tasks.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "taskIds": [
-                        "type": "array",
-                        "items": ["type": "string"] as [String: Any]
-                    ] as [String: Any],
-                    "status": [
-                        "type": "string",
-                        "enum": ["to_do", "in_progress", "done"],
-                        "description": "New status to apply"
-                    ] as [String: Any]
-                ],
-                "required": ["taskIds", "status"]
-            ] as [String: Any]
-        ] as [String: Any],
-        [
-            "name": "bulkUpdate",
-            "description": "Apply different changes to different tasks in one call. Use when tasks need different updates simultaneously.",
-            "input_schema": [
-                "type": "object",
-                "properties": [
-                    "updates": [
-                        "type": "array",
-                        "items": [
-                            "type": "object",
-                            "properties": [
-                                "taskId": ["type": "string"] as [String: Any],
-                                "star": ["type": "boolean"] as [String: Any],
-                                "unstar": ["type": "boolean"] as [String: Any],
-                                "dueDate": ["type": "string"] as [String: Any],
-                                "shift": [
-                                    "type": "string",
-                                    "enum": ["tomorrow", "nextWeek", "clear"]
-                                ] as [String: Any],
-                                "status": [
-                                    "type": "string",
-                                    "enum": ["to_do", "in_progress", "done"]
-                                ] as [String: Any]
-                            ] as [String: Any],
-                            "required": ["taskId"]
-                        ] as [String: Any]
-                    ] as [String: Any]
-                ],
-                "required": ["updates"]
-            ] as [String: Any]
-        ] as [String: Any]
-    ]
+    /// Defined in `CoachToolSchema` so the schema sits next to the executor and
+    /// the confirmation policy rather than buried in the networking layer.
+    static let tools: [[String: Any]] = CoachToolSchema.all
 
     // MARK: - System Prompt
 
@@ -264,17 +88,35 @@ actor AIService {
         - Keep responses concise — they're usually checking in quickly between tasks
         - If they ask what to work on, give them a short, confident recommendation — not a long list
 
-        You can make changes to their tasks using tools. When they ask you to start, stop, reschedule, focus, or update tasks, call the appropriate tool rather than just describing what to do.
+        The data above is OPEN WORK ONLY — completed tasks, invoiced work and past
+        time logs are not in it. Never answer a question about finished or billed
+        work from that snapshot; use findTasks with status "done" or "any", or
+        getClientSummary, and say what you actually found.
+
+        You act through tools, and you can chain them: call a tool, read the
+        result, then decide the next step. Do the whole job before you stop.
 
         Task identification:
-        - For start_timer, stop_timer, mark_done, add_time, and set_priority, match task_description to the closest matching task in the data.
-        - starTasks, unstarTasks, updateDueDate, updateTaskStatus, and bulkUpdate reference tasks by their "id" (a UUID) from the data. Use bulkUpdate when different tasks need different changes in the same request.
+        - Every write tool takes a task id. Ids for open tasks are in the data above.
+        - If the user names a task in words and you cannot see it above, call
+          findTasks first. Never invent an id and never guess between two similar
+          tasks — if findTasks returns more than one plausible match, ask which.
+        - Use bulkUpdate only when several tasks need DIFFERENT changes at once.
 
-        Starring marks a task high priority. A starred task shows a star in the entry list, and the user can isolate starred work with the Starred filter. Use starTasks / unstarTasks, or the "star" / "unstar" flags in bulkUpdate.
+        Logging work: addTime takes minutes, so two hours is 120. Pass date
+        (yyyy-MM-dd) when the work happened on an earlier day. addSubtask with
+        done=true records something already finished.
 
-        Status values are "to_do", "in_progress", and "done". For updateDueDate, use shift="tomorrow"/"nextWeek"/"clear" for relative changes, or dueDate (yyyy-MM-dd) for an absolute date.
+        Starring marks a task high priority; it shows a star in the entry list and
+        the user can isolate starred work with the Starred filter.
 
-        Always include a brief text response confirming what you're about to do alongside any tool call — one short sentence like "I'll move those three to tomorrow."
+        Status values are "to_do", "in_progress" and "done". For updateDueDate use
+        shift="tomorrow"/"nextWeek"/"clear", or dueDate (yyyy-MM-dd).
+
+        Some changes are applied the moment you call them; wider ones are shown to
+        \(userRef) for approval first. Either way, say in one short sentence what
+        you are doing — "Logging 2h and ticking off the editing subtask." Do not
+        claim a change succeeded before you have seen its tool result.
         Today is \(human.string(from: now)) (\(iso.string(from: now))).
         """
     }
@@ -291,13 +133,13 @@ actor AIService {
         request.setValue("application/json", forHTTPHeaderField: "content-type")
         request.setValue(key, forHTTPHeaderField: "x-api-key")
         request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        request.timeoutInterval = 30
+        request.timeoutInterval = 90
 
         let apiMessages = Self.buildAPIMessages(from: messages)
 
         let body: [String: Any] = [
-            "model": "claude-haiku-4-5-20251001",
-            "max_tokens": 2048,
+            "model": Self.model,
+            "max_tokens": 4096,
             "system": systemPrompt,
             "tools": Self.tools,
             "messages": apiMessages

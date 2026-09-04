@@ -1,5 +1,7 @@
 // Views/SettingsView.swift
 import SwiftUI
+import UIKit
+import SwiftData
 
 // MARK: - Keys used across the app
 enum AppPrefsKey {
@@ -98,6 +100,10 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            #if targetEnvironment(macCatalyst)
+            CoachBridgeSection()
+            #endif
 
             // Data & Backup
             Section("Data & Backup") {
@@ -317,3 +323,72 @@ private struct ServicesSection: View {
         Constants.services = services
     }
 }
+
+
+// MARK: - Claude Bridge (Mac only)
+
+#if targetEnvironment(macCatalyst)
+/// Lets a Claude conversation on this Mac read and change BrickDot through a
+/// loopback socket. Off by default: it speaks for the whole database.
+private struct CoachBridgeSection: View {
+    @Environment(\.modelContext) private var ctx
+    @ObservedObject private var server = CoachBridgeServer.shared
+
+    @State private var enabled = CoachBridge.isEnabled
+    @State private var readOnly = CoachBridge.isReadOnly
+    @State private var revealToken = false
+
+    var body: some View {
+        Section {
+            Toggle("Allow Claude to connect", isOn: $enabled)
+                .onChange(of: enabled) { _, on in
+                    CoachBridge.isEnabled = on
+                    if on {
+                        server.start(container: ctx.container)
+                    } else {
+                        server.stop()
+                    }
+                }
+
+            if enabled {
+                Toggle("Read-only", isOn: $readOnly)
+                    .onChange(of: readOnly) { _, on in CoachBridge.isReadOnly = on }
+
+                LabeledContent("Status") {
+                    Text(server.isRunning ? "Listening on \(CoachBridge.port)" : "Not running")
+                        .foregroundStyle(server.isRunning ? .green : .secondary)
+                }
+
+                if let error = server.lastError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
+                Button(revealToken ? "Hide token" : "Show connection token") {
+                    revealToken.toggle()
+                }
+
+                if revealToken {
+                    Text(CoachBridge.token)
+                        .font(.system(.caption, design: .monospaced))
+                        .textSelection(.enabled)
+                    Button("Copy token") {
+                        UIPasteboard.general.string = CoachBridge.token
+                    }
+                    Button("Regenerate token", role: .destructive) {
+                        CoachBridge.regenerateToken()
+                        revealToken = false
+                    }
+                }
+            }
+        } header: {
+            Text("Claude Bridge")
+        } footer: {
+            Text(enabled
+                 ? "Claude can reach BrickDot at 127.0.0.1:\(CoachBridge.port) while the app is running. Paste the token into your MCP config."
+                 : "Off. Turn on to let a Claude conversation on this Mac look up tasks and log work.")
+        }
+    }
+}
+#endif

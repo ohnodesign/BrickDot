@@ -232,81 +232,138 @@ struct CoachView: View {
         error = nil
         isLoading = true
 
-        let history = messages
+        runLoop()
+    }
+
+    // MARK: - Agentic Loop
+
+    /// One user message can take several round trips: the model calls a tool,
+    /// reads the result, then decides what to do next. The loop runs until the
+    /// model stops calling tools, a batch needs approval, or it hits
+    /// `AIService.maxLoopTurns`.
+    ///
+    /// Confirmation suspends the loop rather than ending it — `applyChanges` and
+    /// `dismissChanges` feed the tool results back and call this again, so the
+    /// model always sees how its change landed. Previously the tool_result
+    /// blocks were recorded in the transcript but never sent to the API, so the
+    /// model only found out what had happened on the *next* user message.
+    private func runLoop() {
         let container = ctx.container
         let userName = profile?.displayName ?? ""
         let company = profile?.companyName ?? ""
 
-        Task {
-            // Build the task payload off the main thread — serializing every
-            // entry (and encoding their ids) is too heavy for the main thread.
+        isLoading = true
+        error = nil
+
+        Task { @MainActor in
+            // Built once per user message rather than per turn: it serialises
+            // every entry, and the read tools cover anything that moves.
             let taskJSON = await PayloadBuilder(modelContainer: container).build()
             let service = AIService(taskJSON: taskJSON, userName: userName, companyName: company)
-            do {
-                let response = try await service.send(messages: history)
 
-                await MainActor.run {
-                    if response.toolCalls.isEmpty {
-                        messages.append(AIService.Message(role: .assistant, content: response.text))
-                    } else {
-                        messages.append(AIService.Message(
-                            role: .assistant,
-                            content: response.text,
-                            toolCalls: response.toolCalls
-                        ))
-                        let resolver = EntryResolver(ctx)
-                        pendingChanges = response.toolCalls.map { call in
-                            PendingChange(summary: describe(call, resolver: resolver), toolCall: call)
-                        }
+            // The transcript is tracked locally and written back after each
+            // change, so a turn never reads a stale copy of itself.
+            var history = messages
+
+            for _ in 1...AIService.maxLoopTurns {
+                do {
+                    let response = try await service.send(messages: history)
+
+                    guard !response.toolCalls.isEmpty else {
+                        history.append(AIService.Message(role: .assistant, content: response.text))
+                        messages = history
+                        isLoading = false
+                        return
                     }
-                    isLoading = false
-                }
-            } catch {
-                await MainActor.run {
+
+                    history.append(AIService.Message(role: .assistant,
+                                                     content: response.text,
+                                                     toolCalls: response.toolCalls))
+                    messages = history
+
+                    let resolver = EntryResolver(ctx)
+                    let split = CoachToolPolicy.partition(response.toolCalls, resolver: resolver)
+
+                    if !split.confirm.isEmpty {
+                        pendingChanges = split.confirm.map {
+                            PendingChange(summary: describe($0, resolver: resolver), toolCall: $0)
+                        }
+                        isLoading = false
+                        return
+                    }
+
+                    history.append(AIService.Message(role: .user,
+                                                     content: "",
+                                                     toolResults: runTools(split.auto)))
+                    messages = history
+                } catch {
                     self.error = error.localizedDescription
                     isLoading = false
+                    return
                 }
             }
+
+            history.append(AIService.Message(
+                role: .assistant,
+                content: "I stopped after \(AIService.maxLoopTurns) steps so this didn't run away. Tell me to keep going if that wasn't finished."
+            ))
+            messages = history
+            isLoading = false
         }
+    }
+
+    /// Runs a batch of tool calls and saves once. Reads never touch the store,
+    /// so a read-only batch skips the save entirely.
+    private func runTools(_ calls: [CoachToolCall]) -> [ToolResultBlock] {
+        var blocks: [ToolResultBlock] = []
+        var didWrite = false
+
+        for call in calls {
+            let output: String
+            if CoachToolPolicy.isRead(call) {
+                output = CoachToolReader.execute(call, context: ctx)
+            } else {
+                output = CoachToolExecutor.execute(call, context: ctx)
+                didWrite = true
+            }
+            blocks.append(ToolResultBlock(toolUseID: call.id, content: output))
+        }
+
+        // One save for the whole batch — the same main-context path the task
+        // editor uses for a single-field change, which merges cleanly.
+        if didWrite { try? ctx.save() }
+        return blocks
     }
 
     // MARK: - Apply / Dismiss
 
     private func applyChanges() {
-        // Apply on the main context and save once — the same path the task
-        // editor uses for a single-field change, which saves cleanly.
         let calls = pendingChanges.map { $0.toolCall }
         pendingChanges = []
-
-        var blocks: [ToolResultBlock] = []
-        for call in calls {
-            let text = CoachToolExecutor.execute(call, context: ctx)
-            blocks.append(ToolResultBlock(toolUseID: call.id, content: text))
-        }
-        try? ctx.save()
-
-        messages.append(AIService.Message(role: .user, content: "", toolResults: blocks))
-        let summary: String
-        if blocks.count == 1 {
-            summary = blocks[0].content
-        } else {
-            summary = "Done:\n" + blocks.map { "• \($0.content)" }.joined(separator: "\n")
-        }
-        messages.append(AIService.Message(role: .assistant, content: summary))
+        messages.append(AIService.Message(role: .user, content: "", toolResults: runTools(calls)))
+        // Hand the results back so the model reports what actually happened
+        // instead of the view inventing a summary.
+        runLoop()
     }
 
     private func dismissChanges() {
         let results = pendingChanges.map {
-            ToolResultBlock(toolUseID: $0.toolCall.id, content: "Change dismissed by the user.")
+            ToolResultBlock(toolUseID: $0.toolCall.id,
+                            content: "The user declined this change. Do not retry it — acknowledge and move on.")
         }
-        messages.append(AIService.Message(role: .user, content: "", toolResults: results))
-        messages.append(AIService.Message(role: .assistant, content: "No problem — dismissed."))
         pendingChanges = []
+        messages.append(AIService.Message(role: .user, content: "", toolResults: results))
+        runLoop()
     }
 
     // MARK: - Change Summaries (read-only)
 
     private func describe(_ call: CoachToolCall, resolver: EntryResolver) -> String {
+        func one(_ key: String) -> String {
+            guard let id = call.string(key), let e = resolver.entry(id) else { return "that task" }
+            return "\"\(CoachToolFormat.name(e))\""
+        }
+
         func names(_ key: String) -> String {
             let ids = call.stringArray(key)
             let entries = resolver.entries(ids)
@@ -334,6 +391,22 @@ struct CoachView: View {
             return "Mark \(names("taskIds")) as \(CoachToolFormat.statusFrom(raw).map(CoachToolFormat.statusLabel) ?? raw)"
         case "bulkUpdate":
             return "Apply \(call.objectArray("updates").count) changes to tasks"
+        case "addTime":
+            let mins = call.double("minutes") ?? 0
+            let when = call.string("date").flatMap(CoachToolFormat.parseDate) ?? Date()
+            return "Log \(CoachToolFormat.duration(mins)) to \(one("taskId")) on \(CoachToolFormat.day(when))"
+        case "addSubtask":
+            let done = (call.bool("done") ?? false) ? " (done)" : ""
+            return "Add subtask \"\(call.string("title") ?? "")\"\(done) to \(one("taskId"))"
+        case "updateSubtask":
+            let done = (call.bool("done") ?? true) ? "done" : "not done"
+            return "Mark subtask \"\(call.string("title") ?? "")\" on \(one("taskId")) as \(done)"
+        case "createTask":
+            return "Create \"\(call.string("description") ?? "")\" for \(call.string("client") ?? "a client")"
+        case "startTimer":
+            return "Start timer on \(one("taskId"))"
+        case "stopTimer":
+            return "Stop timer on \(one("taskId"))"
         case "start_timer":
             return "Start timer on \"\(call.string("task_description") ?? "task")\""
         case "stop_timer":
@@ -457,7 +530,7 @@ private struct ChatBubble: View, Equatable {
                     HStack(spacing: 4) {
                         Image(systemName: "wrench.fill")
                             .font(.caption2)
-                        Text("\(message.toolCalls.count) proposed change\(message.toolCalls.count == 1 ? "" : "s")")
+                        Text(message.toolCalls.map(\.name).joined(separator: ", "))
                             .font(.caption)
                     }
                     .foregroundStyle(.secondary)

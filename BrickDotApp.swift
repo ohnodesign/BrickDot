@@ -74,6 +74,13 @@ struct BrickDotApp: App {
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
                 refreshNotifications()
+                #if targetEnvironment(macCatalyst)
+                // Deliberately not stopped when the window loses focus — the
+                // whole point is that it answers while BrickDot sits in the
+                // background and the conversation happens elsewhere. It dies
+                // with the process.
+                CoachBridgeServer.shared.start(container: container)
+                #endif
             }
         }
     }
