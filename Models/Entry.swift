@@ -57,12 +57,17 @@ final class Entry {
 
     /// The one filter every regular list uses. Imported invoice line items are
     /// billing records, not work, so they stay out of lists, counts and charts.
-    /// The two spellings exist because `@Query` and `FetchDescriptor` want a
-    /// predicate while in-memory arrays want a closure — keep them in step.
-    static var workOnlyPredicate: Predicate<Entry> {
-        #Predicate<Entry> { !$0.isBillingRecord }
-    }
-
+    ///
+    /// Deliberately a Swift filter over a fetched array rather than a
+    /// `#Predicate` on the `@Query`. Filtering in the query looks tidier and
+    /// hangs the app: with a predicate on these queries, pushing
+    /// InvoiceDetailView locked the main thread hard enough that the app stopped
+    /// answering the accessibility API, on an invoice with no line items at all.
+    /// Same views, same data, predicate removed — fine. Whatever SwiftData is
+    /// doing there, an O(n) pass over a few hundred entries is not worth it.
+    ///
+    /// One-shot `FetchDescriptor` predicates are not affected and still use
+    /// `#Predicate` directly; it is only the reactive `@Query` path that breaks.
     static func workOnly(_ entries: [Entry]) -> [Entry] {
         entries.filter { !$0.isBillingRecord }
     }
@@ -151,4 +156,16 @@ final class Entry {
             isQuickAdd = false
         }
     }
+}
+
+// MARK: - Fetch filter
+
+extension Entry {
+    /// The same rule as `Entry.workOnly(_:)`, for one-shot `FetchDescriptor`
+    /// fetches — the Coach tools, the notification rescheduler, the first-run
+    /// check. Those run once and return; they are not the reactive `@Query`
+    /// path that hangs, so they can push the filter down to the store.
+    ///
+    /// Do not hand this to a `@Query`. That is the thing that broke.
+    static let workOnlyPredicate: Predicate<Entry> = #Predicate<Entry> { !$0.isBillingRecord }
 }

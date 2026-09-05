@@ -5,7 +5,10 @@ struct SearchView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
-    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var allEntries: [Entry] { Entry.workOnly(allEntriesStored) }
     @Query(sort: \Client.name) private var allClients: [Client]
 
     @State private var searchText = ""

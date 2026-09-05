@@ -13,7 +13,10 @@ struct GettingStartedCard: View {
     @Environment(\.appTheme) private var theme
 
     @Query(sort: \Client.name) private var clients: [Client]
-    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.createdAt, order: .reverse) private var entries: [Entry]
+    @Query(sort: \Entry.createdAt, order: .reverse) private var entriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var entries: [Entry] { Entry.workOnly(entriesStored) }
 
     @AppStorage(OnboardingPrefs.dismissed) private var dismissed = false
 

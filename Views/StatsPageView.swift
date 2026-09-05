@@ -5,7 +5,10 @@ import Charts
 struct StatsPageView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
-    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var allEntries: [Entry] { Entry.workOnly(allEntriesStored) }
     @State private var selectedStat: StatsPageSelectedStat? = nil
     @State private var selectedDueList: StatsPageSelectedStat? = nil
     @State private var calendarMonthAnchor: Date = Date()

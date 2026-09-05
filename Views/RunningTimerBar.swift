@@ -13,7 +13,10 @@ struct RunningTimerBar: View {
     /// draws its own glass capsule — skip our background there.
     var inAccessory: Bool = false
 
-    @Query(filter: Entry.workOnlyPredicate) private var allEntries: [Entry]
+    @Query private var allEntriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var allEntries: [Entry] { Entry.workOnly(allEntriesStored) }
 
     @State private var showRunningList = false
     @State private var editingEntry: Entry?
@@ -146,7 +149,10 @@ struct RunningTimerBar: View {
 // MARK: - Tab view placement
 
 private struct RunningTimerBarAttachment: ViewModifier {
-    @Query(filter: Entry.workOnlyPredicate) private var allEntries: [Entry]
+    @Query private var allEntriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var allEntries: [Entry] { Entry.workOnly(allEntriesStored) }
 
     // The iOS 26 accessory renders its glass capsule even when the content
     // view is empty, so only attach it while a timer is actually running.

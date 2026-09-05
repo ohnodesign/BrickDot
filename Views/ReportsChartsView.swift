@@ -256,10 +256,11 @@ struct ClientProfitabilityChartView: View {
     let period: ReportPeriod
     @Environment(\.appTheme) private var theme
 
-    /// Every line item that is on an invoice — imported billing records
-    /// included, which is why this does not use `Entry.workOnlyPredicate`.
-    @Query(filter: #Predicate<Entry> { $0.invoice != nil },
-           sort: \Entry.serviceDate) private var invoicedEntries: [Entry]
+    /// Unfiltered query, filtered in Swift — a `@Query` predicate wedges the
+    /// app, see the note on `Entry.workOnly(_:)`. Billing records are wanted
+    /// here, so this is not `workOnly` either: it is everything on an invoice.
+    @Query(sort: \Entry.serviceDate) private var allEntries: [Entry]
+    private var invoicedEntries: [Entry] { allEntries.filter { $0.invoice != nil } }
 
     // Fetched, so every Client here has a row. Never dereference
     // `entry.client` for a stored property — see ClientInfoCache.

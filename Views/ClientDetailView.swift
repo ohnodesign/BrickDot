@@ -26,7 +26,10 @@ struct ClientDetailView: View {
     @State private var showReorderInvoices = false
 
     // Broad queries; filter in Swift
-    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var allEntries: [Entry] { Entry.workOnly(allEntriesStored) }
     @Query(sort: \Invoice.createdAt,  order: .reverse) private var allInvoices: [Invoice]
 
     // Filtered for this client

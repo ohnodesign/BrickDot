@@ -67,7 +67,10 @@ struct ExportView: View {
     @Environment(\.modelContext) private var ctx
 
     @Query(sort: \Client.name) private var clients: [Client]
-    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate) private var allEntries: [Entry]
+    @Query(sort: \Entry.serviceDate) private var allEntriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var allEntries: [Entry] { Entry.workOnly(allEntriesStored) }
     @Query(sort: \Invoice.createdAt) private var allInvoices: [Invoice]
 
     @Query private var profiles: [UserProfile]

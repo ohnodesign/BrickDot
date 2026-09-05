@@ -14,7 +14,10 @@ struct EntriesListView: View, Identifiable {
     private var totalAmount: Double { entries.reduce(0.0) { $0 + ($1.hours * $1.rate) } }
 
     @Environment(\.modelContext) private var ctx
-    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntriesStored: [Entry]
+    /// Filtered in Swift, not in the `@Query` predicate. A predicate here
+    /// wedges the app — see the note on `Entry.workOnly(_:)`.
+    private var allEntries: [Entry] { Entry.workOnly(allEntriesStored) }
 
     var body: some View {
         NavigationStack {
