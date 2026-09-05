@@ -9,7 +9,7 @@ enum TaskDataSerializer {
 
         let today = Calendar.current.startOfDay(for: Date())
 
-        let allEntries = (try? context.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? []
+        let allEntries = Entry.workOnly((try? context.fetch(FetchDescriptor<Entry>())) ?? [])
         let allClients = (try? context.fetch(FetchDescriptor<Client>())) ?? []
 
         // Read-only. Task ids come from Entry.coachID, a value computed from the

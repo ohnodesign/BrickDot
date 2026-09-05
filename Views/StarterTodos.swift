@@ -44,7 +44,7 @@ enum StarterTodos {
     static func seedIfNeeded(_ ctx: ModelContext) {
         guard !UserDefaults.standard.bool(forKey: seededKey) else { return }
 
-        let entryCount = (try? ctx.fetchCount(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? 0
+        let entryCount = Entry.workOnly((try? ctx.fetch(FetchDescriptor<Entry>())) ?? []).count
         let clientCount = (try? ctx.fetchCount(FetchDescriptor<Client>())) ?? 0
         guard entryCount == 0 && clientCount == 0 else {
             UserDefaults.standard.set(true, forKey: seededKey)

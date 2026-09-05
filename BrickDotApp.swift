@@ -113,7 +113,7 @@ struct BrickDotApp: App {
     private func refreshNotifications() {
         guard UserDefaults.standard.bool(forKey: AppPrefsKey.notificationsEnabled) else { return }
         let ctx = container.mainContext
-        let entries = (try? ctx.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? []
+        let entries = Entry.workOnly((try? ctx.fetch(FetchDescriptor<Entry>())) ?? [])
         NotificationManager.shared.reschedule(entries: entries)
     }
 

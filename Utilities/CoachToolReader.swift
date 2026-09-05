@@ -30,7 +30,7 @@ enum CoachToolReader {
     // MARK: - findTasks
 
     private static func findTasks(_ call: CoachToolCall, _ context: ModelContext) -> String {
-        let all = (try? context.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? []
+        let all = Entry.workOnly((try? context.fetch(FetchDescriptor<Entry>())) ?? [])
         let subtasksByParent = childSubtasks(context)
         let names = clientNames(context)
 
@@ -272,7 +272,7 @@ enum CoachToolReader {
             ?? cal.date(byAdding: .day, value: -30, to: cal.startOfDay(for: Date()))!
         let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: until)) ?? until
 
-        var entries = ((try? context.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? [])
+        var entries = Entry.workOnly((try? context.fetch(FetchDescriptor<Entry>())) ?? [])
             .filter { $0.serviceDate >= since && $0.serviceDate < end }
 
         let names = clientNames(context)

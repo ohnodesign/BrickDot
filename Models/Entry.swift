@@ -66,8 +66,14 @@ final class Entry {
     /// Same views, same data, predicate removed — fine. Whatever SwiftData is
     /// doing there, an O(n) pass over a few hundred entries is not worth it.
     ///
-    /// One-shot `FetchDescriptor` predicates are not affected and still use
-    /// `#Predicate` directly; it is only the reactive `@Query` path that breaks.
+    /// There is no `Predicate` version of this, on purpose. The first attempt at
+    /// this filter was a `#Predicate` on the `@Query` declarations, which hung
+    /// the app. The second kept a shared `static let` predicate for the one-shot
+    /// `FetchDescriptor` fetches on the theory that only the reactive path was
+    /// affected — and those fetches then silently returned zero rows, which
+    /// blinded every Coach tool without erroring. Twice is enough: this model
+    /// and `#Predicate` do not get along, so the filter lives in Swift and only
+    /// in Swift.
     static func workOnly(_ entries: [Entry]) -> [Entry] {
         entries.filter { !$0.isBillingRecord }
     }
@@ -156,16 +162,4 @@ final class Entry {
             isQuickAdd = false
         }
     }
-}
-
-// MARK: - Fetch filter
-
-extension Entry {
-    /// The same rule as `Entry.workOnly(_:)`, for one-shot `FetchDescriptor`
-    /// fetches — the Coach tools, the notification rescheduler, the first-run
-    /// check. Those run once and return; they are not the reactive `@Query`
-    /// path that hangs, so they can push the filter down to the store.
-    ///
-    /// Do not hand this to a `@Query`. That is the thing that broke.
-    static let workOnlyPredicate: Predicate<Entry> = #Predicate<Entry> { !$0.isBillingRecord }
 }
