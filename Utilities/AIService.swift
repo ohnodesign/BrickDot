@@ -167,9 +167,16 @@ actor AIService {
 
         let apiMessages = Self.buildAPIMessages(from: messages)
 
+        // The tool schemas and the system prompt — task payload included — come to
+        // roughly 9k tokens, and the agentic loop re-sends every byte of it on
+        // each turn. A single top-level breakpoint caches the tools/system/history
+        // prefix and moves forward as the conversation grows, so turns after the
+        // first read at $0.20/MTok instead of $2. Roughly a 60% saving on a
+        // multi-step exchange, and it degrades to normal pricing on a miss.
         let body: [String: Any] = [
             "model": Self.model,
             "max_tokens": 4096,
+            "cache_control": ["type": "ephemeral"],
             "system": systemPrompt,
             "tools": Self.tools,
             "messages": apiMessages
@@ -194,6 +201,20 @@ actor AIService {
               let content = json["content"] as? [[String: Any]] else {
             throw AIError.parseError
         }
+
+        #if DEBUG
+        if let usage = json["usage"] as? [String: Any] {
+            let fresh = usage["input_tokens"] as? Int ?? 0
+            let written = usage["cache_creation_input_tokens"] as? Int ?? 0
+            let read = usage["cache_read_input_tokens"] as? Int ?? 0
+            let out = usage["output_tokens"] as? Int ?? 0
+            // Sonnet 5: $2/MTok in, $10 out, $2.50 cache write, $0.20 cache read.
+            let cents = (Double(fresh) * 2 + Double(written) * 2.5
+                         + Double(read) * 0.2 + Double(out) * 10) / 10_000
+            print(String(format: "[Coach] tokens in=%d cached_write=%d cached_read=%d out=%d — %.3f¢",
+                         fresh, written, read, out, cents))
+        }
+        #endif
 
         var text = ""
         var toolCalls: [CoachToolCall] = []
