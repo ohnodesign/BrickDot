@@ -75,7 +75,7 @@ BrickDot/
 │   ├── CoachSession.swift           # Coach transcript + agentic loop (owned by RootView)
 │   ├── CoachToolSchema.swift        # Tool definitions sent to the API
 │   ├── CoachToolWriter.swift        # Write tools + EntryResolver + CoachToolFormat
-│   ├── CoachToolReader.swift        # Read tools (findTasks / detail / client summary)
+│   ├── CoachToolReader.swift        # Read tools (findTasks / detail / summaries / clients)
 │   ├── CoachToolPolicy.swift        # Which calls auto-apply vs wait for a tap
 │   ├── CoachToolModels.swift        # CoachToolCall, PendingChange, ToolResultBlock
 │   ├── CoachBridge.swift            # Loopback HTTP bridge (Mac only, off by default)
@@ -218,6 +218,12 @@ the model only learned what happened on the next user message.)
 - **`createTask` files as a Quick Capture unless a status is passed** — an
   unreviewed note belongs in that section. `markModified()` clears the flag on
   the first real edit.
+- **`listClients` is the join to the outside world.** Work folders on the
+  FatBoy drive are named `YYYY-MM-DD-<shortcode>-<description>`, so a client's
+  `shortcode` maps a folder to a BrickDot client without guessing at names
+  ("Cobblestone" on disk vs "Cobblestone Homes" in the app). Shortcodes are not
+  unique per folder — the parent client folder is authoritative, the prefix is a
+  cross-check.
 - **The payload in the system prompt is open work only.** Completed and invoiced
   work must be reached with `findTasks(status:)` or `getClientSummary`.
 - **Prompt caching** is on via a top-level `cache_control` breakpoint. In DEBUG,

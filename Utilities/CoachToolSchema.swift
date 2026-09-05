@@ -68,6 +68,17 @@ enum CoachToolSchema {
         required: ["taskId"]
     )
 
+    private static let listClients = tool(
+        "listClients",
+        """
+        Every client with its shortcode, rate and contact details. The shortcode         is the key that maps outside references to a client — work folders on         disk are named YYYY-MM-DD-<shortcode>-<description>, so this is how you         turn "2026-08-07-cs-photo-…" into Cobblestone Homes without guessing at         the name.
+        """,
+        [
+            "query": prop("string", "Optional filter on name or shortcode. Omit for all clients.")
+        ],
+        required: []
+    )
+
     private static let getClientSummary = tool(
         "getClientSummary",
         "Totals for a client over a date range: hours logged, billable amount, task counts by status, and how much is still uninvoiced. Omit client to summarise every client.",
@@ -244,7 +255,7 @@ enum CoachToolSchema {
     // MARK: - Exposed set
 
     /// Read tools run without confirmation and never mutate the store.
-    static let readToolNames: Set<String> = ["findTasks", "getTaskDetail", "getClientSummary"]
+    static let readToolNames: Set<String> = ["findTasks", "getTaskDetail", "getClientSummary", "listClients"]
 
     /// Refused over the Claude bridge. In the app these stop for a tap; the
     /// bridge has no confirmation UI, and burning an invoice number — or marking
@@ -252,7 +263,7 @@ enum CoachToolSchema {
     static let appOnlyToolNames: Set<String> = ["createInvoice"]
 
     static let all: [[String: Any]] = [
-        findTasks, getTaskDetail, getClientSummary,
+        findTasks, getTaskDetail, getClientSummary, listClients,
         addTime, addSubtask, updateSubtask, createTask, createClient, createInvoice,
         updateTaskStatus, starTasks, unstarTasks, updateDueDate,
         startTimer, stopTimer, bulkUpdate

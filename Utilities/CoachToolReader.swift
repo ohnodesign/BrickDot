@@ -21,6 +21,7 @@ enum CoachToolReader {
         case "findTasks":       return findTasks(call, context)
         case "getTaskDetail":   return getTaskDetail(call, context)
         case "getClientSummary":return getClientSummary(call, context)
+        case "listClients":     return listClients(call, context)
         default:                return json(["error": "Unknown read tool \(call.name)."])
         }
     }
@@ -171,6 +172,33 @@ enum CoachToolReader {
             ["date": dayString($0.addedAt), "hours": round2($0.hours), "note": $0.note] as [String: Any]
         }
         return json(out)
+    }
+
+    // MARK: - listClients
+
+    /// The join table between the outside world and BrickDot. Clients come from
+    /// a fetch, so every row returned exists — no relationship dereference, no
+    /// invalidated-model hazard.
+    private static func listClients(_ call: CoachToolCall, _ context: ModelContext) -> String {
+        var clients = (try? context.fetch(
+            FetchDescriptor<Client>(sortBy: [SortDescriptor(\Client.name)])
+        )) ?? []
+
+        if let query = call.string("query")?.lowercased(), !query.isEmpty {
+            clients = clients.filter {
+                $0.name.lowercased().contains(query) || $0.shortcode.lowercased().contains(query)
+            }
+        }
+
+        let rows: [[String: Any]] = clients.map { client in
+            var row: [String: Any] = ["name": client.name, "rate": client.rate]
+            if !client.shortcode.isEmpty { row["shortcode"] = client.shortcode }
+            if !client.contactName.isEmpty { row["contact"] = client.contactName }
+            if !client.email.isEmpty { row["email"] = client.email }
+            if !client.phone.isEmpty { row["phone"] = client.phone }
+            return row
+        }
+        return json(["client_count": rows.count, "clients": rows])
     }
 
     // MARK: - getClientSummary
