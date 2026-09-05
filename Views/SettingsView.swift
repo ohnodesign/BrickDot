@@ -48,6 +48,7 @@ struct SettingsView: View {
     @AppStorage(AppPrefsKey.notifyOverdue)         private var notifyOverdue = true
     @AppStorage(AppPrefsKey.notifyNoTimeLogged)    private var notifyNoTimeLogged = true
     @AppStorage(AppPrefsKey.notifyCOMMReply)       private var notifyCOMMReply = true
+    @AppStorage(AutoBackup.Schedule.enabledKey)    private var autoBackupEnabled = true
 
     var body: some View {
         Form {
@@ -107,6 +108,7 @@ struct SettingsView: View {
 
             // Data & Backup
             Section("Data & Backup") {
+                Toggle("Automatic daily backup", isOn: $autoBackupEnabled)
                 Button("Export backup (JSON)") { exportBackup() }
                 Button("Import backup (JSON)") { showImportPicker = true }
                 Button(role: .destructive) { showResetConfirmation = true } label: { Text("Reset all data") }

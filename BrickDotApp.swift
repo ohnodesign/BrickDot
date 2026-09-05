@@ -77,7 +77,23 @@ struct BrickDotApp: App {
         }
         .modelContainer(container)
         .onChange(of: scenePhase) { _, phase in
+            // Backgrounding is the natural moment: the data is settled and
+            // serialising it can't jank the UI. Nothing called this before, so
+            // backups only happened if you visited the Export screen and tapped
+            // the button — which is not what "Last Auto-Backup" implied.
+            if phase == .background {
+                AutoBackup.performIfDue(ctx: container.mainContext)
+            }
+
             if phase == .active {
+                // Safety net: if backgrounding never got a clean run — force quit,
+                // a crash — catch up once it is well overdue. Never on a normal
+                // launch, so this can't slow the app opening.
+                let neglected = AutoBackup.Schedule.lastRun
+                    .map { Date().timeIntervalSince($0) >= AutoBackup.Schedule.interval * 2 }
+                    ?? true
+                if neglected { AutoBackup.performIfDue(ctx: container.mainContext) }
+
                 refreshNotifications()
                 #if targetEnvironment(macCatalyst)
                 // Deliberately not stopped when the window loses focus — the
