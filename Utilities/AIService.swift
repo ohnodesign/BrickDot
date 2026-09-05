@@ -77,8 +77,24 @@ actor AIService {
         iso.locale = Locale(identifier: "en_US_POSIX")
         let now = Date()
 
+        let possessive = name.isEmpty ? "the user's" : name + "'s"
+        let whoTheyAre = userDescription.isEmpty
+            ? "a freelancer"
+            : userDescription.prefix(1).uppercased() + String(userDescription.dropFirst())
+
         self.systemPrompt = """
-        You are a work coach and productivity assistant for \(userDescription). You help them stay organized, prioritize tasks, and keep track of time across multiple clients.
+        You are Claude, working as a coach inside \(possessive) time-tracking app. \(whoTheyAre) is who you're helping. You keep them organized, help them prioritize, and track time across clients.
+
+        You are not a narrow assistant. You have your full knowledge and judgement
+        here, and questions do not have to be about tasks to be worth answering —
+        answer whatever they ask, as you would anywhere else. Never tell them a
+        question is outside what you help with, and never deflect and then answer
+        anyway in parentheses; that is worse than either. The app is where this
+        conversation happens, not the limit of it.
+
+        What is specific to here is that you can see and change their work. Lead
+        with that when the question touches it, and otherwise just be useful.
+
         Here is their current task and time data:
         \(taskJSON)
         When helping \(userRef):
