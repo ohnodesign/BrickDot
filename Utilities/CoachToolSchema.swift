@@ -90,6 +90,20 @@ enum CoachToolSchema {
         required: []
     )
 
+    private static let listInvoices = tool(
+        "listInvoices",
+        """
+        Invoices on record, newest first: number, title, date, client, and the         work attached to each. Use this to answer what has actually been billed,         and when. Note that an entry with no invoice attached is not necessarily         unbilled — invoicing may have happened outside the app — so report this         as "not linked to an invoice here", never as "unpaid".
+        """,
+        [
+            "client": prop("string", "Optional client name filter."),
+            "since": prop("string", "Earliest invoice date, yyyy-MM-dd."),
+            "until": prop("string", "Latest invoice date, yyyy-MM-dd."),
+            "limit": prop("integer", "Maximum invoices to return. Defaults to 20.")
+        ],
+        required: []
+    )
+
     // MARK: - Write tools
 
     private static let addTime = tool(
@@ -255,7 +269,7 @@ enum CoachToolSchema {
     // MARK: - Exposed set
 
     /// Read tools run without confirmation and never mutate the store.
-    static let readToolNames: Set<String> = ["findTasks", "getTaskDetail", "getClientSummary", "listClients"]
+    static let readToolNames: Set<String> = ["findTasks", "getTaskDetail", "getClientSummary", "listClients", "listInvoices"]
 
     /// Refused over the Claude bridge. In the app these stop for a tap; the
     /// bridge has no confirmation UI, and burning an invoice number — or marking
@@ -263,7 +277,7 @@ enum CoachToolSchema {
     static let appOnlyToolNames: Set<String> = ["createInvoice"]
 
     static let all: [[String: Any]] = [
-        findTasks, getTaskDetail, getClientSummary, listClients,
+        findTasks, getTaskDetail, getClientSummary, listClients, listInvoices,
         addTime, addSubtask, updateSubtask, createTask, createClient, createInvoice,
         updateTaskStatus, starTasks, unstarTasks, updateDueDate,
         startTimer, stopTimer, bulkUpdate

@@ -22,6 +22,7 @@ enum CoachToolReader {
         case "getTaskDetail":   return getTaskDetail(call, context)
         case "getClientSummary":return getClientSummary(call, context)
         case "listClients":     return listClients(call, context)
+        case "listInvoices":    return listInvoices(call, context)
         default:                return json(["error": "Unknown read tool \(call.name)."])
         }
     }
@@ -172,6 +173,64 @@ enum CoachToolReader {
             ["date": dayString($0.addedAt), "hours": round2($0.hours), "note": $0.note] as [String: Any]
         }
         return json(out)
+    }
+
+    // MARK: - listInvoices
+
+    /// Attached work is grouped from a fetch of Entry, not read off
+    /// `invoice.entriesList` — the relationship array carries the same
+    /// invalidated-row hazard as every other one.
+    private static func listInvoices(_ call: CoachToolCall, _ context: ModelContext) -> String {
+        var invoices = (try? context.fetch(FetchDescriptor<Invoice>())) ?? []
+        let names = clientNames(context)
+
+        func clientName(of invoice: Invoice) -> String {
+            guard let id = invoice.client?.persistentModelID else { return "Unknown" }
+            return names[id] ?? "Unknown"
+        }
+
+        if let wanted = call.string("client")?.lowercased(), !wanted.isEmpty {
+            invoices = invoices.filter { clientName(of: $0).lowercased().contains(wanted) }
+        }
+        if let since = call.string("since").flatMap(CoachToolFormat.parseDate) {
+            invoices = invoices.filter { $0.createdAt >= since }
+        }
+        if let until = call.string("until").flatMap(CoachToolFormat.parseDate),
+           let end = Calendar.current.date(byAdding: .day, value: 1,
+                                           to: Calendar.current.startOfDay(for: until)) {
+            invoices = invoices.filter { $0.createdAt < end }
+        }
+
+        // Group entries by the invoice they belong to.
+        let allEntries = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
+        var byInvoice: [PersistentIdentifier: [Entry]] = [:]
+        for entry in allEntries {
+            guard let id = entry.invoice?.persistentModelID else { continue }
+            byInvoice[id, default: []].append(entry)
+        }
+
+        let limit = max(1, min(100, call.int("limit") ?? 20))
+        let ordered = invoices.sorted { $0.createdAt > $1.createdAt }.prefix(limit)
+
+        let rows: [[String: Any]] = ordered.map { invoice in
+            let attached = byInvoice[invoice.persistentModelID] ?? []
+            var row: [String: Any] = [
+                "title": invoice.title,
+                "client": clientName(of: invoice),
+                "date": dayString(invoice.createdAt),
+                "item_count": attached.count,
+                "hours": round2(attached.reduce(0.0) { $0 + $1.hours }),
+                "amount": round2(attached.reduce(0.0) { $0 + ($1.hours * $1.rate) })
+            ]
+            if let number = invoice.number, !number.isEmpty { row["number"] = number }
+            return row
+        }
+
+        return json([
+            "invoice_count": rows.count,
+            "truncated": invoices.count > rows.count,
+            "invoices": rows
+        ])
     }
 
     // MARK: - listClients

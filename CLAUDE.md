@@ -75,7 +75,7 @@ BrickDot/
 │   ├── CoachSession.swift           # Coach transcript + agentic loop (owned by RootView)
 │   ├── CoachToolSchema.swift        # Tool definitions sent to the API
 │   ├── CoachToolWriter.swift        # Write tools + EntryResolver + CoachToolFormat
-│   ├── CoachToolReader.swift        # Read tools (findTasks / detail / summaries / clients)
+│   ├── CoachToolReader.swift        # Read tools (tasks / summaries / clients / invoices)
 │   ├── CoachToolPolicy.swift        # Which calls auto-apply vs wait for a tap
 │   ├── CoachToolModels.swift        # CoachToolCall, PendingChange, ToolResultBlock
 │   ├── CoachBridge.swift            # Loopback HTTP bridge (Mac only, off by default)
@@ -224,6 +224,12 @@ the model only learned what happened on the next user message.)
   ("Cobblestone" on disk vs "Cobblestone Homes" in the app). Shortcodes are not
   unique per folder — the parent client folder is authoritative, the prefix is a
   cross-check.
+- **An entry with no invoice attached is not necessarily unbilled.** Invoicing
+  happens in QuickBooks — monthly data is exported from BrickDot, adjusted
+  there, and the invoice record in the app is created after the fact, if at all.
+  Cobblestone shows every 2026 entry unlinked while being billed through
+  QuickBooks to the start of 2026. Report this as "not linked to an invoice
+  here", never as "unpaid"; `listInvoices` shows what is actually on record.
 - **The payload in the system prompt is open work only.** Completed and invoiced
   work must be reached with `findTasks(status:)` or `getClientSummary`.
 - **Prompt caching** is on via a top-level `cache_control` breakpoint. In DEBUG,
