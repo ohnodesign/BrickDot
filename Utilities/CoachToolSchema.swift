@@ -81,7 +81,7 @@ enum CoachToolSchema {
 
     private static let getClientSummary = tool(
         "getClientSummary",
-        "Totals for a client over a date range: hours logged, task counts by status, how much logged work is not yet linked to an invoice (unlinked, which is not the same as unpaid), and invoiced_amount — what was actually billed, taken from invoice records. Omit client to summarise every client.",
+        "Totals for a client over a date range: hours logged, task counts by status, how much logged work is not yet linked to an invoice (unlinked, which is not the same as unpaid), and invoiced_amount — work that is on an invoice, counted in the period the work was done rather than the period it was billed. Omit client to summarise every client.",
         [
             "client": prop("string", "Client name. Omit for all clients."),
             "since": prop("string", "Earliest service date, yyyy-MM-dd. Defaults to 30 days ago."),

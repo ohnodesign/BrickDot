@@ -291,17 +291,22 @@ refuses to reclassify any entry carrying time logs or subtasks.
 
 ### Money comes from invoices
 
-Client Profitability on the Stats page reads `Invoice`, not entries. Summing
-`hours * rate` over entries answers "what is this work theoretically worth",
-which drifts from the money as soon as anything is written off or bundled. The
-invoices are what was actually charged, and the imported QuickBooks history now
-reaches back through 2025. `getClientSummary` follows the same rule:
-`invoiced_amount` comes from invoices; the entry-side number is labelled
-`unlinked_`, because an entry with no invoice link is unlinked, not unpaid.
+Client Profitability on the Stats page and `getClientSummary.invoiced_amount`
+both count **only line items that are on an invoice**. Summing `hours * rate`
+across all completed work answers "what is this theoretically worth", which
+drifts from the money as soon as anything is written off or bundled. The
+entry-side number is labelled `unlinked_`, because an entry with no invoice
+link is unlinked, not unpaid.
 
-Caveat when reading a short period: some imported invoices fell back to their
-import date because QuickBooks' date column did not parse, so they cluster on
-the day they were brought in. "All Time" is unaffected.
+Both date that money by **service date, not invoice date**. Michael bills in
+batches, sometimes months late — December 2025 work went out on an invoice
+dated August 2026 — so filtering by invoice date turns "Year to Date" into a
+chart of back-billing rather than of the year's work. Line-item attribution
+also lets an invoice straddling a month boundary land on both sides of it.
+
+The consequence, and it is the thing to remember before "fixing" this: these
+totals will **not** tie out to a QuickBooks report for the same date range,
+because QuickBooks dates revenue by invoice. That is the intended trade.
 
 ## Open Items / Known Tradeoffs
 

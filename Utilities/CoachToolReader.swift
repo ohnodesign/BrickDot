@@ -280,16 +280,24 @@ enum CoachToolReader {
             entries = entries.filter { clientName($0, names).lowercased().contains(name) }
         }
 
-        // Invoiced money comes from invoices, never from summing entries. The
-        // entry side of this answers "what work is logged"; only the invoice
-        // side answers "what was actually billed", and the two are different
-        // numbers — an entry with no invoice link is unlinked, not unpaid.
-        var billedByClient: [String: (amount: Double, count: Int)] = [:]
-        for invoice in (try? context.fetch(FetchDescriptor<Invoice>())) ?? [] {
-            guard invoice.createdAt >= since && invoice.createdAt < end else { continue }
-            let name = invoice.client.flatMap { names[$0.persistentModelID] } ?? "Unknown"
-            let existing = billedByClient[name] ?? (0, 0)
-            billedByClient[name] = (existing.amount + invoice.total, existing.count + 1)
+        // Invoiced money comes from line items that are on an invoice, never
+        // from summing all logged work — an entry with no invoice link is
+        // unlinked, not unpaid, and the two are different numbers.
+        //
+        // Dated by service date, matching the rest of this summary and the
+        // Stats chart: Michael bills in batches months after the fact, so
+        // invoice dates would put 2025 work in a 2026 window. This will not tie
+        // out to a QuickBooks report for the same range, which dates revenue by
+        // invoice.
+        //
+        // Unfiltered fetch on purpose — imported billing records are exactly
+        // what carries the invoiced history.
+        var billedByClient: [String: Double] = [:]
+        for entry in (try? context.fetch(FetchDescriptor<Entry>())) ?? [] {
+            guard entry.invoice != nil,
+                  entry.serviceDate >= since, entry.serviceDate < end else { continue }
+            let name = clientName(entry, names)
+            billedByClient[name, default: 0] += entry.hours * entry.rate + entry.expenseTotal
         }
 
         let grouped = Dictionary(grouping: entries, by: { clientName($0, names) })
@@ -297,15 +305,14 @@ enum CoachToolReader {
             .map { name, es in
                 let amount = es.reduce(0.0) { $0 + ($1.hours * $1.rate) }
                 let unlinked = es.filter { $0.invoice == nil }
-                let billed = billedByClient[name] ?? (0, 0)
+                let billed = billedByClient[name] ?? 0
                 return [
                     "client": name,
                     "hours": round2(es.reduce(0.0) { $0 + $1.hours }),
                     "amount": round2(amount),
                     "unlinked_hours": round2(unlinked.reduce(0.0) { $0 + $1.hours }),
                     "unlinked_amount": round2(unlinked.reduce(0.0) { $0 + ($1.hours * $1.rate) }),
-                    "invoiced_amount": round2(billed.amount),
-                    "invoice_count": billed.count,
+                    "invoiced_amount": round2(billed),
                     "tasks_open": es.filter { $0.status != .done }.count,
                     "tasks_done": es.filter { $0.status == .done }.count
                 ]

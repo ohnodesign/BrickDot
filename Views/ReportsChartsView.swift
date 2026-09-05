@@ -234,25 +234,35 @@ struct RevenueChartView: View {
 
 // MARK: - Client Profitability (horizontal bar chart)
 
-/// Reads invoices, not loose entries.
+/// Money that was actually billed, placed in the period the work was done.
 ///
-/// It used to sum `hours * rate` over completed entries, which answered "what
-/// is this client's work theoretically worth" — a number that drifts from the
-/// money as soon as anything is written off, bundled, or billed at a different
-/// rate than the entry carried. The invoices are the record of what was
-/// actually charged, and since the QuickBooks history was imported they now
-/// reach back through 2025. So profitability comes from them.
+/// Two decisions here, and they pull in opposite directions.
 ///
-/// Period filtering is by invoice date. Worth knowing when reading a short
-/// period: a few imported invoices fell back to their import date because
-/// QuickBooks' date column did not parse, so they cluster on the day they were
-/// brought in. "All Time" is unaffected.
+/// It counts only invoiced line items, not every completed entry. Summing
+/// `hours * rate` across all finished work answers "what is this theoretically
+/// worth", which drifts from the money as soon as anything is written off or
+/// bundled. An entry attached to an invoice is work that was charged for.
+///
+/// But it dates each line item by its **service date**, not the invoice's date.
+/// Michael bills in batches, sometimes months late — December 2025 work went out
+/// on an invoice dated August 2026 — so filtering by invoice date makes "Year to
+/// Date" a chart of back-billing rather than a chart of the year's work. Line
+/// items also let an invoice that straddles a month boundary land on both sides
+/// of it, which invoice-level attribution cannot do.
+///
+/// The consequence to remember: these totals will not tie out to a QuickBooks
+/// report for the same date range, because QuickBooks dates revenue by invoice.
 struct ClientProfitabilityChartView: View {
-    let invoices: [Invoice]
     let period: ReportPeriod
     @Environment(\.appTheme) private var theme
+
+    /// Every line item that is on an invoice — imported billing records
+    /// included, which is why this does not use `Entry.workOnlyPredicate`.
+    @Query(filter: #Predicate<Entry> { $0.invoice != nil },
+           sort: \Entry.serviceDate) private var invoicedEntries: [Entry]
+
     // Fetched, so every Client here has a row. Never dereference
-    // `invoice.client` for a stored property — see ClientInfoCache.
+    // `entry.client` for a stored property — see ClientInfoCache.
     @Query(sort: \Client.name) private var clients: [Client]
 
     private struct ClientRevenue: Identifiable {
@@ -260,14 +270,11 @@ struct ClientProfitabilityChartView: View {
         let name: String
         let amount: Double
         let hours: Double
-        let invoiceCount: Int
         let color: Color
     }
 
     private var clientData: [ClientRevenue] {
         let range = period.dateRange
-        let billed = invoices.filter { $0.createdAt >= range.start && $0.createdAt <= range.end }
-
         var names: [PersistentIdentifier: String] = [:]
         var colors: [String: Color] = [:]
         for c in clients {
@@ -275,20 +282,19 @@ struct ClientProfitabilityChartView: View {
             colors[c.name] = c.accentColor
         }
 
-        var grouped: [String: (amount: Double, hours: Double, count: Int)] = [:]
-        for invoice in billed {
-            let name = invoice.client.flatMap { names[$0.persistentModelID] } ?? "Unknown"
-            let existing = grouped[name] ?? (0, 0, 0)
-            grouped[name] = (existing.amount + invoice.total,
-                             existing.hours + invoice.totalHours,
-                             existing.count + 1)
+        var grouped: [String: (amount: Double, hours: Double)] = [:]
+        for entry in invoicedEntries {
+            guard entry.serviceDate >= range.start && entry.serviceDate <= range.end else { continue }
+            let name = entry.client.flatMap { names[$0.persistentModelID] } ?? "Unknown"
+            let existing = grouped[name] ?? (0, 0)
+            grouped[name] = (existing.amount + entry.hours * entry.rate + entry.expenseTotal,
+                             existing.hours + entry.hours)
         }
 
         return grouped
             .filter { $0.value.amount > 0 }
             .map { ClientRevenue(id: $0.key, name: $0.key, amount: $0.value.amount,
-                                 hours: $0.value.hours, invoiceCount: $0.value.count,
-                                 color: colors[$0.key] ?? .gray) }
+                                 hours: $0.value.hours, color: colors[$0.key] ?? .gray) }
             .sorted { $0.amount > $1.amount }
             .prefix(8)
             .map { $0 }
@@ -308,12 +314,12 @@ struct ClientProfitabilityChartView: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            Text("Invoiced")
+            Text("Invoiced work, by the date it was done")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
 
             if clientData.isEmpty {
-                Text("No invoices in this period.")
+                Text("No invoiced work in this period.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(height: 160)

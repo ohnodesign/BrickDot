@@ -6,7 +6,6 @@ struct StatsPageView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
     @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
-    @Query(sort: \Invoice.createdAt, order: .reverse) private var allInvoices: [Invoice]
     @State private var selectedStat: StatsPageSelectedStat? = nil
     @State private var selectedDueList: StatsPageSelectedStat? = nil
     @State private var calendarMonthAnchor: Date = Date()
@@ -101,7 +100,7 @@ struct StatsPageView: View {
                 }
 
                 Section {
-                    ClientProfitabilityChartView(invoices: allInvoices, period: reportPeriod)
+                    ClientProfitabilityChartView(period: reportPeriod)
                         .padding(.vertical, 8)
                 }
 
