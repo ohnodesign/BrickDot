@@ -71,7 +71,16 @@ BrickDot/
 │   └── ...
 │
 ├── Utilities/
-│   ├── AIService.swift / CoachToolModels.swift / CoachToolWriter.swift   # Coach tab backend
+│   ├── AIService.swift              # Claude API call, model choice, system prompt
+│   ├── CoachSession.swift           # Coach transcript + agentic loop (owned by RootView)
+│   ├── CoachToolSchema.swift        # Tool definitions sent to the API
+│   ├── CoachToolWriter.swift        # Write tools + EntryResolver + CoachToolFormat
+│   ├── CoachToolReader.swift        # Read tools (findTasks / detail / client summary)
+│   ├── CoachToolPolicy.swift        # Which calls auto-apply vs wait for a tap
+│   ├── CoachToolModels.swift        # CoachToolCall, PendingChange, ToolResultBlock
+│   ├── CoachBridge.swift            # Loopback HTTP bridge (Mac only, off by default)
+│   ├── ClientNameCache.swift        # Safe client lookups — see SwiftData Usage
+│   ├── StoreMode.swift              # Which store opened + the warning banner
 │   ├── SpeechRecognizer.swift  # Voice quick-capture
 │   ├── CSVExporter.swift / CSVImporter.swift
 │   ├── Backup.swift / AutoBackup.swift
@@ -160,6 +169,17 @@ All three enums are `String`-backed so `SavedSearch` can persist them.
   child type and filter it in Swift on `parent?.persistentModelID`, as
   `EditEntryView` does; a query refetches on the merge that removed the row.
   Mutating the relationship array (`append`, `remove(at:)`) stays fine.
+- **The same applies to `entry.client`.** Reading `client?.name` crashed the
+  entry list in 2026-09: `EntryListRow` → `displayClientName` → `clientName` →
+  the Client's row was gone and the getter trapped. `Entry.clientName`,
+  `Entry.clientRate` and `Invoice.safeClientName` now resolve through
+  `Utilities/ClientNameCache.swift` (`ClientInfoCache`), which reads names from
+  a fetch — only rows that exist come back — and caches them by
+  `persistentModelID`, dropping the cache on save or remote change. A fetch per
+  row is far too slow for a scrolling list, hence the cache. **Do not reintroduce
+  a direct `client?.name` read anywhere.** Identity reads
+  (`persistentModelID`, `==`) stay safe on such a model, which is what makes the
+  indirection work.
 
 ### View Patterns
 - `@Environment(\.modelContext)` for the SwiftData context,
@@ -176,6 +196,72 @@ Preference keys live near their usage (e.g. `AppPrefsKey` in
 `SettingsView.swift`, `OnboardingPrefs` in `HomeView.swift`) rather than
 one central enum — grep before adding a new key in case one already
 covers it.
+
+## AI Coach and the Claude Bridge
+
+The Coach runs an **agentic loop**, not a single call. `CoachSession.runLoop()`
+sends, applies whatever tools come back, feeds the `tool_result` blocks in, and
+goes again until the model stops calling tools or hits `AIService.maxLoopTurns`.
+A confirmation *suspends* the loop; `applyChanges`/`dismissChanges` resume it.
+(Before 2026-09 the results were recorded in the transcript and never sent, so
+the model only learned what happened on the next user message.)
+
+- **`CoachSession` is owned by `RootView`** and injected via the environment.
+  It was `@State` on `CoachView`, which meant leaving the tab discarded the
+  transcript and any pending confirmation mid-loop.
+- **Confirmation is tiered** (`CoachToolPolicy`): single-task edits apply
+  immediately; several tasks at once, `bulkUpdate`, anything already invoiced,
+  and `createInvoice` wait for a tap. A batch is all-or-nothing, because the API
+  needs a `tool_result` for every `tool_use` block in a turn.
+- **Every tool name in `CoachToolSchema` needs a case** in `CoachToolExecutor`
+  (writes) or `CoachToolReader` (reads), and a tier in `CoachToolPolicy`.
+- **`createTask` files as a Quick Capture unless a status is passed** — an
+  unreviewed note belongs in that section. `markModified()` clears the flag on
+  the first real edit.
+- **The payload in the system prompt is open work only.** Completed and invoiced
+  work must be reached with `findTasks(status:)` or `getClientSummary`.
+- **Prompt caching** is on via a top-level `cache_control` breakpoint. In DEBUG,
+  every call logs `[Coach] tokens in=… cached_read=… — N¢`.
+
+The bridge (`CoachBridge.swift`) is a loopback listener, Mac Catalyst only, off
+by default, guarded by a bearer token, with a read-only mode. `GET /tools`
+serves the real schema so the Node MCP server in `mcp/` mirrors whatever the
+build supports. `createInvoice` is refused over the bridge — it consumes a
+sequential invoice number and marks work billed, and the bridge has no
+confirmation UI.
+
+**`GET /health` is the debugging tool.** It reports `entryCount`, `clientCount`,
+`storeInMemoryOnly`, `storePath`, `fallbackToLocal`, `pid`, `launchedAt` and
+`built`. Every one of those was added after a long guessing session that the
+fact would have ended in one line. Two worth knowing:
+
+- An empty snapshot means either no work *or* a container that fell through to
+  the in-memory fallback — `storeInMemoryOnly` distinguishes them.
+- A rebuild replaces the binary on disk but a running process keeps its old
+  code, and port reuse lets a stale instance keep answering. Check `built`
+  before concluding a change didn't work.
+
+## Open Items / Known Tradeoffs
+
+- `TaskDataSerializer` emits `elapsed_minutes` for a running timer, which
+  changes every second and so busts the prompt cache while a timer runs. Drop it
+  and let the model call `getTaskDetail` if it needs the figure.
+- Task ids in the payload are ~250-character base64 `PersistentIdentifier`
+  blobs — roughly 2,600 tokens per call with 40 open tasks, over a quarter of
+  the input. Short handles with a lookup table would claw that back.
+- `createTask` falls back to `Constants.services.first` when no service is
+  given, which lands arbitrary entries under whatever that happens to be.
+- The MCP server has no `tools/list_changed` notification, so schema changes
+  need a Claude Desktop restart to reach the model.
+- `ClientInfoCache` invalidation hangs off save and remote-change
+  notifications; freshness on client *renames* has not been exercised much.
+- Bridge writes have no audit trail and no undo. Given they touch billing data,
+  an append-only journal (tool, arguments, result, timestamp) is the next
+  safety net worth building.
+- The Anthropic API key is in `UserDefaults`, not the Keychain.
+- `try?` swallowing fetch errors into empty results is widespread — an empty
+  array reads as "no data" when it may mean "the fetch failed". This is what
+  turned a store problem into an afternoon of wrong theories.
 
 ## Development Workflow
 
