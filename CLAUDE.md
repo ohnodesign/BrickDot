@@ -253,6 +253,56 @@ fact would have ended in one line. Two worth knowing:
   code, and port reuse lets a stale instance keep answering. Check `built`
   before concluding a change didn't work.
 
+## Billing records vs work entries
+
+QuickBooks invoice CSVs import as `Entry` rows so an invoice can be opened and
+read line by line. They are **not** work. Michael's intent, in his words: the QB
+entries are "a fail safe on my end so I can go back and make sure that I billed
+something" and were never meant to appear in the main BrickDot lists.
+
+Before this existed, an import dropped its line items straight into the task
+lists next to the hand-logged work for the same days, which read as duplicated
+work — Cobblestone showed 390 hours for 2025 against 266 hours actually logged.
+
+The wall:
+
+- `Entry.isBillingRecord` — true for imported line items.
+- `Invoice.isImported` — true for invoices that came from a CSV.
+- `Entry.workOnlyPredicate` / `Entry.workOnly(_:)` — the single filter. Every
+  `@Query` and `FetchDescriptor<Entry>` that feeds a list, count, chart, or
+  Coach tool uses it.
+
+Three places deliberately do **not** filter, and each will break if you "fix" it:
+
+- `InvoiceDetailView` — reads `invoice.entriesList`, so it shows the line items.
+  That view *is* the failsafe.
+- `CoachToolReader.listInvoices` — filtering here would report every imported
+  invoice as having zero items.
+- `CSVImporter` dedup and `Backup` — dedup has to see the records it compares
+  against; a backup that dropped them would lose the billing history.
+
+`BillingRecordMigration` walls off what was already in the store, once, guarded
+by UserDefaults. Its rule is `Invoice.number != nil`, because only the importer
+ever set a number — invoices built in the app leave it nil. That distinction is
+load-bearing: at the time it was written the store held 14 numbered QuickBooks
+invoices and one in-app invoice built from real tracked work, and a blanket
+"has an invoice → hide it" rule would have hidden that real work. It also
+refuses to reclassify any entry carrying time logs or subtasks.
+
+### Money comes from invoices
+
+Client Profitability on the Stats page reads `Invoice`, not entries. Summing
+`hours * rate` over entries answers "what is this work theoretically worth",
+which drifts from the money as soon as anything is written off or bundled. The
+invoices are what was actually charged, and the imported QuickBooks history now
+reaches back through 2025. `getClientSummary` follows the same rule:
+`invoiced_amount` comes from invoices; the entry-side number is labelled
+`unlinked_`, because an entry with no invoice link is unlinked, not unpaid.
+
+Caveat when reading a short period: some imported invoices fell back to their
+import date because QuickBooks' date column did not parse, so they cluster on
+the day they were brought in. "All Time" is unaffected.
+
 ## Open Items / Known Tradeoffs
 
 - `TaskDataSerializer` emits `elapsed_minutes` for a running timer, which

@@ -26,7 +26,7 @@ struct ClientDetailView: View {
     @State private var showReorderInvoices = false
 
     // Broad queries; filter in Swift
-    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @Query(sort: \Invoice.createdAt,  order: .reverse) private var allInvoices: [Invoice]
 
     // Filtered for this client

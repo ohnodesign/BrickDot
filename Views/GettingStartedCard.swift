@@ -13,7 +13,7 @@ struct GettingStartedCard: View {
     @Environment(\.appTheme) private var theme
 
     @Query(sort: \Client.name) private var clients: [Client]
-    @Query(sort: \Entry.createdAt, order: .reverse) private var entries: [Entry]
+    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.createdAt, order: .reverse) private var entries: [Entry]
 
     @AppStorage(OnboardingPrefs.dismissed) private var dismissed = false
 

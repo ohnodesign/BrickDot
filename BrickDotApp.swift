@@ -68,6 +68,10 @@ struct BrickDotApp: App {
                 .preferredColorScheme(colorScheme(from: appearanceRaw))
                 .tint(currentTheme.accent)
                 .onAppear {
+                    // Walls off QuickBooks line items imported before the flag
+                    // existed. Guarded by UserDefaults; a no-op after the first
+                    // launch that runs it.
+                    BillingRecordMigration.runIfNeeded(ctx: container.mainContext)
                     #if targetEnvironment(macCatalyst)
                     if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                         scene.sizeRestrictions?.minimumSize = CGSize(width: 900, height: 600)
@@ -109,7 +113,7 @@ struct BrickDotApp: App {
     private func refreshNotifications() {
         guard UserDefaults.standard.bool(forKey: AppPrefsKey.notificationsEnabled) else { return }
         let ctx = container.mainContext
-        let entries = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
+        let entries = (try? ctx.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? []
         NotificationManager.shared.reschedule(entries: entries)
     }
 

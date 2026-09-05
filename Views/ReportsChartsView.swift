@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import Charts
 
 // MARK: - Report Period
@@ -233,42 +234,86 @@ struct RevenueChartView: View {
 
 // MARK: - Client Profitability (horizontal bar chart)
 
+/// Reads invoices, not loose entries.
+///
+/// It used to sum `hours * rate` over completed entries, which answered "what
+/// is this client's work theoretically worth" — a number that drifts from the
+/// money as soon as anything is written off, bundled, or billed at a different
+/// rate than the entry carried. The invoices are the record of what was
+/// actually charged, and since the QuickBooks history was imported they now
+/// reach back through 2025. So profitability comes from them.
+///
+/// Period filtering is by invoice date. Worth knowing when reading a short
+/// period: a few imported invoices fell back to their import date because
+/// QuickBooks' date column did not parse, so they cluster on the day they were
+/// brought in. "All Time" is unaffected.
 struct ClientProfitabilityChartView: View {
-    let entries: [Entry]
+    let invoices: [Invoice]
     let period: ReportPeriod
     @Environment(\.appTheme) private var theme
+    // Fetched, so every Client here has a row. Never dereference
+    // `invoice.client` for a stored property — see ClientInfoCache.
+    @Query(sort: \Client.name) private var clients: [Client]
 
     private struct ClientRevenue: Identifiable {
         let id: String
         let name: String
         let amount: Double
         let hours: Double
+        let invoiceCount: Int
         let color: Color
     }
 
     private var clientData: [ClientRevenue] {
-        let done = period.filter(entries)
-        var grouped: [String: (amount: Double, hours: Double, color: Color)] = [:]
+        let range = period.dateRange
+        let billed = invoices.filter { $0.createdAt >= range.start && $0.createdAt <= range.end }
 
-        for e in done {
-            let name = e.clientName
-            let existing = grouped[name] ?? (0, 0, e.client?.accentColor ?? .gray)
-            grouped[name] = (existing.amount + e.hours * e.rate, existing.hours + e.hours, existing.color)
+        var names: [PersistentIdentifier: String] = [:]
+        var colors: [String: Color] = [:]
+        for c in clients {
+            names[c.persistentModelID] = c.name
+            colors[c.name] = c.accentColor
         }
 
-        return grouped.map { ClientRevenue(id: $0.key, name: $0.key, amount: $0.value.amount, hours: $0.value.hours, color: $0.value.color) }
+        var grouped: [String: (amount: Double, hours: Double, count: Int)] = [:]
+        for invoice in billed {
+            let name = invoice.client.flatMap { names[$0.persistentModelID] } ?? "Unknown"
+            let existing = grouped[name] ?? (0, 0, 0)
+            grouped[name] = (existing.amount + invoice.total,
+                             existing.hours + invoice.totalHours,
+                             existing.count + 1)
+        }
+
+        return grouped
+            .filter { $0.value.amount > 0 }
+            .map { ClientRevenue(id: $0.key, name: $0.key, amount: $0.value.amount,
+                                 hours: $0.value.hours, invoiceCount: $0.value.count,
+                                 color: colors[$0.key] ?? .gray) }
             .sorted { $0.amount > $1.amount }
             .prefix(8)
             .map { $0 }
     }
 
+    private var billedTotal: Double { clientData.reduce(0) { $0 + $1.amount } }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Client Profitability")
-                .font(.subheadline.weight(.semibold))
+            HStack(alignment: .firstTextBaseline) {
+                Text("Client Profitability")
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                if billedTotal > 0 {
+                    Text(billedTotal.shortCurrency)
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Text("Invoiced")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
 
             if clientData.isEmpty {
-                Text("No completed work in this period.")
+                Text("No invoices in this period.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(height: 160)
@@ -276,7 +321,7 @@ struct ClientProfitabilityChartView: View {
             } else {
                 Chart(clientData) { client in
                     BarMark(
-                        x: .value("Revenue", client.amount),
+                        x: .value("Invoiced", client.amount),
                         y: .value("Client", client.name)
                     )
                     .foregroundStyle(client.color.gradient)

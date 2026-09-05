@@ -14,7 +14,7 @@ struct EntriesListView: View, Identifiable {
     private var totalAmount: Double { entries.reduce(0.0) { $0 + ($1.hours * $1.rate) } }
 
     @Environment(\.modelContext) private var ctx
-    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
     var body: some View {
         NavigationStack {

@@ -45,6 +45,7 @@
 		EE8E0BB1304B710500830F85 /* StoreMode.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0BB2304B710500830F85 /* StoreMode.swift */; };
 		EE8E0BA1304B710500830F85 /* CoachSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0BA2304B710500830F85 /* CoachSession.swift */; };
 		EE8E0B8C304B710500830F85 /* CoachToolPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */; };
+		EE8E0C02304B710500830F85 /* BillingRecordMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE8E0C01304B710500830F85 /* BillingRecordMigration.swift */; };
 		EE984E962E58DA08004A272F /* NewClientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE984E952E58DA08004A272F /* NewClientView.swift */; };
 		EEA142542E942FCF00ACB8DD /* Date+Bounds.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA142532E942FCF00ACB8DD /* Date+Bounds.swift */; };
 		EEA142562E9437B300ACB8DD /* DateBoundsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA142552E9437B300ACB8DD /* DateBoundsTests.swift */; };
@@ -116,6 +117,7 @@
 		EE8CDECD2E78B9D20011B686 /* Subtask.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Subtask.swift; sourceTree = "<group>"; };
 		EE8E0B85304B710500830F85 /* CoachBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachBridge.swift; sourceTree = "<group>"; };
 		EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolPolicy.swift; sourceTree = "<group>"; };
+		EE8E0C01304B710500830F85 /* BillingRecordMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BillingRecordMigration.swift; sourceTree = "<group>"; };
 		EE8E0B87304B710500830F85 /* CoachToolReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolReader.swift; sourceTree = "<group>"; };
 		EE8E0B88304B710500830F85 /* CoachToolSchema.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachToolSchema.swift; sourceTree = "<group>"; };
 		EE8E0BC2304B710500830F85 /* ClientNameCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClientNameCache.swift; sourceTree = "<group>"; };
@@ -270,6 +272,7 @@
 			children = (
 				EE8E0B85304B710500830F85 /* CoachBridge.swift */,
 				EE8E0B86304B710500830F85 /* CoachToolPolicy.swift */,
+				EE8E0C01304B710500830F85 /* BillingRecordMigration.swift */,
 				EE8E0B87304B710500830F85 /* CoachToolReader.swift */,
 				EE8E0B88304B710500830F85 /* CoachToolSchema.swift */,
 				EE8E0BC2304B710500830F85 /* ClientNameCache.swift */,
@@ -408,6 +411,7 @@
 				EE8E0BB1304B710500830F85 /* StoreMode.swift in Sources */,
 				EE8E0BA1304B710500830F85 /* CoachSession.swift in Sources */,
 				EE8E0B8C304B710500830F85 /* CoachToolPolicy.swift in Sources */,
+				EE8E0C02304B710500830F85 /* BillingRecordMigration.swift in Sources */,
 				EEE835CF2E9C973300317915 /* SettingsView.swift in Sources */,
 				641EAE95C9BAC6DA7C66E2BC /* UserProfile.swift in Sources */,
 				476456A31A1C1D55F7128893 /* SavedSearch.swift in Sources */,

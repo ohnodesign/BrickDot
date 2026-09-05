@@ -57,6 +57,8 @@ struct CSVImporter {
 
         let existingClients = (try? ctx.fetch(FetchDescriptor<Client>())) ?? []
         let existingInvoices = (try? ctx.fetch(FetchDescriptor<Invoice>())) ?? []
+        // Unfiltered on purpose: dedup has to see the billing records it is
+        // comparing against, and they are exactly what the filter hides.
         let existingEntries = (try? ctx.fetch(FetchDescriptor<Entry>())) ?? []
 
         var clientCache: [String: Client] = [:]
@@ -96,11 +98,19 @@ struct CSVImporter {
             let serviceDate = dateFormatter.date(from: serviceDateStr) ?? Date()
             let invoiceDate = dateFormatter.date(from: invoiceDateStr) ?? Date()
 
-            // Dedup: skip if an entry with the same client, service, description, and date already exists
+            // Dedup only against other billing records, never against real work
+            // entries. An imported line item and a hand-logged entry can describe
+            // the same afternoon; that is not a duplicate, it is the point — the
+            // import is the failsafe copy of what was billed and lives behind the
+            // isBillingRecord wall. Matching on invoice number + date + qty + rate
+            // rather than the description, because QuickBooks rewrites descriptions
+            // between exports and an exact-string match missed every one of them.
             let isDuplicate = existingEntries.contains { e in
-                e.clientName.lowercased() == customerName.lowercased()
+                e.isBillingRecord
+                && e.invoice?.number == invoiceNo
                 && e.service == service
-                && e.detail == description
+                && e.hours == qty
+                && e.rate == rate
                 && Calendar.current.isDate(e.serviceDate, inSameDayAs: serviceDate)
             }
             if isDuplicate { skipped += 1; continue }
@@ -127,8 +137,9 @@ struct CSVImporter {
             let invoice: Invoice
             if let existing = invoiceCache[invoiceNo] {
                 invoice = existing
+                existing.isImported = true
             } else {
-                let newInv = Invoice(title: "\(customerName) \(invoiceNo)", number: invoiceNo, createdAt: invoiceDate, client: client)
+                let newInv = Invoice(title: "\(customerName) \(invoiceNo)", number: invoiceNo, createdAt: invoiceDate, client: client, isImported: true)
                 ctx.insert(newInv)
                 invoiceCache[invoiceNo] = newInv
                 invoice = newInv
@@ -146,6 +157,8 @@ struct CSVImporter {
                 completedAt: serviceDate,
                 invoice: invoice
             )
+            // Walled off from every regular list — a billing record, not a task.
+            entry.isBillingRecord = true
             ctx.insert(entry)
             entriesCreated += 1
         }

@@ -4,7 +4,7 @@ import SwiftData
 struct LogView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
-    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
 
     @State private var searchText: String = ""
     @State private var statusFilter: EntryStatus? = nil   // nil = All

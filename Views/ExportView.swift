@@ -67,7 +67,7 @@ struct ExportView: View {
     @Environment(\.modelContext) private var ctx
 
     @Query(sort: \Client.name) private var clients: [Client]
-    @Query(sort: \Entry.serviceDate) private var allEntries: [Entry]
+    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate) private var allEntries: [Entry]
     @Query(sort: \Invoice.createdAt) private var allInvoices: [Invoice]
 
     @Query private var profiles: [UserProfile]

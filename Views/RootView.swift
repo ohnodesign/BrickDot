@@ -296,7 +296,7 @@ private enum SidebarDestination: Hashable {
 private struct iPadRootView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.appTheme) private var theme
-    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @Query(sort: \Client.name) private var allClients: [Client]
     @Query(sort: \SavedSearch.createdAt) private var savedSearches: [SavedSearch]
     @Query private var profiles: [UserProfile]

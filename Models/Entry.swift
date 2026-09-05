@@ -21,6 +21,14 @@ final class Entry {
     var dueDate: Date? = nil
     var billOnCompletion: Bool = false
 
+    /// True for line items imported from a QuickBooks invoice CSV. These are a
+    /// billing record, not work to do: they exist so an invoice can be opened
+    /// and checked against what was actually billed. Every regular list, count,
+    /// chart and Coach query filters them out — see `Entry.workOnly(_:)` and the
+    /// `#Predicate` in the fetch sites. Only InvoiceDetailView, Backup and
+    /// Export see them.
+    var isBillingRecord: Bool = false
+
     var expenseAmount: Double = 0
     var expenseMarkup: Double = 0
     var expenseMarkupIsPercent: Bool = true
@@ -46,6 +54,18 @@ final class Entry {
 
     @Relationship(deleteRule: .cascade, inverse: \Subtask.parent)
     var subtasks: [Subtask]? = []
+
+    /// The one filter every regular list uses. Imported invoice line items are
+    /// billing records, not work, so they stay out of lists, counts and charts.
+    /// The two spellings exist because `@Query` and `FetchDescriptor` want a
+    /// predicate while in-memory arrays want a closure — keep them in step.
+    static var workOnlyPredicate: Predicate<Entry> {
+        #Predicate<Entry> { !$0.isBillingRecord }
+    }
+
+    static func workOnly(_ entries: [Entry]) -> [Entry] {
+        entries.filter { !$0.isBillingRecord }
+    }
 
     var status: EntryStatus {
         get { EntryStatus(rawValue: statusRaw) ?? .todo }

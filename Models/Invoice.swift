@@ -12,6 +12,11 @@ final class Invoice {
     var sortIndex: Int = 0
     var client: Client?
 
+    /// True when this invoice came in from a QuickBooks CSV import rather than
+    /// being built in the app. Its entries are billing records (see
+    /// `Entry.isBillingRecord`) and stay out of the regular lists.
+    var isImported: Bool = false
+
     @Relationship(deleteRule: .noAction, inverse: \Entry.invoice)
     var entries: [Entry]? = []
 
@@ -27,10 +32,20 @@ final class Invoice {
         set { entries = newValue }
     }
 
-    init(title: String = "", number: String? = nil, createdAt: Date = Date(), client: Client? = nil) {
+    /// Sum of the invoice's line items.
+    var total: Double {
+        entriesList.reduce(0) { $0 + $1.hours * $1.rate + $1.expenseTotal }
+    }
+
+    var totalHours: Double {
+        entriesList.reduce(0) { $0 + $1.hours }
+    }
+
+    init(title: String = "", number: String? = nil, createdAt: Date = Date(), client: Client? = nil, isImported: Bool = false) {
         self.title = title
         self.number = number
         self.createdAt = createdAt
         self.client = client
+        self.isImported = isImported
     }
 }

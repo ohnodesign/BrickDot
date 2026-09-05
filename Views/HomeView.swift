@@ -5,7 +5,7 @@ struct HomeView: View {
     @Environment(\.modelContext) private var ctx
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.appTheme) private var theme
-    @Query(sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
+    @Query(filter: Entry.workOnlyPredicate, sort: \Entry.serviceDate, order: .reverse) private var allEntries: [Entry]
     @Query private var allClients: [Client]
 
     @State private var showNewEntry = false

@@ -40,6 +40,9 @@ struct EntryDTO: Codable {
     var subtasks: [SubtaskDTO]?
     var dueDate: Date?
     var billOnCompletion: Bool?
+    /// Optional so older backup files still decode. A restore that dropped this
+    /// would dump every imported QuickBooks line item back into the task lists.
+    var isBillingRecord: Bool?
 }
 
 enum BackupError: Error, LocalizedError {
@@ -102,7 +105,8 @@ enum Backup {
                 notes: entry.notes.isEmpty ? nil : entry.notes,
                 subtasks: subtaskDTOs,
                 dueDate: entry.dueDate,
-                billOnCompletion: entry.billOnCompletion ? true : nil
+                billOnCompletion: entry.billOnCompletion ? true : nil,
+                isBillingRecord: entry.isBillingRecord ? true : nil
             )
         }
 
@@ -213,6 +217,7 @@ enum Backup {
                 dueDate: e.dueDate,
                 billOnCompletion: e.billOnCompletion ?? false
             )
+            model.isBillingRecord = e.isBillingRecord ?? false
             ctx.insert(model)
             for st in e.subtasks ?? [] {
                 let subtask = Subtask(title: st.title, parent: model, hours: st.hours, isDone: st.isDone)
@@ -286,6 +291,7 @@ enum Backup {
                 dueDate: e.dueDate,
                 billOnCompletion: e.billOnCompletion ?? false
             )
+            model.isBillingRecord = e.isBillingRecord ?? false
             ctx.insert(model)
             for st in e.subtasks ?? [] {
                 let subtask = Subtask(title: st.title, parent: model, hours: st.hours, isDone: st.isDone)

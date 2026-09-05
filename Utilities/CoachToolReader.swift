@@ -30,7 +30,7 @@ enum CoachToolReader {
     // MARK: - findTasks
 
     private static func findTasks(_ call: CoachToolCall, _ context: ModelContext) -> String {
-        let all = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
+        let all = (try? context.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? []
         let subtasksByParent = childSubtasks(context)
         let names = clientNames(context)
 
@@ -201,7 +201,10 @@ enum CoachToolReader {
             invoices = invoices.filter { $0.createdAt < end }
         }
 
-        // Group entries by the invoice they belong to.
+        // Group entries by the invoice they belong to. Unfiltered on purpose:
+        // this is the invoice view, and the imported line items are the whole
+        // content of an imported invoice. Filtering here would report every
+        // QuickBooks invoice as having zero items.
         let allEntries = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
         var byInvoice: [PersistentIdentifier: [Entry]] = [:]
         for entry in allEntries {
@@ -269,7 +272,7 @@ enum CoachToolReader {
             ?? cal.date(byAdding: .day, value: -30, to: cal.startOfDay(for: Date()))!
         let end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: until)) ?? until
 
-        var entries = ((try? context.fetch(FetchDescriptor<Entry>())) ?? [])
+        var entries = ((try? context.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? [])
             .filter { $0.serviceDate >= since && $0.serviceDate < end }
 
         let names = clientNames(context)
@@ -277,17 +280,32 @@ enum CoachToolReader {
             entries = entries.filter { clientName($0, names).lowercased().contains(name) }
         }
 
+        // Invoiced money comes from invoices, never from summing entries. The
+        // entry side of this answers "what work is logged"; only the invoice
+        // side answers "what was actually billed", and the two are different
+        // numbers — an entry with no invoice link is unlinked, not unpaid.
+        var billedByClient: [String: (amount: Double, count: Int)] = [:]
+        for invoice in (try? context.fetch(FetchDescriptor<Invoice>())) ?? [] {
+            guard invoice.createdAt >= since && invoice.createdAt < end else { continue }
+            let name = invoice.client.flatMap { names[$0.persistentModelID] } ?? "Unknown"
+            let existing = billedByClient[name] ?? (0, 0)
+            billedByClient[name] = (existing.amount + invoice.total, existing.count + 1)
+        }
+
         let grouped = Dictionary(grouping: entries, by: { clientName($0, names) })
         let clients: [[String: Any]] = grouped
             .map { name, es in
                 let amount = es.reduce(0.0) { $0 + ($1.hours * $1.rate) }
-                let uninvoiced = es.filter { $0.invoice == nil }
+                let unlinked = es.filter { $0.invoice == nil }
+                let billed = billedByClient[name] ?? (0, 0)
                 return [
                     "client": name,
                     "hours": round2(es.reduce(0.0) { $0 + $1.hours }),
                     "amount": round2(amount),
-                    "uninvoiced_hours": round2(uninvoiced.reduce(0.0) { $0 + $1.hours }),
-                    "uninvoiced_amount": round2(uninvoiced.reduce(0.0) { $0 + ($1.hours * $1.rate) }),
+                    "unlinked_hours": round2(unlinked.reduce(0.0) { $0 + $1.hours }),
+                    "unlinked_amount": round2(unlinked.reduce(0.0) { $0 + ($1.hours * $1.rate) }),
+                    "invoiced_amount": round2(billed.amount),
+                    "invoice_count": billed.count,
                     "tasks_open": es.filter { $0.status != .done }.count,
                     "tasks_done": es.filter { $0.status == .done }.count
                 ]

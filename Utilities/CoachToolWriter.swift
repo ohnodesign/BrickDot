@@ -54,7 +54,7 @@ struct EntryResolver {
     }
 
     func findByDescription(_ description: String) -> Entry? {
-        let open = ((try? context.fetch(FetchDescriptor<Entry>())) ?? []).filter { $0.status != .done }
+        let open = ((try? context.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? []).filter { $0.status != .done }
         let query = description.lowercased()
         if let exact = open.first(where: {
             $0.detail.lowercased() == query || $0.service.lowercased() == query
@@ -192,7 +192,7 @@ enum CoachToolExecutor {
             // Fetch and filter by id rather than walking client.entriesList — the
             // relationship array can hold rows CloudKit has already removed.
             let clientID = client.persistentModelID
-            let all = (try? context.fetch(FetchDescriptor<Entry>())) ?? []
+            let all = (try? context.fetch(FetchDescriptor<Entry>(predicate: Entry.workOnlyPredicate))) ?? []
             var billable: [Entry]
 
             let ids = call.stringArray("taskIds")
