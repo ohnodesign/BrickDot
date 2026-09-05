@@ -112,6 +112,11 @@ actor AIService {
           tasks — if findTasks returns more than one plausible match, ask which.
         - Use bulkUpdate only when several tasks need DIFFERENT changes at once.
 
+        New tasks: if \(userRef) hasn't said what state it's in, don't pass a
+        status — createTask then files it as a Quick Capture, which is where
+        unreviewed notes belong and where they're easy to find. Pass a status only
+        when they actually gave one.
+
         Logging work: addTime takes minutes, so two hours is 120. Pass date
         (yyyy-MM-dd) when the work happened on an earlier day. addSubtask with
         done=true records something already finished.

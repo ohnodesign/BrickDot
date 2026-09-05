@@ -202,7 +202,9 @@ final class CoachSession {
             let done = (call.bool("done") ?? true) ? "done" : "not done"
             return "Mark subtask \"\(call.string("title") ?? "")\" on \(one("taskId")) as \(done)"
         case "createTask":
+            let quick = call.bool("quickCapture") ?? (call.string("status") == nil)
             return "Create \"\(call.string("description") ?? "")\" for \(call.string("client") ?? "a client")"
+                + (quick ? " as a Quick Capture" : "")
         case "createClient":
             return "Add a new client \"\(call.string("name") ?? "")\""
         case "createInvoice":

@@ -118,15 +118,20 @@ enum CoachToolSchema {
 
     private static let createTask = tool(
         "createTask",
-        "Create a new task for a client. Only use when nothing existing fits — search with findTasks first.",
+        """
+        Create a new task for a client. Only use when nothing existing fits —         search with findTasks first.
+
+        Unless the user says what state the task is in, it is filed as a Quick         Capture: an unreviewed note that shows a Quick Capture badge and collects         in its own section, so it is easy to find and sort out later. Pass status         only when the user actually specifies one ("add a todo for…", "log that as         done"), which files it as an ordinary task instead. Any later edit clears         the Quick Capture flag automatically.
+        """,
         [
             "client": prop("string", "Client name. Must match an existing client."),
             "description": prop("string", "What the task is."),
             "service": prop("string", "Service category, e.g. PHOTO, WEB, DESIGN. Defaults to the client's usual."),
             "minutes": prop("number", "Optional time to log immediately."),
             "dueDate": prop("string", "Optional due date, yyyy-MM-dd."),
-            "status": prop("string", "Initial status. Defaults to to_do.",
-                           values: ["to_do", "in_progress", "done"])
+            "status": prop("string", "Initial status. Pass ONLY if the user specified one — omitting it files the task as a Quick Capture.",
+                           values: ["to_do", "in_progress", "done"]),
+            "quickCapture": prop("boolean", "Override the default. Omit unless the user explicitly asks for or against a Quick Capture.")
         ],
         required: ["client", "description"]
     )

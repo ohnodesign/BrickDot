@@ -90,6 +90,9 @@ enum CoachToolReader {
             ]
             if let due = e.dueDate { row["due_date"] = dayString(due) }
             if e.invoice != nil { row["invoiced"] = true }
+            // Surfaced so the model can see (and report) whether something is
+            // still an unreviewed capture rather than a considered task.
+            if e.isQuickAdd { row["quick_capture"] = true }
             if !e.notes.isEmpty { row["notes"] = String(e.notes.prefix(300)) }
             let subs = subtasksByParent[e.persistentModelID] ?? []
             if !subs.isEmpty {
@@ -152,6 +155,7 @@ enum CoachToolReader {
             "amount": round2(e.hours * e.rate),
             "starred": e.isImportant,
             "invoiced": e.invoice != nil,
+            "quick_capture": e.isQuickAdd,
             "timer_running": e.timerStartedAt != nil
         ]
         if let due = e.dueDate { out["due_date"] = dayString(due) }

@@ -147,13 +147,21 @@ enum CoachToolExecutor {
                 completedAt: status == .done ? Date() : nil,
                 dueDate: call.string("dueDate").flatMap(CoachToolFormat.parseDate)
             )
+            // A task created without a stated status is an unreviewed note, which
+            // is exactly what Quick Capture is for — it gets a badge and its own
+            // section rather than sinking into the general list. Naming a status
+            // means it has already been thought about, so file it normally.
+            // markModified() clears the flag on the first real edit.
+            entry.isQuickAdd = call.bool("quickCapture") ?? (call.string("status") == nil)
             context.insert(entry)
             if minutes > 0 {
                 let log = TimeLog(hours: minutes / 60, entry: entry)
                 context.insert(log)
                 entry.timeLogsList.append(log)
             }
-            return "Created \"\(detail)\" for \(client.name)\(minutes > 0 ? " with \(CoachToolFormat.duration(minutes)) logged" : "")."
+            let logged = minutes > 0 ? " with \(CoachToolFormat.duration(minutes)) logged" : ""
+            let filed = entry.isQuickAdd ? " Filed under Quick Captures." : ""
+            return "Created \"\(detail)\" for \(client.name)\(logged).\(filed)"
 
         case "createClient":
             let name = (call.string("name") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
