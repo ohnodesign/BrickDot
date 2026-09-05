@@ -6,6 +6,10 @@ struct CSVImportResult {
     let invoicesCreated: Int
     let clientsCreated: Int
     let skipped: Int
+    /// Rows whose date column could not be read. Surfaced rather than swallowed
+    /// — the previous version silently substituted today's date, so a file in a
+    /// format the parser did not know would import looking perfectly fine.
+    let unreadableDates: Int
     let debugInfo: String
 }
 
@@ -74,10 +78,7 @@ struct CSVImporter {
         var entriesCreated = 0
         var skipped = 0
 
-        let dateFormatter = DateFormatter()
-        dateFormatter.calendar = Calendar(identifier: .gregorian)
-        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
-        dateFormatter.dateFormat = "MM/dd/yyyy"
+        var unreadableDates = 0
 
         for i in 1..<rows.count {
             let cols = rows[i]
@@ -95,8 +96,17 @@ struct CSVImporter {
 
             guard !customerName.isEmpty else { skipped += 1; continue }
 
-            let serviceDate = dateFormatter.date(from: serviceDateStr) ?? Date()
-            let invoiceDate = dateFormatter.date(from: invoiceDateStr) ?? Date()
+            // Never substitute today for a date we could not read. A wrong-but-
+            // plausible date is worse than an obviously missing one: it looks
+            // right in a list and quietly poisons every period report.
+            let parsedServiceDate = parseDate(serviceDateStr)
+            let parsedInvoiceDate = parseDate(invoiceDateStr)
+            if parsedServiceDate == nil || parsedInvoiceDate == nil { unreadableDates += 1 }
+
+            // Each stands in for the other before either falls back to now —
+            // on a QuickBooks invoice the two are days apart at most.
+            guard let serviceDate = parsedServiceDate ?? parsedInvoiceDate else { skipped += 1; continue }
+            let invoiceDate = parsedInvoiceDate ?? serviceDate
 
             // Dedup only against other billing records, never against real work
             // entries. An imported line item and a hand-logged entry can describe
@@ -138,6 +148,9 @@ struct CSVImporter {
             if let existing = invoiceCache[invoiceNo] {
                 invoice = existing
                 existing.isImported = true
+                // Deliberately does not touch existing.createdAt. A re-import is
+                // not authority over a date that may have been corrected by hand
+                // in the app since.
             } else {
                 let newInv = Invoice(title: "\(customerName) \(invoiceNo)", number: invoiceNo, createdAt: invoiceDate, client: client, isImported: true)
                 ctx.insert(newInv)
@@ -170,9 +183,87 @@ struct CSVImporter {
             invoicesCreated: invoicesCreated,
             clientsCreated: clientsCreated,
             skipped: skipped,
+            unreadableDates: unreadableDates,
             debugInfo: "Parsed \(rows.count) rows, \(header.count) columns"
         )
     }
+
+    // MARK: - Dates
+
+    /// QuickBooks does not export one date format, it exports whichever one the
+    /// exporting machine's locale produced. The original parser accepted only
+    /// "MM/dd/yyyy", so a file written as 6/9/25 failed every row and fell back
+    /// to `Date()` — which is why eight invoices are filed on the day they were
+    /// imported rather than the day they were issued.
+    ///
+    /// Order matters: four-digit-year patterns are tried before two-digit ones,
+    /// and ISO before US, so an unambiguous string is never read by a looser
+    /// pattern that happens to also match. Day-first formats are deliberately
+    /// absent — 03/04/2025 cannot be told apart from its US reading, and
+    /// guessing there would trade a visible failure for an invisible one.
+    static func parseDate(_ raw: String) -> Date? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        // Drop a time component if one came along ("6/9/25 0:00").
+        let datePart = trimmed.split(separator: " ").first.map(String.init) ?? trimmed
+
+        // Round-trip first. `DateFormatter.date(from:)` parses a *prefix* and
+        // ignores the rest, so "MM/dd/yy" will read "6/9/2025" as the year 20
+        // and "M/d/yyyy" will read "6/9/25" as the year 25 — both succeed, both
+        // silently wrong. Re-formatting the parsed date and requiring it to
+        // equal the input is what actually pins the format down.
+        for formatter in dateFormatters {
+            if let d = formatter.date(from: datePart),
+               formatter.string(from: d) == datePart,
+               isPlausible(d) {
+                return d
+            }
+        }
+
+        // Nothing matched exactly — a stray zero-pad or a format not in the
+        // list. Take the first parse that lands in a sane range rather than
+        // giving up on the row.
+        for formatter in dateFormatters {
+            if let d = formatter.date(from: datePart), isPlausible(d) { return d }
+        }
+        return nil
+    }
+
+    /// A guard, not a business rule. Its only job is to catch the year-25-AD
+    /// class of misparse before it reaches the store.
+    private static func isPlausible(_ date: Date) -> Bool {
+        let year = Calendar(identifier: .gregorian).component(.year, from: date)
+        return year >= 1990 && year <= 2100
+    }
+
+    private static let dateFormatters: [DateFormatter] = {
+        let patterns = [
+            "yyyy-MM-dd",
+            "yyyy/MM/dd",
+            "MM/dd/yyyy",
+            "M/d/yyyy",
+            "MM-dd-yyyy",
+            "M-d-yyyy",
+            "MM/dd/yy",
+            "M/d/yy",
+            "MM-dd-yy",
+            "M-d-yy",
+            "MMM d, yyyy",
+            "MMMM d, yyyy"
+        ]
+        return patterns.map { pattern in
+            let f = DateFormatter()
+            f.calendar = Calendar(identifier: .gregorian)
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.timeZone = .current
+            // Without this, "6/9/2025" is happily accepted by "MM/dd/yy" as
+            // year 20, and the first pattern in the list wins every time.
+            f.isLenient = false
+            f.dateFormat = pattern
+            return f
+        }
+    }()
 
     // MARK: - CSV Parsing
 

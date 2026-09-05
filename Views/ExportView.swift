@@ -489,6 +489,9 @@ struct ExportView: View {
             if result.clientsCreated > 0 { msg += ", \(result.clientsCreated) new clients" }
             if result.skipped > 0 { msg += " (\(result.skipped) skipped)" }
             msg += "."
+            if result.unreadableDates > 0 {
+                msg += " \(result.unreadableDates) row\(result.unreadableDates == 1 ? " had a date" : "s had dates") that couldn't be read."
+            }
             importInfo = msg
             showImportInfo = true
         } catch {
