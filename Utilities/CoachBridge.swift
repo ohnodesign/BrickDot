@@ -71,6 +71,9 @@ final class CoachBridgeServer: ObservableObject {
     @Published private(set) var lastError: String?
     @Published private(set) var lastRequest: String?
 
+    /// Set when the singleton is first touched, i.e. at app launch.
+    private static let launchedAt = Date()
+
     private var listener: NWListener?
     private var container: ModelContainer?
     private nonisolated let queue = DispatchQueue(label: "com.ohnodesign.brickdot.bridge")
@@ -214,12 +217,24 @@ final class CoachBridgeServer: ObservableObject {
             // answered. An empty snapshot is ambiguous — no work, or a container
             // that fell through to the in-memory fallback and came up blank —
             // and guessing between those cost an evening.
+            // Identity first. A rebuild replaces the binary on disk but a process
+            // already running keeps its old code, and with port reuse enabled a
+            // stale instance can go on answering here indefinitely. "Am I talking
+            // to the app I just built?" needs to be one line, not an afternoon.
+            let iso = ISO8601DateFormatter()
             var health: [String: Any] = [
                 "ok": true,
                 "app": "BrickDot",
+                "pid": ProcessInfo.processInfo.processIdentifier,
+                "launchedAt": iso.string(from: Self.launchedAt),
                 "readOnly": CoachBridge.isReadOnly,
                 "fallbackToLocal": UserDefaults.standard.bool(forKey: "cloudkit.fallbackToLocal")
             ]
+            if let executable = Bundle.main.executableURL,
+               let attributes = try? FileManager.default.attributesOfItem(atPath: executable.path),
+               let built = attributes[.modificationDate] as? Date {
+                health["built"] = iso.string(from: built)
+            }
             if let config = container.configurations.first {
                 health["storeInMemoryOnly"] = config.isStoredInMemoryOnly
                 health["storePath"] = config.url.path
