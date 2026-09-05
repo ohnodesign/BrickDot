@@ -20,7 +20,10 @@ struct RootView: View {
     @State private var coachSession = CoachSession()
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            // Nothing when the real store opened; a banner when it didn't.
+            StoreStatusBanner()
+
             if sizeClass == .regular {
                 iPadRootView()
             } else {

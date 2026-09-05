@@ -59,7 +59,7 @@ struct InvoiceDetailView: View {
                         .labelsHidden()
                         .onChange(of: invoice.createdAt) { _, _ in try? ctx.save() }
                 }
-                InvoiceKeyValueRow("Client", invoice.client?.name ?? "Unknown")
+                InvoiceKeyValueRow("Client", invoice.safeClientName)
 
                 Divider()
 

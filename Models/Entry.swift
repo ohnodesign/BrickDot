@@ -52,7 +52,14 @@ final class Entry {
         set { statusRaw = newValue.rawValue }
     }
 
-    var clientName: String { client?.name ?? "Unknown" }
+    /// Never reads `client?.name` directly — that traps when the Client's row is
+    /// gone (a delete merged from another device, or a half-imported store), and
+    /// it took down the entry list. Resolved through the store instead, which
+    /// only knows about rows that exist. See ClientInfoCache.
+    var clientName: String {
+        guard let client, let context = modelContext else { return "Unknown" }
+        return ClientInfoCache.info(for: client.persistentModelID, in: context)?.name ?? "Unknown"
+    }
 
     /// Round-trippable, session-stable id for AI Coach tool calls, derived from
     /// the SwiftData persistent id. Computed — there is NO stored field, so it
@@ -67,7 +74,12 @@ final class Entry {
     var displayClientName: String {
         setupAction != nil ? "Getting Started" : clientName
     }
-    var clientRate: Double { client?.rate ?? 0 }
+    /// Same hazard as `clientName` — resolved through the store, not the
+    /// relationship.
+    var clientRate: Double {
+        guard let client, let context = modelContext else { return 0 }
+        return ClientInfoCache.info(for: client.persistentModelID, in: context)?.rate ?? 0
+    }
 
     // Non-optional accessors for CloudKit-optional arrays
     var timeLogsList: [TimeLog] {
